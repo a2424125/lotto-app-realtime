@@ -47,7 +47,7 @@ const Purchase: React.FC<PurchaseProps> = ({
   >("all");
   const [localHistory, setLocalHistory] = useState(purchaseHistory);
 
-  // 다크 모드 색상 테마
+  // 다크 모드 색상 테마 - 수정된 버전
   const colors = {
     light: {
       background: "#f9fafb",
@@ -60,6 +60,9 @@ const Purchase: React.FC<PurchaseProps> = ({
       success: "#f0fdf4",
       successBorder: "#bbf7d0",
       successText: "#166534",
+      info: "#eff6ff",
+      infoBorder: "#bfdbfe",
+      infoText: "#1e40af",
       warning: "#fefce8",
       warningBorder: "#fef3c7",
       warningText: "#92400e",
@@ -87,6 +90,9 @@ const Purchase: React.FC<PurchaseProps> = ({
       success: "#134e4a",
       successBorder: "#047857",
       successText: "#6ee7b7",
+      info: "#1e3a8a",
+      infoBorder: "#3b82f6",
+      infoText: "#93c5fd",
       warning: "#451a03",
       warningBorder: "#d97706",
       warningText: "#fbbf24",
@@ -823,7 +829,7 @@ const Purchase: React.FC<PurchaseProps> = ({
                   borderRadius: "6px",
                   border: isAutoSelect
                     ? `1px solid ${currentColors.successBorder}`
-                    : `1px solid ${currentColors.border}`,
+                    : `1px solid ${currentColors.infoBorder}`,
                 }}
               >
                 <div style={{ textAlign: "center", marginBottom: "8px" }}>
@@ -833,7 +839,7 @@ const Purchase: React.FC<PurchaseProps> = ({
                       fontWeight: "600",
                       color: isAutoSelect
                         ? currentColors.successText
-                        : currentColors.text,
+                        : currentColors.infoText,
                       margin: "0",
                     }}
                   >
@@ -882,7 +888,7 @@ const Purchase: React.FC<PurchaseProps> = ({
                         fontSize: "11px",
                         color: isAutoSelect
                           ? currentColors.successText
-                          : currentColors.text,
+                          : currentColors.infoText,
                         fontWeight: "600",
                       }}
                     >
