@@ -41,7 +41,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   dataStatus,
   roundRange,
   theme = "light",
-  nextDrawInfo: propNextDrawInfo,
+  nextDrawInfo: propNextDrawInfo
 }) => {
   // 총 회차수 계산 - 동적으로 변경되는 핵심 변수
   const totalRounds = pastWinningNumbers.length;
@@ -52,9 +52,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   const [nextDrawInfo, setNextDrawInfo] = useState<NextDrawInfo | null>(null);
   const [isLoadingNextDraw, setIsLoadingNextDraw] = useState(false);
-  const [latestResult, setLatestResult] = useState<LottoDrawResult | null>(
-    null
-  );
+  const [latestResult, setLatestResult] = useState<LottoDrawResult | null>(null);
   const [isLoadingLatest, setIsLoadingLatest] = useState(false);
 
   // 🆕 실시간 크롤링 상태
@@ -65,7 +63,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   }>({
     isConnected: false,
     lastUpdate: null,
-    source: "unknown",
+    source: "unknown"
   });
 
   // 다크 모드 색상 테마
@@ -89,7 +87,6 @@ const Dashboard: React.FC<DashboardProps> = ({
       warningText: "#92400e",
       gray: "#f9fafb",
       grayBorder: "#e5e7eb",
-      // 🆕 실시간 상태 색상
       realtime: "#f0fdf4",
       realtimeBorder: "#bbf7d0",
       realtimeText: "#166534",
@@ -113,7 +110,6 @@ const Dashboard: React.FC<DashboardProps> = ({
       warningText: "#fbbf24",
       gray: "#334155",
       grayBorder: "#475569",
-      // 🆕 실시간 상태 색상 (다크모드)
       realtime: "#134e4a",
       realtimeBorder: "#047857",
       realtimeText: "#6ee7b7",
@@ -174,10 +170,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       setRealtimeStatus({
         isConnected: dataStatus.isRealTime || false,
         lastUpdate: dataStatus.lastUpdate || null,
-        source:
-          dataStatus.source === "realtime_crawler"
-            ? "Lottolyzer.com"
-            : "로컬 캐시",
+        source: dataStatus.source === "realtime_crawler" ? "Lottolyzer.com" : "로컬 캐시"
       });
     }
   };
@@ -358,9 +351,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               width: "8px",
               height: "8px",
               borderRadius: "50%",
-              backgroundColor: realtimeStatus.isConnected
-                ? "#10b981"
-                : "#f59e0b",
+              backgroundColor: realtimeStatus.isConnected ? "#10b981" : "#f59e0b",
               animation: isDataLoading ? "pulse 2s infinite" : "none",
             }}
           />
@@ -697,8 +688,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               lineHeight: "1.4",
             }}
           >
-            🕷️ 실시간 크롤링으로 {actualLatestRound}~{actualOldestRound}회차 (
-            {totalRounds}개) 데이터를 분석한 추천번호입니다
+            🕷️ 실시간 크롤링으로 {actualLatestRound}~{actualOldestRound}회차 ({totalRounds}개) 데이터를 분석한 추천번호입니다
           </p>
         </div>
         <button
