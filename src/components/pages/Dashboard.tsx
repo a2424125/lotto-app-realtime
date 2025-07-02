@@ -66,7 +66,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     source: "unknown"
   });
 
-  // 다크 모드 색상 테마
+  // 다크 모드 색상 테마 - 수정된 버전
   const colors = {
     light: {
       background: "#f9fafb",
