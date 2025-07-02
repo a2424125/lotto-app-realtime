@@ -1,15 +1,6 @@
 {
   "version": 2,
   "name": "lotto-realtime-app",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "build"
-      }
-    }
-  ],
   "functions": {
     "api/lotto-crawler.ts": {
       "maxDuration": 30
@@ -31,9 +22,6 @@
       "dest": "/index.html"
     }
   ],
-  "env": {
-    "NODE_ENV": "production"
-  },
   "headers": [
     {
       "source": "/api/(.*)",
