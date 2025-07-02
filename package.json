@@ -1,0 +1,36 @@
+{
+  "name": "lotto-realtime-app",
+  "version": "2.0.0",
+  "description": "실시간 로또 6/45 번호 추천 및 당첨 확인 앱",
+  "keywords": ["typescript", "react", "lotto", "realtime", "crawler"],
+  "main": "src/index.tsx",
+  "dependencies": {
+    "loader-utils": "3.2.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-scripts": "5.0.1",
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0-rc.12",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/react": "18.2.38",
+    "@types/react-dom": "18.2.15",
+    "@types/node": "^20.0.0",
+    "@types/cheerio": "^0.22.31",
+    "typescript": "4.4.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject",
+    "dev": "next dev",
+    "vercel-build": "react-scripts build",
+    "crawler:test": "node -r ts-node/register src/services/realtimeCrawler.ts"
+  },
+  "browserslist": [">0.2%", "not dead", "not ie <= 11", "not op_mini all"],
+  "engines": {
+    "node": "18.x"
+  }
+}
