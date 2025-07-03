@@ -4,6 +4,8 @@ const nextConfig = {
   experimental: {
     // Vercel Functions 최적화
     serverComponentsExternalPackages: ["cheerio"],
+    // 최적화된 패키지 로딩
+    optimizePackageImports: ["cheerio", "axios"],
   },
 
   // API 라우트 설정
@@ -16,9 +18,31 @@ const nextConfig = {
     ];
   },
 
-  // CORS 및 헤더 설정
+  // CORS 및 헤더 설정 - 통합된 버전
   async headers() {
     return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "origin-when-cross-origin",
+          },
+          {
+            key: "Content-Security-Policy",
+            value:
+              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://en.lottolyzer.com https://lottolyzer.com;",
+          },
+        ],
+      },
       {
         source: "/api/:path*",
         headers: [
@@ -36,7 +60,7 @@ const nextConfig = {
           },
           {
             key: "Cache-Control",
-            value: "public, max-age=300, stale-while-revalidate=60", // 5분 캐시
+            value: "public, max-age=300, stale-while-revalidate=60",
           },
         ],
       },
@@ -117,63 +141,6 @@ const nextConfig = {
 
   // 페이지 확장자 설정
   pageExtensions: ["ts", "tsx", "js", "jsx"],
-
-  // 실험적 기능들
-  experimental: {
-    // 서버 컴포넌트 관련
-    serverComponentsExternalPackages: ["cheerio"],
-    // 최적화된 패키지 로딩
-    optimizePackageImports: ["cheerio", "axios"],
-  },
-
-  // 보안 헤더
-  async headers() {
-    return [
-      {
-        source: "/(.*)",
-        headers: [
-          {
-            key: "X-Frame-Options",
-            value: "DENY",
-          },
-          {
-            key: "X-Content-Type-Options",
-            value: "nosniff",
-          },
-          {
-            key: "Referrer-Policy",
-            value: "origin-when-cross-origin",
-          },
-          {
-            key: "Content-Security-Policy",
-            value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://en.lottolyzer.com https://lottolyzer.com;",
-          },
-        ],
-      },
-      {
-        source: "/api/:path*",
-        headers: [
-          {
-            key: "Access-Control-Allow-Origin",
-            value: "*",
-          },
-          {
-            key: "Access-Control-Allow-Methods",
-            value: "GET, POST, PUT, DELETE, OPTIONS",
-          },
-          {
-            key: "Access-Control-Allow-Headers",
-            value: "Content-Type, Authorization",
-          },
-          {
-            key: "Cache-Control",
-            value: "public, max-age=300, stale-while-revalidate=60",
-          },
-        ],
-      },
-    ];
-  },
 };
 
 module.exports = nextConfig;
