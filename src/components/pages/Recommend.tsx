@@ -41,7 +41,7 @@ const Recommend: React.FC<RecommendProps> = ({
   const actualLatestRound = roundRange?.latestRound || 1178;
   const actualOldestRound = roundRange?.oldestRound || 1178;
 
-  // 다크 모드 색상 테마
+  // ✅ 수정된 다크 모드 색상 테마 - 모든 필요한 속성 포함
   const colors = {
     light: {
       background: "#f9fafb",
@@ -60,6 +60,9 @@ const Recommend: React.FC<RecommendProps> = ({
       warning: "#fefce8",
       warningBorder: "#fef3c7",
       warningText: "#92400e",
+      error: "#fef2f2",
+      errorBorder: "#fecaca",
+      errorText: "#dc2626",
       gray: "#f9fafb",
       grayBorder: "#e5e7eb",
       gradientStart: "#059669",
@@ -82,6 +85,9 @@ const Recommend: React.FC<RecommendProps> = ({
       warning: "#451a03",
       warningBorder: "#d97706",
       warningText: "#fbbf24",
+      error: "#7f1d1d",
+      errorBorder: "#dc2626",
+      errorText: "#fca5a5",
       gray: "#334155",
       grayBorder: "#475569",
       gradientStart: "#10b981",
