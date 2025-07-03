@@ -68,7 +68,7 @@ const Stats: React.FC<StatsProps> = ({
   const actualOldestRound = roundRange?.oldestRound || 1178;
   const totalRounds = pastWinningNumbers.length;
 
-  // ✅ 문제 3 해결: 다크 모드 색상 테마 조화롭게 수정
+  // ✅ 수정된 다크 모드 색상 테마 - 모든 필요한 속성 포함
   const colors = {
     light: {
       background: "#f9fafb",
@@ -87,6 +87,9 @@ const Stats: React.FC<StatsProps> = ({
       warning: "#fefce8",
       warningBorder: "#fef3c7",
       warningText: "#92400e",
+      error: "#fef2f2",
+      errorBorder: "#fecaca",
+      errorText: "#dc2626",
       gray: "#f8fafc",
       grayBorder: "#e2e8f0",
       // 핫/콜드 색상 - 라이트 모드
@@ -114,15 +117,18 @@ const Stats: React.FC<StatsProps> = ({
       warning: "#451a03",
       warningBorder: "#d97706",
       warningText: "#fbbf24",
+      error: "#7f1d1d",
+      errorBorder: "#dc2626",
+      errorText: "#fca5a5",
       gray: "#334155",
       grayBorder: "#475569",
       // ✅ 핫/콜드 색상 - 다크 모드에서 조화롭게 수정
-      hotBg: "#422006", // 어두운 따뜻한 색상
-      hotBorder: "#d97706", // 주황색 테두리
-      hotText: "#fed7aa", // 부드러운 주황색 텍스트
-      coldBg: "#1e3a8a", // 어두운 파란색 배경
-      coldBorder: "#3b82f6", // 파란색 테두리
-      coldText: "#93c5fd", // 부드러운 파란색 텍스트
+      hotBg: "#422006",
+      hotBorder: "#d97706",
+      hotText: "#fed7aa",
+      coldBg: "#1e3a8a",
+      coldBorder: "#3b82f6",
+      coldText: "#93c5fd",
     },
   };
 
