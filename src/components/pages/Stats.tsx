@@ -68,7 +68,7 @@ const Stats: React.FC<StatsProps> = ({
   const actualOldestRound = roundRange?.oldestRound || 1178;
   const totalRounds = pastWinningNumbers.length;
 
-  // ✅ 수정된 다크 모드 색상 테마 - 모든 필요한 속성 포함
+  // ✅ 완전한 다크 모드 색상 테마 - 모든 속성 포함 (통일된 버전)
   const colors = {
     light: {
       background: "#f9fafb",
