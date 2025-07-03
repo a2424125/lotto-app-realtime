@@ -27,7 +27,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [notifications, setNotifications] = useState(true);
   const [isClearing, setIsClearing] = useState(false);
 
-  // 다크 모드 색상 테마
+  // ✅ 수정된 다크 모드 색상 테마 - 모든 필요한 속성 포함
   const colors = {
     light: {
       background: "#f9fafb",
@@ -37,10 +37,21 @@ const Settings: React.FC<SettingsProps> = ({
       textSecondary: "#6b7280",
       border: "#e5e7eb",
       accent: "#059669",
+      success: "#f0fdf4",
+      successBorder: "#bbf7d0",
+      successText: "#166534",
+      info: "#eff6ff",
+      infoBorder: "#bfdbfe",
+      infoText: "#1e40af",
+      warning: "#fefce8",
+      warningBorder: "#fef3c7",
+      warningText: "#92400e",
+      error: "#fef2f2",
+      errorBorder: "#fecaca",
+      errorText: "#dc2626",
       cardBg: "#f9fafb",
-      successBg: "#f0f9ff",
-      successBorder: "#bfdbfe",
-      successText: "#1e40af",
+      gray: "#f8fafc",
+      grayBorder: "#e2e8f0",
       // 🆕 실시간 상태 색상
       realtimeBg: "#f0fdf4",
       realtimeBorder: "#bbf7d0",
@@ -54,10 +65,21 @@ const Settings: React.FC<SettingsProps> = ({
       textSecondary: "#94a3b8",
       border: "#334155",
       accent: "#10b981",
+      success: "#134e4a",
+      successBorder: "#047857",
+      successText: "#6ee7b7",
+      info: "#1e3a8a",
+      infoBorder: "#3b82f6",
+      infoText: "#93c5fd",
+      warning: "#451a03",
+      warningBorder: "#d97706",
+      warningText: "#fbbf24",
+      error: "#7f1d1d",
+      errorBorder: "#dc2626",
+      errorText: "#fca5a5",
       cardBg: "#334155",
-      successBg: "#1e293b",
-      successBorder: "#475569",
-      successText: "#38bdf8",
+      gray: "#334155",
+      grayBorder: "#475569",
       // 🆕 실시간 상태 색상 (다크모드)
       realtimeBg: "#134e4a",
       realtimeBorder: "#047857",
@@ -869,7 +891,7 @@ const Settings: React.FC<SettingsProps> = ({
           style={{
             marginTop: "12px",
             padding: "12px",
-            backgroundColor: currentColors.successBg,
+            backgroundColor: currentColors.success,
             borderRadius: "6px",
             border: `1px solid ${currentColors.successBorder}`,
           }}
