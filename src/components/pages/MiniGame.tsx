@@ -25,7 +25,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
   const actualOldestRound = roundRange?.oldestRound || 1178;
   const totalRounds = pastWinningNumbers.length;
 
-  // 다크 모드 색상 테마
+  // ✅ 수정된 다크 모드 색상 테마 - 모든 필요한 속성 포함
   const colors = {
     light: {
       background: "#f9fafb",
@@ -44,6 +44,9 @@ const MiniGame: React.FC<MiniGameProps> = ({
       warning: "#fefce8",
       warningBorder: "#fef3c7",
       warningText: "#92400e",
+      error: "#fef2f2",
+      errorBorder: "#fecaca",
+      errorText: "#dc2626",
       gray: "#f8fafc",
       grayBorder: "#e2e8f0",
     },
@@ -64,6 +67,9 @@ const MiniGame: React.FC<MiniGameProps> = ({
       warning: "#451a03",
       warningBorder: "#d97706",
       warningText: "#fbbf24",
+      error: "#7f1d1d",
+      errorBorder: "#dc2626",
+      errorText: "#fca5a5",
       gray: "#334155",
       grayBorder: "#475569",
     },
