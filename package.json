@@ -11,7 +11,8 @@
     "react-scripts": "5.0.1",
     "axios": "^1.6.0",
     "cheerio": "^1.0.0-rc.12",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "@vercel/node": "^3.0.0"
   },
   "devDependencies": {
     "@types/react": "18.2.38",
@@ -25,9 +26,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject",
-    "dev": "next dev",
-    "vercel-build": "react-scripts build",
-    "crawler:test": "node -r ts-node/register src/services/realtimeCrawler.ts"
+    "vercel-build": "react-scripts build"
   },
   "browserslist": [">0.2%", "not dead", "not ie <= 11", "not op_mini all"],
   "engines": {
