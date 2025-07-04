@@ -16,9 +16,22 @@ interface GameStats {
   gamesPlayed: number;
   bestScore: number;
   totalWins: number;
-  virtualMoney: number;
-  totalSpent: number;
-  totalWon: number;
+  gamePoints: number;
+  totalUsed: number;
+  totalEarned: number;
+  guessGameWins: number;
+  simulationWins: number;
+  gachaWins: number;
+  collectedCombos: string[];
+}
+
+interface GachaItem {
+  id: string;
+  name: string;
+  numbers: number[];
+  rarity: "common" | "rare" | "epic" | "legendary";
+  points: number;
+  description: string;
 }
 
 const MiniGame: React.FC<MiniGameProps> = ({
@@ -35,9 +48,13 @@ const MiniGame: React.FC<MiniGameProps> = ({
       gamesPlayed: 0,
       bestScore: 0,
       totalWins: 0,
-      virtualMoney: 100000, // 시작 자금 10만원
-      totalSpent: 0,
-      totalWon: 0,
+      gamePoints: 1000, // 시작 포인트 1000점
+      totalUsed: 0,
+      totalEarned: 0,
+      guessGameWins: 0,
+      simulationWins: 0,
+      gachaWins: 0,
+      collectedCombos: [],
     };
   });
 
@@ -46,22 +63,32 @@ const MiniGame: React.FC<MiniGameProps> = ({
     secretNumbers: [] as number[],
     userGuess: [] as number[],
     attempts: 0,
-    maxAttempts: 10,
+    maxAttempts: 8,
     hints: [] as string[],
     gameOver: false,
     won: false,
     score: 0,
+    pointsEarned: 0,
   });
 
-  // 가상 로또 시뮬레이션 상태
+  // 번호 확인 게임 상태
   const [simulation, setSimulation] = useState({
     selectedNumbers: [] as number[],
-    ticketPrice: 1000,
+    gameCost: 10,
     currentRound: 0,
     results: [] as any[],
     isPlaying: false,
     autoPlay: false,
     speed: 1,
+  });
+
+  // 뽑기 게임 상태
+  const [gachaGame, setGachaGame] = useState({
+    isOpening: false,
+    lastPulled: null as GachaItem | null,
+    pullCost: 20,
+    inventory: [] as GachaItem[],
+    showInventory: false,
   });
 
   // 실제 회차 범위 정보 사용
@@ -93,6 +120,11 @@ const MiniGame: React.FC<MiniGameProps> = ({
       errorText: "#dc2626",
       gray: "#f8fafc",
       grayBorder: "#e2e8f0",
+      // 희귀도 색상
+      common: "#9ca3af",
+      rare: "#3b82f6",
+      epic: "#8b5cf6",
+      legendary: "#f59e0b",
     },
     dark: {
       background: "#0f172a",
@@ -116,29 +148,67 @@ const MiniGame: React.FC<MiniGameProps> = ({
       errorText: "#fca5a5",
       gray: "#334155",
       grayBorder: "#475569",
+      // 희귀도 색상 (다크모드)
+      common: "#6b7280",
+      rare: "#60a5fa",
+      epic: "#a78bfa",
+      legendary: "#fbbf24",
     },
   };
 
   const currentColors = colors[theme];
 
-  // 게임 목록
+  // 게임 목록 - 3개로 확장
   const games = [
     {
       id: "guess",
       name: "번호맞추기",
-      desc: "AI가 만든 비밀번호를 힌트로 맞춰보세요!",
+      desc: "논리적 추론으로 비밀번호를 찾아서 포인트 획득!",
       emoji: "🎯",
       color: currentColors.primary,
       difficulty: "중급",
+      earnPoints: "성공시 50-200pt",
     },
     {
       id: "simulation",
-      name: "가상 로또 시뮬",
-      desc: "가상 돈으로 로또를 사서 실제 결과로 확인!",
+      name: "번호 확인 게임",
+      desc: "내가 선택한 번호를 과거 당첨번호와 비교해보세요!",
       emoji: "🎲",
       color: "#8b5cf6",
       difficulty: "초급",
+      earnPoints: "당첨시 20-1000pt",
     },
+    {
+      id: "gacha",
+      name: "번호 뽑기",
+      desc: "신비한 캡슐에서 특별한 번호 조합을 뽑아보세요!",
+      emoji: "🎁",
+      color: "#f59e0b",
+      difficulty: "초급",
+      earnPoints: "뽑기시 10-500pt",
+    },
+  ];
+
+  // 뽑기 아이템 풀
+  const gachaPool: GachaItem[] = [
+    // 일반 (70%)
+    { id: "c1", name: "연속번호 조합", numbers: [1, 2, 3, 4, 5, 6], rarity: "common", points: 10, description: "1부터 6까지 연속번호" },
+    { id: "c2", name: "짝수 조합", numbers: [2, 4, 6, 8, 10, 12], rarity: "common", points: 15, description: "모두 짝수인 조합" },
+    { id: "c3", name: "홀수 조합", numbers: [1, 3, 5, 7, 9, 11], rarity: "common", points: 15, description: "모두 홀수인 조합" },
+    { id: "c4", name: "저번대 조합", numbers: [1, 5, 9, 13, 17, 21], rarity: "common", points: 12, description: "1-20대 위주 조합" },
+    
+    // 레어 (20%)
+    { id: "r1", name: "피보나치 조합", numbers: [1, 1, 2, 3, 5, 8], rarity: "rare", points: 50, description: "수학적 피보나치 수열" },
+    { id: "r2", name: "소수 조합", numbers: [2, 3, 5, 7, 11, 13], rarity: "rare", points: 60, description: "모두 소수인 조합" },
+    { id: "r3", name: "제곱수 조합", numbers: [1, 4, 9, 16, 25, 36], rarity: "rare", points: 55, description: "완전제곱수 조합" },
+    
+    // 에픽 (8%)
+    { id: "e1", name: "황금비율 조합", numbers: [8, 13, 21, 34, 55, 89], rarity: "epic", points: 150, description: "황금비율 기반 조합" },
+    { id: "e2", name: "별자리 조합", numbers: [7, 14, 21, 28, 35, 42], rarity: "epic", points: 120, description: "7의 배수 별자리 조합" },
+    
+    // 레전드 (2%)
+    { id: "l1", name: "행운의 777", numbers: [7, 17, 27, 37, 41, 43], rarity: "legendary", points: 500, description: "전설의 럭키 세븐 조합" },
+    { id: "l2", name: "완벽한 균형", numbers: [3, 15, 23, 31, 39, 44], rarity: "legendary", points: 400, description: "모든 구간 완벽 분배" },
   ];
 
   // 게임 통계 저장
@@ -153,11 +223,12 @@ const MiniGame: React.FC<MiniGameProps> = ({
       secretNumbers: secret,
       userGuess: [],
       attempts: 0,
-      maxAttempts: 10,
+      maxAttempts: 8,
       hints: [],
       gameOver: false,
       won: false,
       score: 0,
+      pointsEarned: 0,
     });
   };
 
@@ -181,19 +252,27 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
     let hint = "";
     if (exactMatches === 6) {
+      const basePoints = 200;
+      const bonusPoints = Math.max(0, (8 - guessGame.attempts) * 10);
+      const totalPoints = basePoints + bonusPoints;
+      
       hint = "🎉 축하합니다! 모든 번호를 맞췄어요!";
       setGuessGame(prev => ({
         ...prev,
         gameOver: true,
         won: true,
         score: Math.max(0, 1000 - (prev.attempts * 100)),
-        hints: [...prev.hints, hint],
+        pointsEarned: totalPoints,
+        hints: [...prev.hints, hint, `🎁 ${totalPoints}pt 획득!`],
       }));
       
       setGameStats(prev => ({
         ...prev,
         gamesPlayed: prev.gamesPlayed + 1,
         totalWins: prev.totalWins + 1,
+        guessGameWins: prev.guessGameWins + 1,
+        gamePoints: prev.gamePoints + totalPoints,
+        totalEarned: prev.totalEarned + totalPoints,
         bestScore: Math.max(prev.bestScore, Math.max(0, 1000 - (guessGame.attempts * 100))),
       }));
     } else {
@@ -201,17 +280,22 @@ const MiniGame: React.FC<MiniGameProps> = ({
       
       const newAttempts = guessGame.attempts + 1;
       if (newAttempts >= guessGame.maxAttempts) {
+        // 실패해도 참가상으로 10pt
+        const consolationPoints = 10;
         setGuessGame(prev => ({
           ...prev,
           attempts: newAttempts,
           gameOver: true,
           won: false,
-          hints: [...prev.hints, hint, `😔 실패! 정답: ${secretNumbers.join(", ")}`],
+          pointsEarned: consolationPoints,
+          hints: [...prev.hints, hint, `😔 실패! 정답: ${secretNumbers.join(", ")}`, `🎁 참가상 ${consolationPoints}pt 획득!`],
         }));
         
         setGameStats(prev => ({
           ...prev,
           gamesPlayed: prev.gamesPlayed + 1,
+          gamePoints: prev.gamePoints + consolationPoints,
+          totalEarned: prev.totalEarned + consolationPoints,
         }));
       } else {
         setGuessGame(prev => ({
@@ -224,10 +308,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }
   };
 
-  // 가상 로또 시뮬레이션 시작
+  // 번호 확인 게임 시작
   const startSimulation = () => {
-    if (gameStats.virtualMoney < simulation.ticketPrice) {
-      alert("가상 돈이 부족합니다! 🪙");
+    if (gameStats.gamePoints < simulation.gameCost) {
+      alert("게임 포인트가 부족합니다! 🎮");
       return;
     }
 
@@ -248,26 +332,26 @@ const MiniGame: React.FC<MiniGameProps> = ({
     const bonusMatch = simulation.selectedNumbers.includes(bonusNumber);
 
     let grade = "";
-    let prize = 0;
+    let points = 0;
     
     if (matches === 6) {
       grade = "1등";
-      prize = Math.floor(Math.random() * 1000000000) + 1000000000; // 10억~20억
+      points = 1000;
     } else if (matches === 5 && bonusMatch) {
       grade = "2등";
-      prize = Math.floor(Math.random() * 50000000) + 30000000; // 3000만~8000만
+      points = 300;
     } else if (matches === 5) {
       grade = "3등";
-      prize = Math.floor(Math.random() * 500000) + 1000000; // 100만~150만
+      points = 100;
     } else if (matches === 4) {
       grade = "4등";
-      prize = 50000;
+      points = 50;
     } else if (matches === 3) {
       grade = "5등";
-      prize = 5000;
+      points = 20;
     } else {
       grade = "낙첨";
-      prize = 0;
+      points = 0;
     }
 
     const result = {
@@ -278,35 +362,94 @@ const MiniGame: React.FC<MiniGameProps> = ({
       matches,
       bonusMatch,
       grade,
-      prize,
-      spent: simulation.ticketPrice,
-      profit: prize - simulation.ticketPrice,
+      points,
+      used: simulation.gameCost,
+      profit: points - simulation.gameCost,
     };
 
     setTimeout(() => {
       setSimulation(prev => ({
         ...prev,
-        results: [result, ...prev.results.slice(0, 9)], // 최근 10개만 유지
+        results: [result, ...prev.results.slice(0, 9)],
         isPlaying: false,
         selectedNumbers: [],
       }));
 
       setGameStats(prev => ({
         ...prev,
-        virtualMoney: prev.virtualMoney - simulation.ticketPrice + prize,
-        totalSpent: prev.totalSpent + simulation.ticketPrice,
-        totalWon: prev.totalWon + prize,
+        gamePoints: prev.gamePoints - simulation.gameCost + points,
+        totalUsed: prev.totalUsed + simulation.gameCost,
+        totalEarned: prev.totalEarned + points,
         gamesPlayed: prev.gamesPlayed + 1,
-        totalWins: prize > 0 ? prev.totalWins + 1 : prev.totalWins,
+        totalWins: points > 0 ? prev.totalWins + 1 : prev.totalWins,
+        simulationWins: points > 0 ? prev.simulationWins + 1 : prev.simulationWins,
       }));
 
-      if (prize > 0) {
-        alert(`🎉 ${grade} 당첨! ${prize.toLocaleString()}원 획득!`);
+      if (points > 0) {
+        alert(`🎉 ${grade} 당첨! ${points}포인트 획득!`);
       }
     }, 2000);
   };
 
-  // 번호 선택/해제 (시뮬레이션용)
+  // 뽑기 게임 실행
+  const pullGacha = () => {
+    if (gameStats.gamePoints < gachaGame.pullCost) {
+      alert("포인트가 부족합니다! 🎮");
+      return;
+    }
+
+    setGachaGame(prev => ({ ...prev, isOpening: true }));
+
+    setTimeout(() => {
+      // 확률에 따른 뽑기
+      const rand = Math.random();
+      let selectedItem: GachaItem;
+
+      if (rand < 0.02) {
+        // 2% 레전드
+        selectedItem = gachaPool.filter(item => item.rarity === "legendary")[Math.floor(Math.random() * 2)];
+      } else if (rand < 0.10) {
+        // 8% 에픽
+        selectedItem = gachaPool.filter(item => item.rarity === "epic")[Math.floor(Math.random() * 2)];
+      } else if (rand < 0.30) {
+        // 20% 레어
+        selectedItem = gachaPool.filter(item => item.rarity === "rare")[Math.floor(Math.random() * 3)];
+      } else {
+        // 70% 일반
+        selectedItem = gachaPool.filter(item => item.rarity === "common")[Math.floor(Math.random() * 4)];
+      }
+
+      setGachaGame(prev => ({
+        ...prev,
+        isOpening: false,
+        lastPulled: selectedItem,
+        inventory: [...prev.inventory, selectedItem],
+      }));
+
+      setGameStats(prev => ({
+        ...prev,
+        gamePoints: prev.gamePoints - gachaGame.pullCost + selectedItem.points,
+        totalUsed: prev.totalUsed + gachaGame.pullCost,
+        totalEarned: prev.totalEarned + selectedItem.points,
+        gamesPlayed: prev.gamesPlayed + 1,
+        gachaWins: prev.gachaWins + 1,
+        collectedCombos: prev.collectedCombos.includes(selectedItem.id) 
+          ? prev.collectedCombos 
+          : [...prev.collectedCombos, selectedItem.id],
+      }));
+
+      const rarityText = {
+        common: "일반",
+        rare: "레어",
+        epic: "에픽",
+        legendary: "레전드"
+      };
+
+      alert(`🎁 ${rarityText[selectedItem.rarity]} 등급!\n"${selectedItem.name}" 획득!\n${selectedItem.points}pt 획득!`);
+    }, 2000);
+  };
+
+  // 번호 선택/해제
   const toggleNumber = (num: number) => {
     if (selectedGame === "guess") {
       setGuessGame(prev => {
@@ -344,6 +487,11 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }
   };
 
+  // 희귀도별 색상
+  const getRarityColor = (rarity: string) => {
+    return currentColors[rarity as keyof typeof currentColors] || currentColors.common;
+  };
+
   return (
     <div style={{ padding: "12px" }}>
       {/* 헤더 */}
@@ -377,14 +525,14 @@ const MiniGame: React.FC<MiniGameProps> = ({
             margin: "0 0 8px 0",
           }}
         >
-          재미있는 로또 게임으로 운을 시험해보세요!
+          3가지 재미있는 게임으로 포인트를 모아보세요!
         </p>
 
         {/* 게임 통계 */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
+            gridTemplateColumns: "repeat(3, 1fr)",
             gap: "8px",
             marginTop: "12px",
           }}
@@ -413,10 +561,25 @@ const MiniGame: React.FC<MiniGameProps> = ({
             }}
           >
             <div style={{ fontSize: "16px", fontWeight: "bold", color: currentColors.successText }}>
-              {gameStats.virtualMoney.toLocaleString()}원
+              {gameStats.gamePoints}pt
             </div>
             <div style={{ fontSize: "10px", color: currentColors.successText }}>
-              보유 가상머니
+              보유 포인트
+            </div>
+          </div>
+          <div
+            style={{
+              padding: "8px",
+              backgroundColor: currentColors.warning,
+              borderRadius: "6px",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: "16px", fontWeight: "bold", color: currentColors.warningText }}>
+              {gameStats.collectedCombos.length}/{gachaPool.length}
+            </div>
+            <div style={{ fontSize: "10px", color: currentColors.warningText }}>
+              수집 도감
             </div>
           </div>
         </div>
@@ -452,17 +615,17 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   setSelectedGame(game.id);
                   if (game.id === "guess") startGuessGame();
                 }}
-                disabled={isDataLoading}
+                disabled={isDataLoading || (game.id === "gacha" && gameStats.gamePoints < 20)}
                 style={{
                   padding: "16px",
                   borderRadius: "8px",
                   border: `1px solid ${currentColors.border}`,
                   backgroundColor: currentColors.surface,
-                  cursor: isDataLoading ? "not-allowed" : "pointer",
+                  cursor: isDataLoading || (game.id === "gacha" && gameStats.gamePoints < 20) ? "not-allowed" : "pointer",
                   textAlign: "left",
                   transition: "all 0.2s",
                   boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                  opacity: isDataLoading ? 0.6 : 1,
+                  opacity: isDataLoading || (game.id === "gacha" && gameStats.gamePoints < 20) ? 0.6 : 1,
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -509,11 +672,23 @@ const MiniGame: React.FC<MiniGameProps> = ({
                       <span
                         style={{
                           fontSize: "10px",
+                          padding: "2px 6px",
+                          backgroundColor: currentColors.accent,
+                          color: "white",
+                          borderRadius: "4px",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {game.earnPoints}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "10px",
                           color: currentColors.textSecondary,
                         }}
                       >
-                        {game.id === "simulation" && gameStats.virtualMoney < 1000
-                          ? "💰 잔액 부족"
+                        {game.id === "gacha" && gameStats.gamePoints < 20
+                          ? "🎮 포인트 부족"
                           : "✨ 플레이 가능"
                         }
                       </span>
@@ -558,7 +733,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
           <div style={{ marginBottom: "16px", textAlign: "center" }}>
             <p style={{ fontSize: "14px", color: currentColors.textSecondary, margin: "0 0 8px 0" }}>
-              AI가 만든 비밀 번호 6개를 맞춰보세요!
+              컴퓨터가 만든 비밀 번호 6개를 논리적으로 추론해보세요!
             </p>
             <div style={{ display: "flex", justifyContent: "center", gap: "16px", fontSize: "14px" }}>
               <span style={{ color: currentColors.primary, fontWeight: "bold" }}>
@@ -567,6 +742,11 @@ const MiniGame: React.FC<MiniGameProps> = ({
               <span style={{ color: currentColors.accent, fontWeight: "bold" }}>
                 점수: {guessGame.score}
               </span>
+              {guessGame.pointsEarned > 0 && (
+                <span style={{ color: "#f59e0b", fontWeight: "bold" }}>
+                  포인트: +{guessGame.pointsEarned}pt
+                </span>
+              )}
             </div>
           </div>
 
@@ -725,7 +905,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
         </div>
       )}
 
-      {/* 가상 로또 시뮬레이션 */}
+      {/* 번호 확인 게임 */}
       {selectedGame === "simulation" && (
         <div
           style={{
@@ -737,7 +917,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
             <h3 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0" }}>
-              🎲 가상 로또 시뮬레이션
+              🎲 번호 확인 게임
             </h3>
             <button
               onClick={() => setSelectedGame(null)}
@@ -755,14 +935,14 @@ const MiniGame: React.FC<MiniGameProps> = ({
             </button>
           </div>
 
-          {/* 가상 머니 정보 */}
+          {/* 게임 포인트 정보 */}
           <div style={{ textAlign: "center", marginBottom: "16px" }}>
             <div style={{ fontSize: "20px", fontWeight: "bold", color: currentColors.primary }}>
-              💰 {gameStats.virtualMoney.toLocaleString()}원
+              🎮 {gameStats.gamePoints}pt
             </div>
             <div style={{ fontSize: "12px", color: currentColors.textSecondary }}>
-              수익률: {gameStats.totalSpent > 0 
-                ? `${(((gameStats.totalWon - gameStats.totalSpent) / gameStats.totalSpent) * 100).toFixed(1)}%`
+              성공률: {gameStats.gamesPlayed > 0 
+                ? `${((gameStats.simulationWins / gameStats.gamesPlayed) * 100).toFixed(1)}%`
                 : "0%"
               }
             </div>
@@ -782,7 +962,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 }}
               />
               <p style={{ color: currentColors.text, fontSize: "16px", fontWeight: "bold" }}>
-                🎲 추첨 중...
+                🎲 번호 확인 중...
               </p>
               <p style={{ color: currentColors.textSecondary, fontSize: "12px" }}>
                 과거 당첨번호와 비교하고 있습니다
@@ -793,7 +973,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
               {/* 번호 선택 */}
               <div style={{ marginBottom: "16px" }}>
                 <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
-                  로또 번호 선택 ({simulation.selectedNumbers.length}/6) - {simulation.ticketPrice.toLocaleString()}원
+                  번호 선택하기 ({simulation.selectedNumbers.length}/6) - {simulation.gameCost}pt 사용
                 </h4>
                 
                 <div style={{ 
@@ -876,22 +1056,22 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   </button>
                   <button
                     onClick={startSimulation}
-                    disabled={simulation.selectedNumbers.length !== 6 || gameStats.virtualMoney < simulation.ticketPrice}
+                    disabled={simulation.selectedNumbers.length !== 6 || gameStats.gamePoints < simulation.gameCost}
                     style={{
                       padding: "8px 16px",
-                      backgroundColor: simulation.selectedNumbers.length === 6 && gameStats.virtualMoney >= simulation.ticketPrice
+                      backgroundColor: simulation.selectedNumbers.length === 6 && gameStats.gamePoints >= simulation.gameCost
                         ? currentColors.primary 
                         : currentColors.textSecondary,
                       color: "white",
                       border: "none",
                       borderRadius: "6px",
                       fontSize: "12px",
-                      cursor: simulation.selectedNumbers.length === 6 && gameStats.virtualMoney >= simulation.ticketPrice 
+                      cursor: simulation.selectedNumbers.length === 6 && gameStats.gamePoints >= simulation.gameCost 
                         ? "pointer" 
                         : "not-allowed",
                     }}
                   >
-                    🎫 로또 구매하기
+                    🎮 게임 시작하기
                   </button>
                 </div>
               </div>
@@ -900,7 +1080,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
               {simulation.results.length > 0 && (
                 <div style={{ marginTop: "16px" }}>
                   <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
-                    📊 최근 게임 결과
+                    📊 최근 게임 기록
                   </h4>
                   <div style={{ maxHeight: "200px", overflowY: "auto" }}>
                     {simulation.results.map((result, index) => (
@@ -931,7 +1111,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                             fontWeight: "bold",
                             color: result.profit > 0 ? currentColors.successText : currentColors.errorText,
                           }}>
-                            {result.profit > 0 ? "+" : ""}{result.profit.toLocaleString()}원
+                            {result.profit > 0 ? "+" : ""}{result.profit}pt
                           </span>
                         </div>
                         <div style={{ fontSize: "10px", color: currentColors.textSecondary }}>
@@ -940,6 +1120,245 @@ const MiniGame: React.FC<MiniGameProps> = ({
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* 뽑기 게임 */}
+      {selectedGame === "gacha" && (
+        <div
+          style={{
+            backgroundColor: currentColors.surface,
+            borderRadius: "12px",
+            padding: "16px",
+            border: `1px solid ${currentColors.border}`,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0" }}>
+              🎁 번호 뽑기 게임
+            </h3>
+            <button
+              onClick={() => setSelectedGame(null)}
+              style={{
+                padding: "6px 12px",
+                backgroundColor: currentColors.textSecondary,
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "12px",
+                cursor: "pointer",
+              }}
+            >
+              게임 선택으로
+            </button>
+          </div>
+
+          {/* 포인트 정보 */}
+          <div style={{ textAlign: "center", marginBottom: "16px" }}>
+            <div style={{ fontSize: "20px", fontWeight: "bold", color: currentColors.primary }}>
+              🎮 {gameStats.gamePoints}pt
+            </div>
+            <div style={{ fontSize: "12px", color: currentColors.textSecondary }}>
+              수집 완료: {gameStats.collectedCombos.length}/{gachaPool.length}개
+            </div>
+          </div>
+
+          {gachaGame.isOpening ? (
+            <div style={{ textAlign: "center", padding: "40px" }}>
+              <div
+                style={{
+                  width: "60px",
+                  height: "60px",
+                  border: `4px solid ${currentColors.border}`,
+                  borderTop: `4px solid #f59e0b`,
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite",
+                  margin: "0 auto 16px",
+                }}
+              />
+              <p style={{ color: currentColors.text, fontSize: "16px", fontWeight: "bold" }}>
+                🎁 캡슐 열어보는 중...
+              </p>
+              <p style={{ color: currentColors.textSecondary, fontSize: "12px" }}>
+                어떤 번호 조합이 나올까요?
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* 뽑기 버튼 */}
+              <div style={{ textAlign: "center", marginBottom: "16px" }}>
+                <button
+                  onClick={pullGacha}
+                  disabled={gameStats.gamePoints < gachaGame.pullCost}
+                  style={{
+                    padding: "16px 24px",
+                    backgroundColor: gameStats.gamePoints >= gachaGame.pullCost ? "#f59e0b" : currentColors.textSecondary,
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    fontSize: "16px",
+                    fontWeight: "bold",
+                    cursor: gameStats.gamePoints >= gachaGame.pullCost ? "pointer" : "not-allowed",
+                    boxShadow: gameStats.gamePoints >= gachaGame.pullCost ? "0 4px 12px rgba(245, 158, 11, 0.4)" : "none",
+                  }}
+                >
+                  🎁 캡슐 뽑기 ({gachaGame.pullCost}pt)
+                </button>
+              </div>
+
+              {/* 확률 안내 */}
+              <div style={{ marginBottom: "16px", padding: "12px", backgroundColor: currentColors.gray, borderRadius: "8px" }}>
+                <h4 style={{ fontSize: "12px", color: currentColors.text, margin: "0 0 8px 0" }}>
+                  🎲 뽑기 확률
+                </h4>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "4px", fontSize: "10px" }}>
+                  <div style={{ textAlign: "center", color: currentColors.common }}>
+                    <div>일반 70%</div>
+                    <div>10-15pt</div>
+                  </div>
+                  <div style={{ textAlign: "center", color: currentColors.rare }}>
+                    <div>레어 20%</div>
+                    <div>50-60pt</div>
+                  </div>
+                  <div style={{ textAlign: "center", color: currentColors.epic }}>
+                    <div>에픽 8%</div>
+                    <div>120-150pt</div>
+                  </div>
+                  <div style={{ textAlign: "center", color: currentColors.legendary }}>
+                    <div>레전드 2%</div>
+                    <div>400-500pt</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 최근 뽑기 결과 */}
+              {gachaGame.lastPulled && (
+                <div style={{ marginBottom: "16px" }}>
+                  <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
+                    🎉 최근 뽑기 결과
+                  </h4>
+                  <div
+                    style={{
+                      padding: "12px",
+                      backgroundColor: currentColors.surface,
+                      borderRadius: "8px",
+                      border: `2px solid ${getRarityColor(gachaGame.lastPulled.rarity)}`,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "14px", fontWeight: "bold", color: currentColors.text }}>
+                        {gachaGame.lastPulled.name}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          padding: "2px 8px",
+                          backgroundColor: getRarityColor(gachaGame.lastPulled.rarity),
+                          color: "white",
+                          borderRadius: "4px",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        +{gachaGame.lastPulled.points}pt
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: "4px", justifyContent: "center", marginBottom: "8px" }}>
+                      {gachaGame.lastPulled.numbers.map((num, i) => (
+                        <LottoNumberBall key={i} number={num} size="sm" theme={theme} />
+                      ))}
+                    </div>
+                    <p style={{ fontSize: "11px", color: currentColors.textSecondary, margin: "0", textAlign: "center" }}>
+                      {gachaGame.lastPulled.description}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 수집품 보기 버튼 */}
+              <div style={{ textAlign: "center" }}>
+                <button
+                  onClick={() => setGachaGame(prev => ({ ...prev, showInventory: !prev.showInventory }))}
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: currentColors.info,
+                    color: currentColors.infoText,
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                  }}
+                >
+                  📚 수집품 보기 ({gachaGame.inventory.length}개)
+                </button>
+              </div>
+
+              {/* 수집품 목록 */}
+              {gachaGame.showInventory && (
+                <div style={{ marginTop: "16px", maxHeight: "200px", overflowY: "auto" }}>
+                  <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
+                    📚 내 수집품
+                  </h4>
+                  {gachaGame.inventory.length === 0 ? (
+                    <p style={{ textAlign: "center", color: currentColors.textSecondary, fontSize: "12px" }}>
+                      아직 수집한 번호 조합이 없습니다
+                    </p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {gachaGame.inventory.slice().reverse().map((item, index) => (
+                        <div
+                          key={index}
+                          style={{
+                            padding: "8px",
+                            backgroundColor: currentColors.gray,
+                            borderRadius: "6px",
+                            border: `1px solid ${getRarityColor(item.rarity)}`,
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                            <span style={{ fontSize: "12px", fontWeight: "bold", color: currentColors.text }}>
+                              {item.name}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: "10px",
+                                padding: "1px 6px",
+                                backgroundColor: getRarityColor(item.rarity),
+                                color: "white",
+                                borderRadius: "3px",
+                              }}
+                            >
+                              {item.rarity.toUpperCase()}
+                            </span>
+                          </div>
+                          <div style={{ display: "flex", gap: "2px", justifyContent: "center" }}>
+                            {item.numbers.map((num, i) => (
+                              <div
+                                key={i}
+                                style={{
+                                  width: "20px",
+                                  height: "20px",
+                                  borderRadius: "50%",
+                                  backgroundColor: getRarityColor(item.rarity),
+                                  color: "white",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: "9px",
+                                  fontWeight: "bold",
+                                }}
+                              >
+                                {num}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </>
