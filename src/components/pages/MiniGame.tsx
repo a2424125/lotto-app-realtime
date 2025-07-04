@@ -127,13 +127,13 @@ const MiniGame: React.FC<MiniGameProps> = ({
     gameOver: false,
     won: false,
     score: 0,
-    cost: 200,
+    cost: 2000,
   });
 
   // 가상 로또 시뮬레이션 상태
   const [simulation, setSimulation] = useState({
     selectedNumbers: [] as number[],
-    ticketPrice: 300,
+    ticketPrice: 2000,
     currentRound: 0,
     results: [] as any[],
     isPlaying: false,
@@ -153,10 +153,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
       isWinner: false,
     })),
     result: null,
-    cost: 150,
+    cost: 1000,
     prizes: [
-      { name: "1등 대박!", points: 2000, probability: 0.05, emoji: "🏆", color: "#FFD700" },
-      { name: "2등 잭팟!", points: 1000, probability: 0.1, emoji: "🥈", color: "#C0C0C0" },
+      { name: "1등 대박!", points: 5000, probability: 0.05, emoji: "🏆", color: "#FFD700" },
+      { name: "2등 잭팟!", points: 2000, probability: 0.1, emoji: "🥈", color: "#C0C0C0" },
       { name: "3등 당첨!", points: 500, probability: 0.15, emoji: "🥉", color: "#CD7F32" },
       { name: "4등 성공!", points: 200, probability: 0.2, emoji: "🎁", color: "#4CAF50" },
       { name: "꽝", points: 0, probability: 0.5, emoji: "😅", color: "#9E9E9E" },
@@ -171,7 +171,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     selectedNumber: null,
     userBet: null,
     betAmount: 300,
-    cost: 250,
+    cost: 2000,
     multipliers: [
       { range: [1, 5], multiplier: 8, color: "#FF6B6B" },
       { range: [6, 15], multiplier: 4, color: "#4ECDC4" },
@@ -273,7 +273,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
       emoji: "🎯",
       color: currentColors.primary,
       difficulty: "중급",
-      cost: 200,
+      cost: 2000,
     },
     {
       id: "simulation",
@@ -282,7 +282,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
       emoji: "🎲",
       color: "#8b5cf6",
       difficulty: "초급",
-      cost: 300,
+      cost: 2000,
     },
     {
       id: "draw",
@@ -291,7 +291,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
       emoji: "🎪",
       color: "#f59e0b",
       difficulty: "초급",
-      cost: 150,
+      cost: 1000,
     },
     {
       id: "roulette",
@@ -300,7 +300,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
       emoji: "🎡",
       color: "#ef4444",
       difficulty: "중급",
-      cost: 250,
+      cost: 2000,
     },
   ];
 
