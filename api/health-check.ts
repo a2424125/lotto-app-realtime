@@ -49,6 +49,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
       const checkStart = Date.now();
+      
+      // ✅ AbortController로 타임아웃 구현
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5초 타임아웃
+      
       const response = await fetch(
         "https://en.lottolyzer.com/history/south-korea/6_slash_45-lotto",
         {
@@ -56,10 +61,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           headers: {
             "User-Agent": "HealthCheck/1.0",
           },
-          timeout: 5000, // 5초 타임아웃
+          signal: controller.signal, // ✅ controller.signal 사용
         }
       );
-
+      
+      clearTimeout(timeoutId); // 타임아웃 클리어
       responseTime = Date.now() - checkStart;
 
       if (response.ok) {
