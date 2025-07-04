@@ -139,8 +139,8 @@ const LottoApp = () => {
       // 🎯 헬스체크부터 수행
       const health = await lottoDataManager.checkHealth();
 
-      // 📊 전체 데이터 가져오기
-      const historyResponse = await lottoDataManager.getHistory(300); // 300회차
+      // 📊 전체 데이터 가져오기 - 최대한 많이
+      const historyResponse = await lottoDataManager.getHistory(1200); // 300 → 1200
 
       if (historyResponse.success && historyResponse.data) {
         // 기존 형식으로 변환 (6개 당첨번호 + 1개 보너스번호)
@@ -148,7 +148,7 @@ const LottoApp = () => {
           (result: LottoDrawResult) => [...result.numbers, result.bonusNumber]
         );
 
-        // 실제 회차 범위 계산
+        // 🔧 실제 회차 범위 계산 (실제 데이터 기반)
         if (historyResponse.data.length > 0) {
           const latestRound = historyResponse.data[0].round;
           const oldestRound =
@@ -577,7 +577,7 @@ const LottoApp = () => {
         </button>
       </div>
 
-      {/* 사이드바 (기존과 동일하지만 실시간 상태 정보 추가) */}
+      {/* 사이드바 (수정됨: 소스 URL 제거 + 실제 데이터 범위 표시) */}
       {sidebarOpen && (
         <div
           style={{
@@ -683,7 +683,7 @@ const LottoApp = () => {
                 </button>
               ))}
 
-              {/* 🆕 실시간 데이터 상태 정보 (개선됨) */}
+              {/* 🆕 실시간 데이터 상태 정보 (수정됨: 소스 URL 제거, 실제 데이터 반영) */}
               <div
                 style={{
                   marginTop: "16px",
@@ -719,20 +719,9 @@ const LottoApp = () => {
                     업데이트: {dataStatus.lastUpdate.toLocaleTimeString()}
                   </div>
                 )}
-                {/* 데이터 소스 표시 */}
-                <div
-                  style={{
-                    marginTop: "4px",
-                    fontSize: "10px",
-                    color: currentColors.textSecondary,
-                  }}
-                >
-                  소스:{" "}
-                  {dataStatus.source === "realtime_crawler"
-                    ? "Lottolyzer.com"
-                    : "로컬 캐시"}
-                </div>
-                {/* 실제 회차 범위 표시 */}
+                {/* 데이터 소스 표시 제거 */}
+                
+                {/* 🔧 실제 회차 범위 표시 (동적으로 업데이트) */}
                 <div
                   style={{
                     marginTop: "8px",
