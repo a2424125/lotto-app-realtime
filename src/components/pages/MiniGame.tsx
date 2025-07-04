@@ -31,27 +31,35 @@ const MiniGame: React.FC<MiniGameProps> = ({
   console.log("🎮 MiniGame 컴포넌트 렌더링 시작", { theme, pastWinningNumbers: pastWinningNumbers?.length });
 
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  // ✅ 기본값을 상수로 정의
+  const defaultGameStats: GameStats = {
+    gamesPlayed: 0,
+    bestScore: 0,
+    totalWins: 0,
+    virtualMoney: 100000, // 시작 자금 10만원
+    totalSpent: 0,
+    totalWon: 0,
+  };
+
   const [gameStats, setGameStats] = useState<GameStats>(() => {
     try {
       const saved = localStorage.getItem("lotto-game-stats");
-      return saved ? JSON.parse(saved) : {
-        gamesPlayed: 0,
-        bestScore: 0,
-        totalWins: 0,
-        virtualMoney: 100000, // 시작 자금 10만원
-        totalSpent: 0,
-        totalWon: 0,
-      };
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // ✅ 각 필드가 존재하고 숫자인지 확인
+        return {
+          gamesPlayed: typeof parsed.gamesPlayed === 'number' ? parsed.gamesPlayed : 0,
+          bestScore: typeof parsed.bestScore === 'number' ? parsed.bestScore : 0,
+          totalWins: typeof parsed.totalWins === 'number' ? parsed.totalWins : 0,
+          virtualMoney: typeof parsed.virtualMoney === 'number' ? parsed.virtualMoney : 100000,
+          totalSpent: typeof parsed.totalSpent === 'number' ? parsed.totalSpent : 0,
+          totalWon: typeof parsed.totalWon === 'number' ? parsed.totalWon : 0,
+        };
+      }
+      return defaultGameStats;
     } catch (error) {
       console.error("게임 통계 로드 실패:", error);
-      return {
-        gamesPlayed: 0,
-        bestScore: 0,
-        totalWins: 0,
-        virtualMoney: 100000,
-        totalSpent: 0,
-        totalWon: 0,
-      };
+      return defaultGameStats;
     }
   });
 
@@ -77,6 +85,25 @@ const MiniGame: React.FC<MiniGameProps> = ({
     autoPlay: false,
     speed: 1,
   });
+
+  // ✅ 안전한 숫자 포맷팅 함수
+  const safeFormatNumber = (value: any): string => {
+    if (typeof value !== 'number' || isNaN(value)) {
+      return "0";
+    }
+    return value.toLocaleString();
+  };
+
+  // ✅ 안전한 계산 함수  
+  const safeCalculatePercentage = (won: any, spent: any): string => {
+    const safeWon = typeof won === 'number' ? won : 0;
+    const safeSpent = typeof spent === 'number' ? spent : 0;
+    
+    if (safeSpent <= 0) return "0";
+    
+    const percentage = ((safeWon - safeSpent) / safeSpent) * 100;
+    return isNaN(percentage) ? "0" : percentage.toFixed(1);
+  };
 
   // 실제 회차 범위 정보 사용
   const actualLatestRound = roundRange?.latestRound || 1178;
@@ -204,10 +231,11 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
   // 번호 맞추기 추측 제출
   const submitGuess = () => {
-    if (guessGame.userGuess.length !== 6) return;
+    const userGuess = guessGame?.userGuess || [];
+    if (userGuess.length !== 6) return;
 
     try {
-      const { secretNumbers, userGuess } = guessGame;
+      const secretNumbers = guessGame?.secretNumbers || [];
       const exactMatches = userGuess.filter((num, idx) => num === secretNumbers[idx]).length;
       const numberMatches = userGuess.filter(num => secretNumbers.includes(num)).length;
       const wrongPosition = numberMatches - exactMatches;
@@ -219,38 +247,40 @@ const MiniGame: React.FC<MiniGameProps> = ({
           ...prev,
           gameOver: true,
           won: true,
-          score: Math.max(0, 1000 - (prev.attempts * 100)),
-          hints: [...prev.hints, hint],
+          score: Math.max(0, 1000 - ((prev?.attempts || 0) * 100)),
+          hints: [...(prev?.hints || []), hint],
         }));
         
         setGameStats(prev => ({
           ...prev,
-          gamesPlayed: prev.gamesPlayed + 1,
-          totalWins: prev.totalWins + 1,
-          bestScore: Math.max(prev.bestScore, Math.max(0, 1000 - (guessGame.attempts * 100))),
+          gamesPlayed: (prev?.gamesPlayed || 0) + 1,
+          totalWins: (prev?.totalWins || 0) + 1,
+          bestScore: Math.max(prev?.bestScore || 0, Math.max(0, 1000 - ((guessGame?.attempts || 0) * 100))),
         }));
       } else {
         hint = `🎯 ${exactMatches}개 위치 정확 | 📍 ${wrongPosition}개 숫자 맞지만 위치 틀림`;
         
-        const newAttempts = guessGame.attempts + 1;
-        if (newAttempts >= guessGame.maxAttempts) {
+        const newAttempts = (guessGame?.attempts || 0) + 1;
+        const maxAttempts = guessGame?.maxAttempts || 10;
+        
+        if (newAttempts >= maxAttempts) {
           setGuessGame(prev => ({
             ...prev,
             attempts: newAttempts,
             gameOver: true,
             won: false,
-            hints: [...prev.hints, hint, `😔 실패! 정답: ${secretNumbers.join(", ")}`],
+            hints: [...(prev?.hints || []), hint, `😔 실패! 정답: ${secretNumbers.join(", ")}`],
           }));
           
           setGameStats(prev => ({
             ...prev,
-            gamesPlayed: prev.gamesPlayed + 1,
+            gamesPlayed: (prev?.gamesPlayed || 0) + 1,
           }));
         } else {
           setGuessGame(prev => ({
             ...prev,
             attempts: newAttempts,
-            hints: [...prev.hints, hint],
+            hints: [...(prev?.hints || []), hint],
             userGuess: [],
           }));
         }
@@ -263,12 +293,15 @@ const MiniGame: React.FC<MiniGameProps> = ({
   // ✅ 안전한 가상 로또 시뮬레이션 시작
   const startSimulation = () => {
     try {
-      if (gameStats.virtualMoney < simulation.ticketPrice) {
+      const currentMoney = gameStats?.virtualMoney || 0;
+      const ticketPrice = simulation?.ticketPrice || 1000;
+      
+      if (currentMoney < ticketPrice) {
         alert("가상 돈이 부족합니다! 🪙");
         return;
       }
 
-      if (simulation.selectedNumbers.length !== 6) {
+      if (!simulation?.selectedNumbers || simulation.selectedNumbers.length !== 6) {
         alert("6개 번호를 선택해주세요!");
         return;
       }
@@ -322,29 +355,32 @@ const MiniGame: React.FC<MiniGameProps> = ({
         bonusMatch,
         grade,
         prize,
-        spent: simulation.ticketPrice,
-        profit: prize - simulation.ticketPrice,
+        spent: ticketPrice,
+        profit: prize - ticketPrice,
       };
 
       setTimeout(() => {
         setSimulation(prev => ({
           ...prev,
-          results: [result, ...prev.results.slice(0, 9)], // 최근 10개만 유지
+          results: [result, ...(prev.results || []).slice(0, 9)], // 최근 10개만 유지
           isPlaying: false,
           selectedNumbers: [],
         }));
 
-        setGameStats(prev => ({
-          ...prev,
-          virtualMoney: prev.virtualMoney - simulation.ticketPrice + prize,
-          totalSpent: prev.totalSpent + simulation.ticketPrice,
-          totalWon: prev.totalWon + prize,
-          gamesPlayed: prev.gamesPlayed + 1,
-          totalWins: prize > 0 ? prev.totalWins + 1 : prev.totalWins,
-        }));
+        setGameStats(prev => {
+          const currentStats = prev || defaultGameStats;
+          return {
+            ...currentStats,
+            virtualMoney: (currentStats.virtualMoney || 0) - ticketPrice + prize,
+            totalSpent: (currentStats.totalSpent || 0) + ticketPrice,
+            totalWon: (currentStats.totalWon || 0) + prize,
+            gamesPlayed: (currentStats.gamesPlayed || 0) + 1,
+            totalWins: prize > 0 ? (currentStats.totalWins || 0) + 1 : (currentStats.totalWins || 0),
+          };
+        });
 
         if (prize > 0) {
-          alert(`🎉 ${grade} 당첨! ${prize.toLocaleString()}원 획득!`);
+          alert(`🎉 ${grade} 당첨! ${safeFormatNumber(prize)}원 획득!`);
         }
       }, 2000);
     } catch (error) {
@@ -358,19 +394,19 @@ const MiniGame: React.FC<MiniGameProps> = ({
     try {
       if (selectedGame === "guess") {
         setGuessGame(prev => {
-          if (prev.userGuess.includes(num)) {
-            return { ...prev, userGuess: prev.userGuess.filter(n => n !== num) };
-          } else if (prev.userGuess.length < 6) {
-            return { ...prev, userGuess: [...prev.userGuess, num].sort((a, b) => a - b) };
+          if ((prev?.userGuess || []).includes(num)) {
+            return { ...prev, userGuess: (prev?.userGuess || []).filter(n => n !== num) };
+          } else if ((prev?.userGuess || []).length < 6) {
+            return { ...prev, userGuess: [...(prev?.userGuess || []), num].sort((a, b) => a - b) };
           }
           return prev;
         });
       } else if (selectedGame === "simulation") {
         setSimulation(prev => {
-          if (prev.selectedNumbers.includes(num)) {
-            return { ...prev, selectedNumbers: prev.selectedNumbers.filter(n => n !== num) };
-          } else if (prev.selectedNumbers.length < 6) {
-            return { ...prev, selectedNumbers: [...prev.selectedNumbers, num].sort((a, b) => a - b) };
+          if ((prev?.selectedNumbers || []).includes(num)) {
+            return { ...prev, selectedNumbers: (prev?.selectedNumbers || []).filter(n => n !== num) };
+          } else if ((prev?.selectedNumbers || []).length < 6) {
+            return { ...prev, selectedNumbers: [...(prev?.selectedNumbers || []), num].sort((a, b) => a - b) };
           }
           return prev;
         });
@@ -535,7 +571,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
             }}
           >
             <div style={{ fontSize: "16px", fontWeight: "bold", color: currentColors.infoText }}>
-              {gameStats.gamesPlayed}
+              {safeFormatNumber(gameStats?.gamesPlayed)}
             </div>
             <div style={{ fontSize: "10px", color: currentColors.infoText }}>
               총 게임 수
@@ -550,7 +586,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
             }}
           >
             <div style={{ fontSize: "16px", fontWeight: "bold", color: currentColors.successText }}>
-              {gameStats.virtualMoney.toLocaleString()}원
+              {safeFormatNumber(gameStats?.virtualMoney)}원
             </div>
             <div style={{ fontSize: "10px", color: currentColors.successText }}>
               보유 가상머니
@@ -650,7 +686,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                           color: currentColors.textSecondary,
                         }}
                       >
-                        {game.id === "simulation" && gameStats.virtualMoney < 1000
+                        {game.id === "simulation" && (gameStats?.virtualMoney || 0) < 1000
                           ? "💰 잔액 부족"
                           : "✨ 플레이 가능"
                         }
@@ -703,10 +739,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
             </p>
             <div style={{ display: "flex", justifyContent: "center", gap: "16px", fontSize: "14px" }}>
               <span style={{ color: currentColors.primary, fontWeight: "bold" }}>
-                시도: {guessGame.attempts}/{guessGame.maxAttempts}
+                시도: {guessGame?.attempts || 0}/{guessGame?.maxAttempts || 10}
               </span>
               <span style={{ color: currentColors.accent, fontWeight: "bold" }}>
-                점수: {guessGame.score}
+                점수: {guessGame?.score || 0}
               </span>
             </div>
           </div>
@@ -714,7 +750,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
           {/* 번호 선택 grid */}
           <div style={{ marginBottom: "16px" }}>
             <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
-              번호를 선택하세요 ({guessGame.userGuess.length}/6)
+              번호를 선택하세요 ({(guessGame?.userGuess || []).length}/6)
             </h4>
             <div style={{ 
               display: "grid", 
@@ -727,24 +763,24 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 <button
                   key={num}
                   onClick={() => toggleNumber(num)}
-                  disabled={guessGame.gameOver}
+                  disabled={guessGame?.gameOver || false}
                   style={{
                     width: "32px",
                     height: "32px",
                     borderRadius: "4px",
-                    border: guessGame.userGuess.includes(num) 
+                    border: (guessGame?.userGuess || []).includes(num) 
                       ? `2px solid ${currentColors.primary}` 
                       : `1px solid ${currentColors.border}`,
-                    backgroundColor: guessGame.userGuess.includes(num) 
+                    backgroundColor: (guessGame?.userGuess || []).includes(num) 
                       ? currentColors.primary 
                       : currentColors.surface,
-                    color: guessGame.userGuess.includes(num) 
+                    color: (guessGame?.userGuess || []).includes(num) 
                       ? "white" 
                       : currentColors.text,
                     fontSize: "11px",
-                    fontWeight: guessGame.userGuess.includes(num) ? "bold" : "normal",
-                    cursor: guessGame.gameOver ? "not-allowed" : "pointer",
-                    opacity: guessGame.gameOver ? 0.6 : 1,
+                    fontWeight: (guessGame?.userGuess || []).includes(num) ? "bold" : "normal",
+                    cursor: (guessGame?.gameOver || false) ? "not-allowed" : "pointer",
+                    opacity: (guessGame?.gameOver || false) ? 0.6 : 1,
                   }}
                 >
                   {num}
@@ -755,10 +791,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
             {/* 선택된 번호 표시 */}
             <div style={{ textAlign: "center", marginBottom: "12px" }}>
               <div style={{ display: "flex", gap: "4px", justifyContent: "center", flexWrap: "wrap" }}>
-                {guessGame.userGuess.map((num, i) => (
+                {(guessGame?.userGuess || []).map((num, i) => (
                   <LottoNumberBall key={i} number={num} size="sm" theme={theme} />
                 ))}
-                {Array.from({ length: 6 - guessGame.userGuess.length }).map((_, i) => (
+                {Array.from({ length: 6 - (guessGame?.userGuess || []).length }).map((_, i) => (
                   <div
                     key={`empty-${i}`}
                     style={{
@@ -784,7 +820,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
             <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
               <button
                 onClick={() => generateRandomNumbers("guess")}
-                disabled={guessGame.gameOver}
+                disabled={guessGame?.gameOver || false}
                 style={{
                   padding: "8px 16px",
                   backgroundColor: currentColors.accent,
@@ -792,28 +828,28 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   border: "none",
                   borderRadius: "6px",
                   fontSize: "12px",
-                  cursor: guessGame.gameOver ? "not-allowed" : "pointer",
-                  opacity: guessGame.gameOver ? 0.6 : 1,
+                  cursor: (guessGame?.gameOver || false) ? "not-allowed" : "pointer",
+                  opacity: (guessGame?.gameOver || false) ? 0.6 : 1,
                 }}
               >
                 🎲 랜덤
               </button>
               <button
                 onClick={submitGuess}
-                disabled={guessGame.userGuess.length !== 6 || guessGame.gameOver}
+                disabled={(guessGame?.userGuess || []).length !== 6 || (guessGame?.gameOver || false)}
                 style={{
                   padding: "8px 16px",
-                  backgroundColor: guessGame.userGuess.length === 6 ? currentColors.primary : currentColors.textSecondary,
+                  backgroundColor: (guessGame?.userGuess || []).length === 6 ? currentColors.primary : currentColors.textSecondary,
                   color: "white",
                   border: "none",
                   borderRadius: "6px",
                   fontSize: "12px",
-                  cursor: guessGame.userGuess.length === 6 && !guessGame.gameOver ? "pointer" : "not-allowed",
+                  cursor: (guessGame?.userGuess || []).length === 6 && !(guessGame?.gameOver || false) ? "pointer" : "not-allowed",
                 }}
               >
                 🎯 추측하기
               </button>
-              {guessGame.gameOver && (
+              {(guessGame?.gameOver || false) && (
                 <button
                   onClick={startGuessGame}
                   style={{
@@ -833,7 +869,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
           </div>
 
           {/* 힌트 및 결과 */}
-          {guessGame.hints.length > 0 && (
+          {(guessGame?.hints || []).length > 0 && (
             <div
               style={{
                 backgroundColor: currentColors.gray,
@@ -846,7 +882,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
               <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
                 💡 힌트 기록
               </h4>
-              {guessGame.hints.map((hint, index) => (
+              {(guessGame?.hints || []).map((hint, index) => (
                 <div
                   key={index}
                   style={{
@@ -902,17 +938,14 @@ const MiniGame: React.FC<MiniGameProps> = ({
           {/* 가상 머니 정보 */}
           <div style={{ textAlign: "center", marginBottom: "16px" }}>
             <div style={{ fontSize: "20px", fontWeight: "bold", color: currentColors.primary }}>
-              💰 {gameStats.virtualMoney.toLocaleString()}원
+              💰 {safeFormatNumber(gameStats?.virtualMoney)}원
             </div>
             <div style={{ fontSize: "12px", color: currentColors.textSecondary }}>
-              수익률: {gameStats.totalSpent > 0 
-                ? `${(((gameStats.totalWon - gameStats.totalSpent) / gameStats.totalSpent) * 100).toFixed(1)}%`
-                : "0%"
-              }
+              수익률: {safeCalculatePercentage(gameStats?.totalWon, gameStats?.totalSpent)}%
             </div>
           </div>
 
-          {simulation.isPlaying ? (
+          {(simulation?.isPlaying || false) ? (
             <div style={{ textAlign: "center", padding: "40px" }}>
               <div
                 style={{
@@ -937,7 +970,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
               {/* 번호 선택 */}
               <div style={{ marginBottom: "16px" }}>
                 <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
-                  로또 번호 선택 ({simulation.selectedNumbers.length}/6) - {simulation.ticketPrice.toLocaleString()}원
+                  로또 번호 선택 ({(simulation?.selectedNumbers || []).length}/6) - {safeFormatNumber(simulation?.ticketPrice)}원
                 </h4>
                 
                 <div style={{ 
@@ -955,17 +988,17 @@ const MiniGame: React.FC<MiniGameProps> = ({
                         width: "32px",
                         height: "32px",
                         borderRadius: "4px",
-                        border: simulation.selectedNumbers.includes(num) 
+                        border: (simulation?.selectedNumbers || []).includes(num) 
                           ? `2px solid ${currentColors.primary}` 
                           : `1px solid ${currentColors.border}`,
-                        backgroundColor: simulation.selectedNumbers.includes(num) 
+                        backgroundColor: (simulation?.selectedNumbers || []).includes(num) 
                           ? currentColors.primary 
                           : currentColors.surface,
-                        color: simulation.selectedNumbers.includes(num) 
+                        color: (simulation?.selectedNumbers || []).includes(num) 
                           ? "white" 
                           : currentColors.text,
                         fontSize: "11px",
-                        fontWeight: simulation.selectedNumbers.includes(num) ? "bold" : "normal",
+                        fontWeight: (simulation?.selectedNumbers || []).includes(num) ? "bold" : "normal",
                         cursor: "pointer",
                       }}
                     >
@@ -977,10 +1010,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 {/* 선택된 번호 표시 */}
                 <div style={{ textAlign: "center", marginBottom: "12px" }}>
                   <div style={{ display: "flex", gap: "4px", justifyContent: "center", flexWrap: "wrap" }}>
-                    {simulation.selectedNumbers.map((num, i) => (
+                    {(simulation?.selectedNumbers || []).map((num, i) => (
                       <LottoNumberBall key={i} number={num} size="sm" theme={theme} />
                     ))}
-                    {Array.from({ length: 6 - simulation.selectedNumbers.length }).map((_, i) => (
+                    {Array.from({ length: 6 - (simulation?.selectedNumbers || []).length }).map((_, i) => (
                       <div
                         key={`empty-${i}`}
                         style={{
@@ -1020,19 +1053,26 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   </button>
                   <button
                     onClick={startSimulation}
-                    disabled={simulation.selectedNumbers.length !== 6 || gameStats.virtualMoney < simulation.ticketPrice}
+                    disabled={
+                      (simulation?.selectedNumbers || []).length !== 6 || 
+                      (gameStats?.virtualMoney || 0) < (simulation?.ticketPrice || 1000)
+                    }
                     style={{
                       padding: "8px 16px",
-                      backgroundColor: simulation.selectedNumbers.length === 6 && gameStats.virtualMoney >= simulation.ticketPrice
-                        ? currentColors.primary 
-                        : currentColors.textSecondary,
+                      backgroundColor: 
+                        (simulation?.selectedNumbers || []).length === 6 && 
+                        (gameStats?.virtualMoney || 0) >= (simulation?.ticketPrice || 1000)
+                          ? currentColors.primary 
+                          : currentColors.textSecondary,
                       color: "white",
                       border: "none",
                       borderRadius: "6px",
                       fontSize: "12px",
-                      cursor: simulation.selectedNumbers.length === 6 && gameStats.virtualMoney >= simulation.ticketPrice 
-                        ? "pointer" 
-                        : "not-allowed",
+                      cursor: 
+                        (simulation?.selectedNumbers || []).length === 6 && 
+                        (gameStats?.virtualMoney || 0) >= (simulation?.ticketPrice || 1000)
+                          ? "pointer" 
+                          : "not-allowed",
                     }}
                   >
                     🎫 로또 구매하기
@@ -1041,13 +1081,13 @@ const MiniGame: React.FC<MiniGameProps> = ({
               </div>
 
               {/* 결과 기록 */}
-              {simulation.results.length > 0 && (
+              {(simulation?.results || []).length > 0 && (
                 <div style={{ marginTop: "16px" }}>
                   <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
                     📊 최근 게임 결과
                   </h4>
                   <div style={{ maxHeight: "200px", overflowY: "auto" }}>
-                    {simulation.results.map((result, index) => (
+                    {(simulation?.results || []).map((result, index) => (
                       <div
                         key={index}
                         style={{
@@ -1068,18 +1108,18 @@ const MiniGame: React.FC<MiniGameProps> = ({
                             fontWeight: "bold",
                             color: result.grade === "낙첨" ? currentColors.errorText : currentColors.successText,
                           }}>
-                            {result.round}회차 - {result.grade}
+                            {safeFormatNumber(result.round)}회차 - {result.grade}
                           </span>
                           <span style={{ 
                             fontSize: "12px", 
                             fontWeight: "bold",
-                            color: result.profit > 0 ? currentColors.successText : currentColors.errorText,
+                            color: (result.profit || 0) > 0 ? currentColors.successText : currentColors.errorText,
                           }}>
-                            {result.profit > 0 ? "+" : ""}{result.profit.toLocaleString()}원
+                            {(result.profit || 0) > 0 ? "+" : ""}{safeFormatNumber(result.profit)}원
                           </span>
                         </div>
                         <div style={{ fontSize: "10px", color: currentColors.textSecondary }}>
-                          내 번호: {result.userNumbers.join(", ")} | 당첨번호: {result.winningNumbers.join(", ")}+{result.bonusNumber}
+                          내 번호: {(result.userNumbers || []).join(", ")} | 당첨번호: {(result.winningNumbers || []).join(", ")}+{safeFormatNumber(result.bonusNumber)}
                         </div>
                       </div>
                     ))}
