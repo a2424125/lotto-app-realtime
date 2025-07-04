@@ -35,11 +35,11 @@ class RealtimeLottoDataManager {
     return "/api"; // 기본값
   }
 
-  // 📡 초기 데이터 로드
+  // 📡 초기 데이터 로드 - 최대 데이터로 변경
   private async initializeData(): Promise<void> {
     try {
       console.log("📡 실시간 데이터 초기화 중...");
-      await this.loadCrawledData();
+      await this.loadCrawledData(1200); // 300 → 1200 (1회차부터 최대한)
       this.isDataLoaded = true;
       console.log("✅ 실시간 데이터 초기화 완료");
     } catch (error) {
@@ -49,7 +49,7 @@ class RealtimeLottoDataManager {
   }
 
   // 🕷️ 크롤링 데이터 로드
-  private async loadCrawledData(rounds: number = 200): Promise<void> {
+  private async loadCrawledData(rounds: number = 1200): Promise<void> {
     try {
       console.log(`🔄 크롤링 API 호출: ${rounds}회차`);
 
@@ -225,8 +225,8 @@ class RealtimeLottoDataManager {
     }
   }
 
-  // 📈 히스토리 조회 (기존 인터페이스 호환)
-  async getHistory(count: number = 100): Promise<LottoHistoryAPIResponse> {
+  // 📈 히스토리 조회 (기존 인터페이스 호환) - 기본값 증가
+  async getHistory(count: number = 1200): Promise<LottoHistoryAPIResponse> {
     try {
       console.log(`📈 ${count}회차 히스토리 요청`);
 
@@ -236,8 +236,8 @@ class RealtimeLottoDataManager {
         this.isCacheExpired() ||
         this.cachedData.length < count
       ) {
-        // 요청된 회차 수보다 많은 데이터 로드 (여유분 포함)
-        const loadCount = Math.max(count, 200);
+        // 요청된 회차 수보다 많은 데이터 로드 (최대한)
+        const loadCount = Math.max(count, 1200); // 200 → 1200
         await this.loadCrawledData(loadCount);
       }
 
@@ -316,7 +316,7 @@ class RealtimeLottoDataManager {
     }
   }
 
-  // 🔄 강제 업데이트 (기존 인터페이스 호환)
+  // 🔄 강제 업데이트 (기존 인터페이스 호환) - 최대 데이터로 변경
   async forceUpdate(): Promise<{ success: boolean; message: string }> {
     try {
       console.log("🔄 강제 업데이트 시작...");
@@ -325,8 +325,8 @@ class RealtimeLottoDataManager {
       this.lastUpdateTime = null;
       this.cachedData = [];
 
-      // 새 데이터 로드
-      await this.loadCrawledData(300); // 더 많은 데이터 로드
+      // 새 데이터 로드 - 최대한 많이
+      await this.loadCrawledData(1200); // 300 → 1200
 
       if (this.cachedData.length > 0) {
         const latest = this.cachedData[0];
