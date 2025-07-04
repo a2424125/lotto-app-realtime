@@ -170,7 +170,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     targetAngle: 0,
     selectedNumber: null,
     userBet: null,
-    betAmount: 300,
+    betAmount: 2000,
     cost: 2000,
     multipliers: [
       { range: [1, 5], multiplier: 8, color: "#FF6B6B" },
