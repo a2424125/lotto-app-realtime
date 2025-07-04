@@ -154,7 +154,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     if (propNextDrawInfo) {
       const date = new Date(propNextDrawInfo.date);
       const formattedDate = formatKoreanDate(date);
-      const timeUntilDraw = getTimeUntilDraw(propNextDrawInfo.daysUntilDraw);
+      const timeUntilDraw = getTimeUntilDraw(propNextDrawInfo.daysUntilDraw, date); // 🔧 수정: 두 번째 인수 추가
 
       setNextDrawInfo({
         ...propNextDrawInfo,
