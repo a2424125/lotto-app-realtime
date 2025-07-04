@@ -160,6 +160,8 @@ const Settings: React.FC<SettingsProps> = ({
             color: currentColors.textSecondary,
             margin: "0",
             textAlign: "center",
+            width: "100%",
+            display: "block",
           }}
         >
           실시간 로또 앱 환경설정 및 시스템 관리
