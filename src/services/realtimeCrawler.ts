@@ -47,15 +47,16 @@ export class RealtimeCrawler {
 
     for (let attempt = 1; attempt <= this.config.retryAttempts; attempt++) {
       try {
+        // ✅ AbortController로 타임아웃 구현
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
 
         const response = await fetch(`${this.config.baseUrl}${endpoint}`, {
           ...options,
-          signal: controller.signal,
+          signal: controller.signal, // ✅ controller.signal 사용
         });
 
-        clearTimeout(timeoutId);
+        clearTimeout(timeoutId); // 타임아웃 클리어
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
