@@ -53,6 +53,10 @@ class RealtimeLottoDataManager {
     try {
       console.log(`🔄 크롤링 API 호출: ${rounds}회차`);
 
+      // ✅ AbortController로 타임아웃 구현
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30초
+
       const response = await fetch(
         `${this.apiBaseUrl}/lotto-crawler?rounds=${rounds}`,
         {
@@ -60,10 +64,11 @@ class RealtimeLottoDataManager {
           headers: {
             "Content-Type": "application/json",
           },
-          // 타임아웃 설정
-          signal: AbortSignal.timeout(30000), // 30초
+          signal: controller.signal, // ✅ controller.signal 사용
         }
       );
+
+      clearTimeout(timeoutId); // 타임아웃 클리어
 
       if (!response.ok) {
         throw new Error(
@@ -139,11 +144,17 @@ class RealtimeLottoDataManager {
       // 🎯 최신 결과 API 호출 (빠른 응답)
       console.log("📡 최신 결과 API 호출...");
 
+      // ✅ AbortController로 타임아웃 구현
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10초
+
       const response = await fetch(`${this.apiBaseUrl}/latest-result`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(10000), // 10초
+        signal: controller.signal, // ✅ controller.signal 사용
       });
+
+      clearTimeout(timeoutId); // 타임아웃 클리어
 
       if (!response.ok) {
         throw new Error(`최신 결과 API 오류: ${response.status}`);
@@ -418,10 +429,16 @@ class RealtimeLottoDataManager {
   // 🎯 헬스체크 API 호출
   async checkHealth(): Promise<any> {
     try {
+      // ✅ AbortController로 타임아웃 구현
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       const response = await fetch(`${this.apiBaseUrl}/health-check`, {
         method: "GET",
-        signal: AbortSignal.timeout(5000),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`헬스체크 실패: ${response.status}`);
