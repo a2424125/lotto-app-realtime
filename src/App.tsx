@@ -42,7 +42,7 @@ const LottoApp = () => {
     lastUpdate: Date | null;
     isRealTime: boolean;
     source: "realtime_crawler" | "fallback";
-    crawlerHealth?: string; // 🆕 크롤러 상태
+    crawlerHealth?: string;
   }>({
     lastUpdate: null,
     isRealTime: false,
@@ -140,7 +140,7 @@ const LottoApp = () => {
       const health = await lottoDataManager.checkHealth();
 
       // 📊 전체 데이터 가져오기 - 최대한 많이
-      const historyResponse = await lottoDataManager.getHistory(1200); // 300 → 1200
+      const historyResponse = await lottoDataManager.getHistory(1200);
 
       if (historyResponse.success && historyResponse.data) {
         // 기존 형식으로 변환 (6개 당첨번호 + 1개 보너스번호)
@@ -201,24 +201,87 @@ const LottoApp = () => {
     }
   };
 
-  // 📅 다음 추첨 정보 로드 (기존과 동일하지만 실시간 기반)
+  // 📅 수정된 다음 추첨 정보 로드 - 토요일 오후 8시 35분 기준
   const loadNextDrawInfo = async () => {
     try {
       console.log("📅 다음 추첨 정보 로딩...");
-      const nextInfo = await lottoDataManager.getNextDrawInfo();
+      
+      // 🔧 수정된 다음 추첨일 계산 로직
+      const now = new Date();
+      const nextDrawDate = getCorrectNextDrawDate(now);
+      const daysUntilDraw = getDaysUntilDraw(now, nextDrawDate);
+      
+      const nextInfo = {
+        round: roundRange.latestRound + 1,
+        date: nextDrawDate.toISOString().split("T")[0],
+        estimatedJackpot: 3500000000,
+        daysUntilDraw: daysUntilDraw,
+      };
+      
       setNextDrawInfo(nextInfo);
       console.log("📅 다음 추첨 정보 로드 완료:", nextInfo);
     } catch (error) {
       console.error("❌ 다음 추첨 정보 로드 실패:", error);
       // 폴백 정보 계산
+      const now = new Date();
+      const nextDrawDate = getCorrectNextDrawDate(now);
       const fallbackInfo = {
         round: roundRange.latestRound + 1,
-        date: getNextSaturday(),
+        date: nextDrawDate.toISOString().split("T")[0],
         estimatedJackpot: 3500000000,
-        daysUntilDraw: getDaysUntilNextSaturday(),
+        daysUntilDraw: getDaysUntilDraw(now, nextDrawDate),
       };
       setNextDrawInfo(fallbackInfo);
     }
+  };
+
+  // 🔧 수정된 다음 추첨일 계산 함수 - 토요일 오후 8시 35분 정확히 계산
+  const getCorrectNextDrawDate = (currentDate: Date): Date => {
+    const now = new Date(currentDate);
+    const currentDay = now.getDay(); // 0: 일요일, 6: 토요일
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    
+    // 추첨 시간: 토요일 오후 8시 35분 (20시 35분)
+    const drawHour = 20;
+    const drawMinute = 35;
+    
+    let nextDraw = new Date(now);
+    
+    if (currentDay === 6) { // 현재가 토요일인 경우
+      // 추첨 시간(20:35) 이전이면 오늘, 이후면 다음 주 토요일
+      if (currentHour < drawHour || (currentHour === drawHour && currentMinute < drawMinute)) {
+        // 오늘 토요일이 추첨일
+        nextDraw.setHours(drawHour, drawMinute, 0, 0);
+      } else {
+        // 추첨 시간이 지났으므로 다음 주 토요일
+        nextDraw.setDate(now.getDate() + 7);
+        nextDraw.setHours(drawHour, drawMinute, 0, 0);
+      }
+    } else {
+      // 토요일이 아닌 경우 다음 토요일로 설정
+      const daysUntilSaturday = (6 - currentDay + 7) % 7;
+      if (daysUntilSaturday === 0) {
+        // 이미 토요일인 경우는 위에서 처리됨
+        nextDraw.setDate(now.getDate() + 7);
+      } else {
+        nextDraw.setDate(now.getDate() + daysUntilSaturday);
+      }
+      nextDraw.setHours(drawHour, drawMinute, 0, 0);
+    }
+    
+    return nextDraw;
+  };
+
+  // 🔧 수정된 추첨까지 남은 일수 계산
+  const getDaysUntilDraw = (currentDate: Date, drawDate: Date): number => {
+    const now = new Date(currentDate);
+    const diffTime = drawDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // 같은 날이면 0일, 내일이면 1일
+    if (diffDays <= 0) return 0;
+    return diffDays;
   };
 
   // 🔄 수동 데이터 새로고침 (실시간 버전)
@@ -243,20 +306,6 @@ const LottoApp = () => {
       console.error("❌ 실시간 데이터 새로고침 중 오류:", error);
       alert("❌ 데이터 새로고침 중 오류가 발생했습니다.");
     }
-  };
-
-  // 유틸리티 함수들 (기존과 동일)
-  const getNextSaturday = (): string => {
-    const now = new Date();
-    const daysUntilSaturday = (6 - now.getDay()) % 7 || 7;
-    const nextSaturday = new Date(now);
-    nextSaturday.setDate(now.getDate() + daysUntilSaturday);
-    return nextSaturday.toISOString().split("T")[0];
-  };
-
-  const getDaysUntilNextSaturday = (): number => {
-    const now = new Date();
-    return (6 - now.getDay()) % 7 || 7;
   };
 
   // 로또 번호 생성 로직들 (기존과 동일)
@@ -719,7 +768,6 @@ const LottoApp = () => {
                     업데이트: {dataStatus.lastUpdate.toLocaleTimeString()}
                   </div>
                 )}
-                {/* 데이터 소스 표시 제거 */}
                 
                 {/* 🔧 실제 회차 범위 표시 (동적으로 업데이트) */}
                 <div
