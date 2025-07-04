@@ -326,7 +326,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div style={{ padding: "12px" }}>
-      {/* 🆕 실시간 크롤링 상태 표시 */}
+      {/* 🆕 실시간 크롤링 상태 표시 - 데이터소스 제거 */}
       <div
         style={{
           backgroundColor: currentColors.realtime,
@@ -372,10 +372,10 @@ const Dashboard: React.FC<DashboardProps> = ({
             opacity: 0.8,
           }}
         >
-          데이터 소스: {realtimeStatus.source}
+          {/* 데이터 소스 표시 제거 */}
           {realtimeStatus.lastUpdate && (
-            <span style={{ marginLeft: "8px" }}>
-              | 업데이트: {realtimeStatus.lastUpdate.toLocaleTimeString()}
+            <span>
+              업데이트: {realtimeStatus.lastUpdate.toLocaleTimeString()}
             </span>
           )}
         </div>
@@ -635,7 +635,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         )}
       </div>
 
-      {/* AI 추천 미리보기 - 동적 회차 표시 */}
+      {/* AI 추천 미리보기 - 텍스트 수정 */}
       <div
         style={{
           backgroundColor: currentColors.info,
@@ -654,7 +654,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               margin: "0 0 6px 0",
             }}
           >
-            🧠 AI 실시간 빅데이터 분석
+            🧠 AI 빅데이터 분석
           </h3>
           <p
             style={{
@@ -688,7 +688,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               lineHeight: "1.4",
             }}
           >
-            🕷️ 실시간 크롤링으로 {actualLatestRound}~{actualOldestRound}회차 ({totalRounds}개) 데이터를 분석한 추천번호입니다
+            🕷️ {actualLatestRound}~{actualOldestRound}회차 ({totalRounds}개) 데이터를 분석한 추천번호입니다
           </p>
         </div>
         <button
@@ -705,7 +705,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             fontSize: "14px",
           }}
         >
-          모든 등급별 추천번호 보기 →
+          모든 등급별 추천번호 보기
         </button>
       </div>
 
@@ -748,7 +748,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               margin: "2px 0 0 0",
             }}
           >
-            실시간 AI 분석
+            AI 분석
           </p>
         </button>
 
@@ -903,7 +903,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             margin: "8px 0 0 0",
           }}
         >
-          ※ 실시간 크롤링으로 항상 최신 확률 정보 제공
+          ※ 실시간으로 항상 최신 확률 정보 제공
         </p>
       </div>
 
