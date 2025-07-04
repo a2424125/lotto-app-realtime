@@ -207,40 +207,96 @@ const Dashboard: React.FC<DashboardProps> = ({
     }
   };
 
-  // 다음 추첨 정보 로드
+  // 🔧 수정된 다음 추첨 정보 로드 - 토요일 오후 8시 35분 기준
   const loadNextDrawInfo = async () => {
     try {
       setIsLoadingNextDraw(true);
 
-      // 🆕 실시간 API 사용
-      const info = await lottoDataManager.getNextDrawInfo();
+      // 현재 시간
+      const now = new Date();
+      
+      // 다음 추첨일 계산 (토요일 오후 8시 35분 기준)
+      const nextDrawDate = getNextDrawDate();
+      const daysUntilDraw = getDaysUntilDraw(nextDrawDate);
+      
+      const formattedDate = formatKoreanDate(nextDrawDate);
+      const timeUntilDraw = getTimeUntilDraw(daysUntilDraw, nextDrawDate);
 
-      const date = new Date(info.date);
-      const formattedDate = formatKoreanDate(date);
-      const timeUntilDraw = getTimeUntilDraw(info.daysUntilDraw);
-
-      setNextDrawInfo({
-        ...info,
+      const info = {
+        round: actualLatestRound + 1,
+        date: nextDrawDate.toISOString().split("T")[0],
+        estimatedJackpot: 3500000000,
+        daysUntilDraw: daysUntilDraw,
         formattedDate,
         timeUntilDraw,
-      });
+      };
 
+      setNextDrawInfo(info);
       console.log("📅 다음 추첨 정보 업데이트:", formattedDate);
     } catch (error) {
       console.error("❌ 다음 추첨 정보 로드 실패:", error);
 
       // 폴백 정보
+      const fallbackDate = getNextDrawDate();
       setNextDrawInfo({
         round: actualLatestRound + 1,
-        date: getNextSaturday(),
+        date: fallbackDate.toISOString().split("T")[0],
         estimatedJackpot: 3500000000,
-        daysUntilDraw: getDaysUntilNextSaturday(),
-        formattedDate: formatKoreanDate(new Date(getNextSaturday())),
-        timeUntilDraw: getTimeUntilDraw(getDaysUntilNextSaturday()),
+        daysUntilDraw: getDaysUntilDraw(fallbackDate),
+        formattedDate: formatKoreanDate(fallbackDate),
+        timeUntilDraw: getTimeUntilDraw(getDaysUntilDraw(fallbackDate), fallbackDate),
       });
     } finally {
       setIsLoadingNextDraw(false);
     }
+  };
+
+  // 🔧 수정된 다음 추첨일 계산 함수 - 토요일 오후 8시 35분 기준
+  const getNextDrawDate = (): Date => {
+    const now = new Date();
+    const currentDay = now.getDay(); // 0: 일요일, 6: 토요일
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    
+    // 추첨 시간: 토요일 오후 8시 35분 (20시 35분)
+    const drawHour = 20;
+    const drawMinute = 35;
+    
+    let nextDraw = new Date(now);
+    
+    if (currentDay === 6) { // 현재가 토요일인 경우
+      // 추첨 시간(20:35) 이전이면 오늘
+      if (currentHour < drawHour || (currentHour === drawHour && currentMinute < drawMinute)) {
+        // 오늘 토요일 추첨
+        nextDraw.setHours(drawHour, drawMinute, 0, 0);
+      } else {
+        // 추첨 시간이 지났으므로 다음 토요일
+        nextDraw.setDate(now.getDate() + 7);
+        nextDraw.setHours(drawHour, drawMinute, 0, 0);
+      }
+    } else {
+      // 토요일이 아닌 경우 다음 토요일
+      const daysUntilSaturday = (6 - currentDay + 7) % 7;
+      if (daysUntilSaturday === 0) {
+        // 이미 처리됨 (위의 토요일 케이스)
+      } else {
+        nextDraw.setDate(now.getDate() + daysUntilSaturday);
+        nextDraw.setHours(drawHour, drawMinute, 0, 0);
+      }
+    }
+    
+    return nextDraw;
+  };
+
+  // 🔧 수정된 추첨까지 남은 일수 계산
+  const getDaysUntilDraw = (drawDate: Date): number => {
+    const now = new Date();
+    const diffTime = drawDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // 같은 날이면 0일, 내일이면 1일
+    if (diffDays <= 0) return 0;
+    return diffDays;
   };
 
   // 🆕 실시간 새로고침 (강화됨)
@@ -270,7 +326,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     const day = date.getDate();
     const weekday = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()];
 
-    return `${year}년 ${month}월 ${day}일 (${weekday}) 오후 8시 45분`;
+    return `${year}년 ${month}월 ${day}일 (${weekday}) 오후 8시 35분`;
   };
 
   // 한국어 날짜 포맷팅 (당첨결과용)
@@ -289,27 +345,27 @@ const Dashboard: React.FC<DashboardProps> = ({
     }
   };
 
-  // 추첨까지 남은 시간 텍스트
-  const getTimeUntilDraw = (daysUntil: number): string => {
-    if (daysUntil === 0) return "오늘 추첨!";
-    if (daysUntil === 1) return "내일 추첨!";
-    return `${daysUntil}일 후 추첨`;
-  };
-
-  // 다음 토요일 계산
-  const getNextSaturday = (): string => {
+  // 🔧 수정된 추첨까지 남은 시간 텍스트 - 더 정확한 시간 표시
+  const getTimeUntilDraw = (daysUntil: number, drawDate: Date): string => {
     const now = new Date();
-    const daysUntilSaturday = (6 - now.getDay()) % 7 || 7;
-    const nextSaturday = new Date(now);
-    nextSaturday.setDate(now.getDate() + daysUntilSaturday);
-
-    return nextSaturday.toISOString().split("T")[0];
-  };
-
-  // 다음 토요일까지 남은 일수
-  const getDaysUntilNextSaturday = (): number => {
-    const now = new Date();
-    return (6 - now.getDay()) % 7 || 7;
+    const diffTime = drawDate.getTime() - now.getTime();
+    
+    if (diffTime <= 0) return "추첨 완료";
+    
+    const hours = Math.floor(diffTime / (1000 * 60 * 60));
+    const minutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (daysUntil === 0) {
+      if (hours > 0) {
+        return `오늘 추첨! (${hours}시간 ${minutes}분 후)`;
+      } else {
+        return `오늘 추첨! (${minutes}분 후)`;
+      }
+    } else if (daysUntil === 1) {
+      return "내일 추첨!";
+    } else {
+      return `${daysUntil}일 후 추첨`;
+    }
   };
 
   // 상금 포맷팅 (억 단위)
@@ -372,7 +428,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             opacity: 0.8,
           }}
         >
-          {/* 데이터 소스 표시 제거 */}
           {realtimeStatus.lastUpdate && (
             <span>
               업데이트: {realtimeStatus.lastUpdate.toLocaleTimeString()}
