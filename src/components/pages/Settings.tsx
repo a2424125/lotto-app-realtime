@@ -149,6 +149,7 @@ const Settings: React.FC<SettingsProps> = ({
             fontWeight: "bold",
             color: currentColors.text,
             margin: "0 0 8px 0",
+            textAlign: "left",
           }}
         >
           ⚙️ 설정
@@ -158,6 +159,7 @@ const Settings: React.FC<SettingsProps> = ({
             fontSize: "12px",
             color: currentColors.textSecondary,
             margin: "0",
+            textAlign: "center",
           }}
         >
           실시간 로또 앱 환경설정 및 시스템 관리
