@@ -118,30 +118,45 @@ const Purchase: React.FC<PurchaseProps> = ({
     setLocalHistory(purchaseHistory);
   }, [purchaseHistory]);
 
-  // 📅 등록일 기준으로 다음 추첨일 계산 (매주 토요일)
+  // 🔧 수정된 다음 추첨일 계산 함수 - 토요일 오후 8시 35분 기준
   const getNextDrawDate = (registrationDate: string): Date => {
-    const regDate = new Date(registrationDate);
-    const dayOfWeek = regDate.getDay(); // 0: 일요일, 6: 토요일
-
-    // 등록일 이후 다음 토요일 계산
-    let daysUntilSaturday = (6 - dayOfWeek) % 7;
-    if (daysUntilSaturday === 0 && regDate.getHours() >= 20) {
-      // 토요일 오후 8시 이후라면 다음 주 토요일
-      daysUntilSaturday = 7;
+    const regDate = parseRegistrationDate(registrationDate);
+    const currentDay = regDate.getDay(); // 0: 일요일, 6: 토요일
+    const currentHour = regDate.getHours();
+    const currentMinute = regDate.getMinutes();
+    
+    // 추첨 시간: 토요일 오후 8시 35분 (20시 35분)
+    const drawHour = 20;
+    const drawMinute = 35;
+    
+    let nextDraw = new Date(regDate);
+    
+    if (currentDay === 6) { // 등록일이 토요일인 경우
+      // 추첨 시간(20:35) 이전이면 당일, 이후면 다음 주 토요일
+      if (currentHour < drawHour || (currentHour === drawHour && currentMinute < drawMinute)) {
+        // 당일 토요일 추첨
+        nextDraw.setHours(drawHour, drawMinute, 0, 0);
+      } else {
+        // 추첨 시간이 지났으므로 다음 주 토요일
+        nextDraw.setDate(regDate.getDate() + 7);
+        nextDraw.setHours(drawHour, drawMinute, 0, 0);
+      }
+    } else {
+      // 토요일이 아닌 경우 다음 토요일
+      const daysUntilSaturday = (6 - currentDay + 7) % 7;
+      if (daysUntilSaturday === 0) {
+        // 이미 처리됨 (위의 토요일 케이스)
+        nextDraw.setDate(regDate.getDate() + 7);
+      } else {
+        nextDraw.setDate(regDate.getDate() + daysUntilSaturday);
+      }
+      nextDraw.setHours(drawHour, drawMinute, 0, 0);
     }
-    if (daysUntilSaturday === 0) {
-      // 토요일이지만 추첨 전이라면 당일
-      daysUntilSaturday = 0;
-    }
-
-    const drawDate = new Date(regDate);
-    drawDate.setDate(regDate.getDate() + daysUntilSaturday);
-    drawDate.setHours(20, 45, 0, 0); // 오후 8시 45분
-
-    return drawDate;
+    
+    return nextDraw;
   };
 
-  // 📅 추첨일이 지났는지 확인
+  // 📅 추첨일이 지났는지 확인 - 정확한 시간 체크
   const isDrawCompleted = (drawDate: Date): boolean => {
     const now = new Date();
     return now > drawDate;
@@ -156,6 +171,17 @@ const Purchase: React.FC<PurchaseProps> = ({
     } else if (dateStr.includes("-")) {
       return new Date(dateStr);
     } else if (dateStr.includes("/")) {
+      const parts = dateStr.split("/");
+      if (parts.length === 3) {
+        // MM/DD/YYYY 또는 YYYY/MM/DD 형식 처리
+        if (parts[0].length === 4) {
+          // YYYY/MM/DD
+          return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        } else {
+          // MM/DD/YYYY
+          return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+        }
+      }
       return new Date(dateStr);
     } else {
       // 기본적으로 한국 날짜 형식으로 파싱 시도
@@ -257,7 +283,7 @@ const Purchase: React.FC<PurchaseProps> = ({
     }
   };
 
-  // 🎯 당첨 확인 로직 개선 (추첨일 확인 포함)
+  // 🎯 수정된 당첨 확인 로직 - 정확한 추첨일 계산
   const checkWinning = (
     userNumbers: number[],
     registrationDate: string
@@ -281,12 +307,18 @@ const Purchase: React.FC<PurchaseProps> = ({
         const now = new Date();
         const diffTime = drawDate.getTime() - now.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+        const diffMinutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60));
 
         let timeMessage = "";
         if (diffDays === 0) {
-          timeMessage = "오늘 오후 8시 45분 추첨";
+          if (diffHours > 0) {
+            timeMessage = `오늘 추첨! (${diffHours}시간 ${diffMinutes}분 후)`;
+          } else {
+            timeMessage = `오늘 추첨! (${diffMinutes}분 후)`;
+          }
         } else if (diffDays === 1) {
-          timeMessage = "내일 추첨";
+          timeMessage = "내일 추첨!";
         } else {
           timeMessage = `${diffDays}일 후 추첨`;
         }
