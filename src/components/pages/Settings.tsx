@@ -230,32 +230,6 @@ const Settings: React.FC<SettingsProps> = ({
               </span>
             </div>
 
-            {/* 데이터 소스 */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                padding: "8px 12px",
-                backgroundColor: currentColors.surface,
-                borderRadius: "6px",
-              }}
-            >
-              <span
-                style={{ fontSize: "14px", color: currentColors.textSecondary }}
-              >
-                🌐 데이터 소스
-              </span>
-              <span
-                style={{
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  color: currentColors.text,
-                }}
-              >
-                {dataStatus.crawlerInfo?.source || "Lottolyzer.com"}
-              </span>
-            </div>
-
             {/* 데이터 범위 */}
             {dataStatus.roundRange && (
               <div
