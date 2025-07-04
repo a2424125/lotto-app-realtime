@@ -23,6 +23,9 @@ interface GameStats {
   simulationWins: number;
   gachaWins: number;
   collectedCombos: string[];
+  lastDailyBonus: string;
+  emergencyCharges: number;
+  lastEmergencyCharge: string;
 }
 
 interface GachaItem {
@@ -55,6 +58,9 @@ const MiniGame: React.FC<MiniGameProps> = ({
       simulationWins: 0,
       gachaWins: 0,
       collectedCombos: [],
+      lastDailyBonus: "",
+      emergencyCharges: 0,
+      lastEmergencyCharge: "",
     };
   });
 
@@ -211,7 +217,140 @@ const MiniGame: React.FC<MiniGameProps> = ({
     { id: "l2", name: "완벽한 균형", numbers: [3, 15, 23, 31, 39, 44], rarity: "legendary", points: 400, description: "모든 구간 완벽 분배" },
   ];
 
-  // 게임 통계 저장
+  // 현재 날짜 문자열 가져오기
+  const getTodayString = (): string => {
+    return new Date().toISOString().split('T')[0];
+  };
+
+  // 일일 보너스 확인
+  const canGetDailyBonus = (): boolean => {
+    const today = getTodayString();
+    return gameStats.lastDailyBonus !== today;
+  };
+
+  // 긴급 충전 가능 확인
+  const canUseEmergencyCharge = (): boolean => {
+    const today = getTodayString();
+    if (gameStats.lastEmergencyCharge !== today) {
+      return true; // 새로운 날이면 초기화
+    }
+    return gameStats.emergencyCharges < 2; // 하루 2회 제한
+  };
+
+  // 일일 보너스 받기
+  const claimDailyBonus = () => {
+    if (!canGetDailyBonus()) {
+      alert("오늘은 이미 일일 보너스를 받았습니다! 🎁");
+      return;
+    }
+
+    const bonusPoints = 100;
+    setGameStats(prev => ({
+      ...prev,
+      gamePoints: prev.gamePoints + bonusPoints,
+      totalEarned: prev.totalEarned + bonusPoints,
+      lastDailyBonus: getTodayString(),
+    }));
+
+    alert(`🎁 일일 출석 보너스!\n${bonusPoints}pt를 받았습니다! ✨`);
+  };
+
+  // 긴급 충전
+  const useEmergencyCharge = () => {
+    if (!canUseEmergencyCharge()) {
+      alert("오늘의 긴급 충전을 모두 사용했습니다! (하루 2회 제한) 🚫");
+      return;
+    }
+
+    const chargePoints = 50;
+    const today = getTodayString();
+    
+    setGameStats(prev => ({
+      ...prev,
+      gamePoints: prev.gamePoints + chargePoints,
+      totalEarned: prev.totalEarned + chargePoints,
+      emergencyCharges: prev.lastEmergencyCharge === today ? prev.emergencyCharges + 1 : 1,
+      lastEmergencyCharge: today,
+    }));
+
+    const remaining = canUseEmergencyCharge() ? 1 : 0;
+    alert(`🆘 긴급 충전 완료!\n${chargePoints}pt를 받았습니다!\n오늘 남은 긴급 충전: ${remaining}회`);
+  };
+
+  // 광고 시청 (시뮬레이션)
+  const watchAd = () => {
+    // 실제로는 광고 SDK 연동
+    const adPoints = 30;
+    
+    // 2초 딜레이로 광고 시청 시뮬레이션
+    const confirmWatch = window.confirm("광고를 시청하여 30pt를 받으시겠습니까? 📺");
+    if (!confirmWatch) return;
+
+    setTimeout(() => {
+      setGameStats(prev => ({
+        ...prev,
+        gamePoints: prev.gamePoints + adPoints,
+        totalEarned: prev.totalEarned + adPoints,
+      }));
+      alert(`📺 광고 시청 완료!\n${adPoints}pt를 받았습니다! 감사합니다! ✨`);
+    }, 2000);
+  };
+
+  // 포인트 부족 시 충전 옵션 표시
+  const showChargeOptions = () => {
+    let options = [];
+    
+    if (canGetDailyBonus()) {
+      options.push("📅 일일 보너스 (100pt)");
+    }
+    
+    if (canUseEmergencyCharge()) {
+      const remaining = gameStats.lastEmergencyCharge === getTodayString() ? 2 - gameStats.emergencyCharges : 2;
+      options.push(`🆘 긴급 충전 (50pt) - 오늘 ${remaining}회 남음`);
+    }
+    
+    options.push("📺 광고 시청 (30pt)");
+
+    if (options.length === 1 && !canGetDailyBonus() && !canUseEmergencyCharge()) {
+      // 광고만 남은 경우
+      const watchAdConfirm = window.confirm("포인트가 부족합니다! 😅\n\n📺 광고를 시청하여 30pt를 받으시겠습니까?");
+      if (watchAdConfirm) {
+        watchAd();
+      }
+      return;
+    }
+
+    const choice = window.prompt(
+      "포인트가 부족합니다! 어떻게 충전하시겠습니까? 🔋\n\n" +
+      options.map((opt, i) => `${i + 1}. ${opt}`).join("\n") + 
+      "\n\n번호를 입력하세요:"
+    );
+
+    const choiceNum = parseInt(choice || "0");
+    if (choiceNum < 1 || choiceNum > options.length) return;
+
+    let currentIndex = 1;
+    
+    if (canGetDailyBonus()) {
+      if (choiceNum === currentIndex) {
+        claimDailyBonus();
+        return;
+      }
+      currentIndex++;
+    }
+    
+    if (canUseEmergencyCharge()) {
+      if (choiceNum === currentIndex) {
+        useEmergencyCharge();
+        return;
+      }
+      currentIndex++;
+    }
+    
+    if (choiceNum === currentIndex) {
+      watchAd();
+    }
+  };
   useEffect(() => {
     localStorage.setItem("lotto-game-stats", JSON.stringify(gameStats));
   }, [gameStats]);
@@ -311,7 +450,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
   // 번호 확인 게임 시작
   const startSimulation = () => {
     if (gameStats.gamePoints < simulation.gameCost) {
-      alert("게임 포인트가 부족합니다! 🎮");
+      showChargeOptions();
       return;
     }
 
@@ -394,7 +533,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
   // 뽑기 게임 실행
   const pullGacha = () => {
     if (gameStats.gamePoints < gachaGame.pullCost) {
-      alert("포인트가 부족합니다! 🎮");
+      showChargeOptions();
       return;
     }
 
@@ -525,7 +664,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
             margin: "0 0 8px 0",
           }}
         >
-          3가지 재미있는 게임으로 포인트를 모아보세요!
+          3가지 재미있는 게임으로 포인트를 모아보세요! 포인트가 부족하면 언제든 충전 가능! 🔋
         </p>
 
         {/* 게임 통계 */}
@@ -548,6 +687,101 @@ const MiniGame: React.FC<MiniGameProps> = ({
             <div style={{ fontSize: "16px", fontWeight: "bold", color: currentColors.infoText }}>
               {gameStats.gamesPlayed}
             </div>
+
+        {/* 포인트 충전 섹션 */}
+        <div
+          style={{
+            marginTop: "12px",
+            padding: "12px",
+            backgroundColor: currentColors.warning,
+            borderRadius: "8px",
+            border: `1px solid ${currentColors.warningBorder}`,
+          }}
+        >
+          <h4
+            style={{
+              fontSize: "12px",
+              fontWeight: "600",
+              color: currentColors.warningText,
+              margin: "0 0 8px 0",
+              textAlign: "center",
+            }}
+          >
+            🔋 포인트 충전소
+          </h4>
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            {canGetDailyBonus() && (
+              <button
+                onClick={claimDailyBonus}
+                style={{
+                  flex: 1,
+                  padding: "8px 6px",
+                  backgroundColor: "#10b981",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontSize: "10px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  textAlign: "center",
+                  minWidth: "60px",
+                }}
+              >
+                📅<br/>일일보너스<br/>+100pt
+              </button>
+            )}
+            {canUseEmergencyCharge() && (
+              <button
+                onClick={useEmergencyCharge}
+                style={{
+                  flex: 1,
+                  padding: "8px 6px",
+                  backgroundColor: "#ef4444",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontSize: "10px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  textAlign: "center",
+                  minWidth: "60px",
+                }}
+              >
+                🆘<br/>긴급충전<br/>+50pt
+              </button>
+            )}
+            <button
+              onClick={watchAd}
+              style={{
+                flex: 1,
+                padding: "8px 6px",
+                backgroundColor: "#8b5cf6",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "10px",
+                fontWeight: "600",
+                cursor: "pointer",
+                textAlign: "center",
+                minWidth: "60px",
+              }}
+            >
+              📺<br/>광고시청<br/>+30pt
+            </button>
+          </div>
+          <div
+            style={{
+              marginTop: "8px",
+              fontSize: "9px",
+              color: currentColors.warningText,
+              textAlign: "center",
+              opacity: 0.8,
+            }}
+          >
+            {!canGetDailyBonus() && "일일보너스: 내일 가능 | "}
+            긴급충전: 하루 2회 제한 | 광고: 무제한
+          </div>
+        </div>
             <div style={{ fontSize: "10px", color: currentColors.infoText }}>
               총 게임 수
             </div>
@@ -615,17 +849,17 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   setSelectedGame(game.id);
                   if (game.id === "guess") startGuessGame();
                 }}
-                disabled={isDataLoading || (game.id === "gacha" && gameStats.gamePoints < 20)}
+                disabled={isDataLoading || (game.id === "simulation" && gameStats.gamePoints < 10) || (game.id === "gacha" && gameStats.gamePoints < 20)}
                 style={{
                   padding: "16px",
                   borderRadius: "8px",
                   border: `1px solid ${currentColors.border}`,
                   backgroundColor: currentColors.surface,
-                  cursor: isDataLoading || (game.id === "gacha" && gameStats.gamePoints < 20) ? "not-allowed" : "pointer",
+                  cursor: isDataLoading || (game.id === "simulation" && gameStats.gamePoints < 10) || (game.id === "gacha" && gameStats.gamePoints < 20) ? "not-allowed" : "pointer",
                   textAlign: "left",
                   transition: "all 0.2s",
                   boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                  opacity: isDataLoading || (game.id === "gacha" && gameStats.gamePoints < 20) ? 0.6 : 1,
+                  opacity: isDataLoading || (game.id === "simulation" && gameStats.gamePoints < 10) || (game.id === "gacha" && gameStats.gamePoints < 20) ? 0.6 : 1,
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -687,8 +921,8 @@ const MiniGame: React.FC<MiniGameProps> = ({
                           color: currentColors.textSecondary,
                         }}
                       >
-                        {game.id === "gacha" && gameStats.gamePoints < 20
-                          ? "🎮 포인트 부족"
+                        {(game.id === "simulation" && gameStats.gamePoints < 10) || (game.id === "gacha" && gameStats.gamePoints < 20)
+                          ? "🔋 포인트 부족"
                           : "✨ 플레이 가능"
                         }
                       </span>
