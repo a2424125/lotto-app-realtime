@@ -115,10 +115,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const startTime = Date.now();
 
   try {
-    // 요청 파라미터 처리
+    // 요청 파라미터 처리 - 최대 회차 증가
     const roundsParam = req.query.rounds as string;
-    const requestedRounds = roundsParam ? parseInt(roundsParam, 10) : 100;
-    const maxRounds = Math.min(requestedRounds, 500); // 최대 500회차 제한
+    const requestedRounds = roundsParam ? parseInt(roundsParam, 10) : 1200; // 100 → 1200
+    const maxRounds = Math.min(requestedRounds, 1200); // 500 → 1200 (최대 제한 증가)
 
     console.log(`📊 ${maxRounds}회차 데이터 요청 처리 중...`);
 
