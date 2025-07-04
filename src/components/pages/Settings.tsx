@@ -164,7 +164,7 @@ const Settings: React.FC<SettingsProps> = ({
         </p>
       </div>
 
-      {/* 🆕 실시간 크롤링 상태 */}
+      {/* 🆕 실시간 연동 상태 */}
       {dataStatus && (
         <div
           style={{
@@ -186,7 +186,7 @@ const Settings: React.FC<SettingsProps> = ({
               gap: "8px",
             }}
           >
-            🕷️ 실시간 크롤링 시스템
+            🕷️ 실시간 연동 시스템
             <span
               style={{
                 fontSize: "10px",
@@ -202,7 +202,7 @@ const Settings: React.FC<SettingsProps> = ({
           </h3>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {/* 크롤러 상태 */}
+            {/* 실시간 연동 상태 */}
             <div
               style={{
                 display: "flex",
@@ -215,7 +215,7 @@ const Settings: React.FC<SettingsProps> = ({
               <span
                 style={{ fontSize: "14px", color: currentColors.textSecondary }}
               >
-                📡 크롤링 상태
+                📡 실시간 연동 상태
               </span>
               <span
                 style={{
@@ -255,72 +255,6 @@ const Settings: React.FC<SettingsProps> = ({
                 {dataStatus.crawlerInfo?.source || "Lottolyzer.com"}
               </span>
             </div>
-
-            {/* 업데이트 주기 */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                padding: "8px 12px",
-                backgroundColor: currentColors.surface,
-                borderRadius: "6px",
-              }}
-            >
-              <span
-                style={{ fontSize: "14px", color: currentColors.textSecondary }}
-              >
-                🔄 업데이트 주기
-              </span>
-              <span
-                style={{
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  color: currentColors.text,
-                }}
-              >
-                {dataStatus.crawlerInfo?.updateInterval || "10분"}
-              </span>
-            </div>
-
-            {/* 크롤러 헬스 */}
-            {dataStatus.crawlerHealth && (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "8px 12px",
-                  backgroundColor: currentColors.surface,
-                  borderRadius: "6px",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "14px",
-                    color: currentColors.textSecondary,
-                  }}
-                >
-                  💚 크롤러 상태
-                </span>
-                <span
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color:
-                      dataStatus.crawlerHealth === "healthy"
-                        ? currentColors.accent
-                        : dataStatus.crawlerHealth === "checking"
-                        ? "#d97706"
-                        : "#dc2626",
-                  }}
-                >
-                  {dataStatus.crawlerHealth === "healthy"
-                    ? "정상"
-                    : dataStatus.crawlerHealth === "checking"
-                    ? "확인중"
-                    : "오류"}
-                </span>
-              </div>
-            )}
 
             {/* 데이터 범위 */}
             {dataStatus.roundRange && (
@@ -674,109 +608,7 @@ const Settings: React.FC<SettingsProps> = ({
         </div>
       </div>
 
-      {/* 🆕 API 엔드포인트 정보 */}
-      <div
-        style={{
-          backgroundColor: currentColors.surface,
-          padding: "16px",
-          borderRadius: "8px",
-          border: `1px solid ${currentColors.border}`,
-          marginBottom: "12px",
-        }}
-      >
-        <h3
-          style={{
-            fontSize: "16px",
-            fontWeight: "bold",
-            color: currentColors.text,
-            margin: "0 0 12px 0",
-          }}
-        >
-          🔗 API 정보
-        </h3>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "8px 12px",
-              backgroundColor: currentColors.cardBg,
-              borderRadius: "6px",
-            }}
-          >
-            <span
-              style={{ fontSize: "14px", color: currentColors.textSecondary }}
-            >
-              크롤링 엔드포인트
-            </span>
-            <span
-              style={{
-                fontSize: "12px",
-                fontWeight: "500",
-                color: currentColors.text,
-                fontFamily: "monospace",
-              }}
-            >
-              /api/lotto-crawler
-            </span>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "8px 12px",
-              backgroundColor: currentColors.cardBg,
-              borderRadius: "6px",
-            }}
-          >
-            <span
-              style={{ fontSize: "14px", color: currentColors.textSecondary }}
-            >
-              최신 결과 엔드포인트
-            </span>
-            <span
-              style={{
-                fontSize: "12px",
-                fontWeight: "500",
-                color: currentColors.text,
-                fontFamily: "monospace",
-              }}
-            >
-              /api/latest-result
-            </span>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "8px 12px",
-              backgroundColor: currentColors.cardBg,
-              borderRadius: "6px",
-            }}
-          >
-            <span
-              style={{ fontSize: "14px", color: currentColors.textSecondary }}
-            >
-              헬스체크 엔드포인트
-            </span>
-            <span
-              style={{
-                fontSize: "12px",
-                fontWeight: "500",
-                color: currentColors.text,
-                fontFamily: "monospace",
-              }}
-            >
-              /api/health-check
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 앱 정보 (업데이트됨) */}
+      {/* 앱 정보 (수정됨) */}
       <div
         style={{
           backgroundColor: currentColors.surface,
@@ -817,28 +649,6 @@ const Settings: React.FC<SettingsProps> = ({
               }}
             >
               2.0.0 (실시간)
-            </span>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "4px 0",
-            }}
-          >
-            <span
-              style={{ fontSize: "14px", color: currentColors.textSecondary }}
-            >
-              크롤링 시스템
-            </span>
-            <span
-              style={{
-                fontSize: "14px",
-                fontWeight: "500",
-                color: currentColors.text,
-              }}
-            >
-              Vercel Functions
             </span>
           </div>
           <div
@@ -904,8 +714,6 @@ const Settings: React.FC<SettingsProps> = ({
               textAlign: "center",
             }}
           >
-            🕷️ 실시간 로또 6/45 크롤링 앱입니다! <br />
-            이제 매주 수동 업데이트가 필요 없습니다. <br />
             과도한 구매는 가계에 부담이 됩니다.
           </p>
         </div>
