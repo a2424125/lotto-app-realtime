@@ -670,7 +670,7 @@ const Settings: React.FC<SettingsProps> = ({
                 color: currentColors.text,
               }}
             >
-              hyung.j (실시간 업그레이드)
+              hyung.j
             </span>
           </div>
         </div>
