@@ -28,17 +28,31 @@ const MiniGame: React.FC<MiniGameProps> = ({
   roundRange,
   theme = "light",
 }) => {
+  console.log("🎮 MiniGame 컴포넌트 렌더링 시작", { theme, pastWinningNumbers: pastWinningNumbers?.length });
+
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [gameStats, setGameStats] = useState<GameStats>(() => {
-    const saved = localStorage.getItem("lotto-game-stats");
-    return saved ? JSON.parse(saved) : {
-      gamesPlayed: 0,
-      bestScore: 0,
-      totalWins: 0,
-      virtualMoney: 100000, // 시작 자금 10만원
-      totalSpent: 0,
-      totalWon: 0,
-    };
+    try {
+      const saved = localStorage.getItem("lotto-game-stats");
+      return saved ? JSON.parse(saved) : {
+        gamesPlayed: 0,
+        bestScore: 0,
+        totalWins: 0,
+        virtualMoney: 100000, // 시작 자금 10만원
+        totalSpent: 0,
+        totalWon: 0,
+      };
+    } catch (error) {
+      console.error("게임 통계 로드 실패:", error);
+      return {
+        gamesPlayed: 0,
+        bestScore: 0,
+        totalWins: 0,
+        virtualMoney: 100000,
+        totalSpent: 0,
+        totalWon: 0,
+      };
+    }
   });
 
   // 번호 맞추기 게임 상태
@@ -67,9 +81,9 @@ const MiniGame: React.FC<MiniGameProps> = ({
   // 실제 회차 범위 정보 사용
   const actualLatestRound = roundRange?.latestRound || 1178;
   const actualOldestRound = roundRange?.oldestRound || 1178;
-  const totalRounds = pastWinningNumbers.length;
+  const totalRounds = pastWinningNumbers?.length || 0;
 
-  // 다크 모드 색상 테마
+  // ✅ 안전한 다크 모드 색상 테마 - 기본값 포함
   const colors = {
     light: {
       background: "#f9fafb",
@@ -119,7 +133,8 @@ const MiniGame: React.FC<MiniGameProps> = ({
     },
   };
 
-  const currentColors = colors[theme];
+  // ✅ 안전한 색상 선택
+  const currentColors = colors[theme] || colors.light;
 
   // 게임 목록
   const games = [
@@ -141,211 +156,333 @@ const MiniGame: React.FC<MiniGameProps> = ({
     },
   ];
 
-  // 게임 통계 저장
+  // ✅ 안전한 useEffect
   useEffect(() => {
-    localStorage.setItem("lotto-game-stats", JSON.stringify(gameStats));
+    try {
+      console.log("🎮 MiniGame useEffect 실행");
+      localStorage.setItem("lotto-game-stats", JSON.stringify(gameStats));
+    } catch (error) {
+      console.error("게임 통계 저장 실패:", error);
+    }
   }, [gameStats]);
 
   // 번호 맞추기 게임 시작
   const startGuessGame = () => {
-    const secret = generateSecretNumbers();
-    setGuessGame({
-      secretNumbers: secret,
-      userGuess: [],
-      attempts: 0,
-      maxAttempts: 10,
-      hints: [],
-      gameOver: false,
-      won: false,
-      score: 0,
-    });
+    try {
+      const secret = generateSecretNumbers();
+      setGuessGame({
+        secretNumbers: secret,
+        userGuess: [],
+        attempts: 0,
+        maxAttempts: 10,
+        hints: [],
+        gameOver: false,
+        won: false,
+        score: 0,
+      });
+      console.log("🎯 번호맞추기 게임 시작");
+    } catch (error) {
+      console.error("게임 시작 실패:", error);
+    }
   };
 
-  // 비밀 번호 생성
+  // ✅ 안전한 비밀 번호 생성
   const generateSecretNumbers = (): number[] => {
-    const numbers = new Set<number>();
-    while (numbers.size < 6) {
-      numbers.add(Math.floor(Math.random() * 45) + 1);
+    try {
+      const numbers = new Set<number>();
+      let attempts = 0;
+      while (numbers.size < 6 && attempts < 100) {
+        numbers.add(Math.floor(Math.random() * 45) + 1);
+        attempts++;
+      }
+      return Array.from(numbers).sort((a, b) => a - b);
+    } catch (error) {
+      console.error("비밀번호 생성 실패:", error);
+      return [1, 2, 3, 4, 5, 6]; // 폴백
     }
-    return Array.from(numbers).sort((a, b) => a - b);
   };
 
   // 번호 맞추기 추측 제출
   const submitGuess = () => {
     if (guessGame.userGuess.length !== 6) return;
 
-    const { secretNumbers, userGuess } = guessGame;
-    const exactMatches = userGuess.filter((num, idx) => num === secretNumbers[idx]).length;
-    const numberMatches = userGuess.filter(num => secretNumbers.includes(num)).length;
-    const wrongPosition = numberMatches - exactMatches;
+    try {
+      const { secretNumbers, userGuess } = guessGame;
+      const exactMatches = userGuess.filter((num, idx) => num === secretNumbers[idx]).length;
+      const numberMatches = userGuess.filter(num => secretNumbers.includes(num)).length;
+      const wrongPosition = numberMatches - exactMatches;
 
-    let hint = "";
-    if (exactMatches === 6) {
-      hint = "🎉 축하합니다! 모든 번호를 맞췄어요!";
-      setGuessGame(prev => ({
-        ...prev,
-        gameOver: true,
-        won: true,
-        score: Math.max(0, 1000 - (prev.attempts * 100)),
-        hints: [...prev.hints, hint],
-      }));
-      
-      setGameStats(prev => ({
-        ...prev,
-        gamesPlayed: prev.gamesPlayed + 1,
-        totalWins: prev.totalWins + 1,
-        bestScore: Math.max(prev.bestScore, Math.max(0, 1000 - (guessGame.attempts * 100))),
-      }));
-    } else {
-      hint = `🎯 ${exactMatches}개 위치 정확 | 📍 ${wrongPosition}개 숫자 맞지만 위치 틀림`;
-      
-      const newAttempts = guessGame.attempts + 1;
-      if (newAttempts >= guessGame.maxAttempts) {
+      let hint = "";
+      if (exactMatches === 6) {
+        hint = "🎉 축하합니다! 모든 번호를 맞췄어요!";
         setGuessGame(prev => ({
           ...prev,
-          attempts: newAttempts,
           gameOver: true,
-          won: false,
-          hints: [...prev.hints, hint, `😔 실패! 정답: ${secretNumbers.join(", ")}`],
+          won: true,
+          score: Math.max(0, 1000 - (prev.attempts * 100)),
+          hints: [...prev.hints, hint],
         }));
         
         setGameStats(prev => ({
           ...prev,
           gamesPlayed: prev.gamesPlayed + 1,
+          totalWins: prev.totalWins + 1,
+          bestScore: Math.max(prev.bestScore, Math.max(0, 1000 - (guessGame.attempts * 100))),
         }));
       } else {
-        setGuessGame(prev => ({
-          ...prev,
-          attempts: newAttempts,
-          hints: [...prev.hints, hint],
-          userGuess: [],
-        }));
+        hint = `🎯 ${exactMatches}개 위치 정확 | 📍 ${wrongPosition}개 숫자 맞지만 위치 틀림`;
+        
+        const newAttempts = guessGame.attempts + 1;
+        if (newAttempts >= guessGame.maxAttempts) {
+          setGuessGame(prev => ({
+            ...prev,
+            attempts: newAttempts,
+            gameOver: true,
+            won: false,
+            hints: [...prev.hints, hint, `😔 실패! 정답: ${secretNumbers.join(", ")}`],
+          }));
+          
+          setGameStats(prev => ({
+            ...prev,
+            gamesPlayed: prev.gamesPlayed + 1,
+          }));
+        } else {
+          setGuessGame(prev => ({
+            ...prev,
+            attempts: newAttempts,
+            hints: [...prev.hints, hint],
+            userGuess: [],
+          }));
+        }
       }
+    } catch (error) {
+      console.error("추측 제출 실패:", error);
     }
   };
 
-  // 가상 로또 시뮬레이션 시작
+  // ✅ 안전한 가상 로또 시뮬레이션 시작
   const startSimulation = () => {
-    if (gameStats.virtualMoney < simulation.ticketPrice) {
-      alert("가상 돈이 부족합니다! 🪙");
-      return;
-    }
-
-    if (simulation.selectedNumbers.length !== 6) {
-      alert("6개 번호를 선택해주세요!");
-      return;
-    }
-
-    setSimulation(prev => ({ ...prev, isPlaying: true }));
-    
-    // 랜덤한 과거 회차 선택
-    const randomIndex = Math.floor(Math.random() * pastWinningNumbers.length);
-    const winningNumbers = pastWinningNumbers[randomIndex].slice(0, 6);
-    const bonusNumber = pastWinningNumbers[randomIndex][6];
-
-    // 당첨 확인
-    const matches = simulation.selectedNumbers.filter(num => winningNumbers.includes(num)).length;
-    const bonusMatch = simulation.selectedNumbers.includes(bonusNumber);
-
-    let grade = "";
-    let prize = 0;
-    
-    if (matches === 6) {
-      grade = "1등";
-      prize = Math.floor(Math.random() * 1000000000) + 1000000000; // 10억~20억
-    } else if (matches === 5 && bonusMatch) {
-      grade = "2등";
-      prize = Math.floor(Math.random() * 50000000) + 30000000; // 3000만~8000만
-    } else if (matches === 5) {
-      grade = "3등";
-      prize = Math.floor(Math.random() * 500000) + 1000000; // 100만~150만
-    } else if (matches === 4) {
-      grade = "4등";
-      prize = 50000;
-    } else if (matches === 3) {
-      grade = "5등";
-      prize = 5000;
-    } else {
-      grade = "낙첨";
-      prize = 0;
-    }
-
-    const result = {
-      round: actualLatestRound - randomIndex,
-      userNumbers: [...simulation.selectedNumbers],
-      winningNumbers,
-      bonusNumber,
-      matches,
-      bonusMatch,
-      grade,
-      prize,
-      spent: simulation.ticketPrice,
-      profit: prize - simulation.ticketPrice,
-    };
-
-    setTimeout(() => {
-      setSimulation(prev => ({
-        ...prev,
-        results: [result, ...prev.results.slice(0, 9)], // 최근 10개만 유지
-        isPlaying: false,
-        selectedNumbers: [],
-      }));
-
-      setGameStats(prev => ({
-        ...prev,
-        virtualMoney: prev.virtualMoney - simulation.ticketPrice + prize,
-        totalSpent: prev.totalSpent + simulation.ticketPrice,
-        totalWon: prev.totalWon + prize,
-        gamesPlayed: prev.gamesPlayed + 1,
-        totalWins: prize > 0 ? prev.totalWins + 1 : prev.totalWins,
-      }));
-
-      if (prize > 0) {
-        alert(`🎉 ${grade} 당첨! ${prize.toLocaleString()}원 획득!`);
+    try {
+      if (gameStats.virtualMoney < simulation.ticketPrice) {
+        alert("가상 돈이 부족합니다! 🪙");
+        return;
       }
-    }, 2000);
+
+      if (simulation.selectedNumbers.length !== 6) {
+        alert("6개 번호를 선택해주세요!");
+        return;
+      }
+
+      // pastWinningNumbers 안전성 검사
+      if (!pastWinningNumbers || pastWinningNumbers.length === 0) {
+        alert("당첨번호 데이터가 없습니다. 잠시 후 다시 시도해주세요.");
+        return;
+      }
+
+      setSimulation(prev => ({ ...prev, isPlaying: true }));
+      
+      // 랜덤한 과거 회차 선택
+      const randomIndex = Math.floor(Math.random() * pastWinningNumbers.length);
+      const winningNumbers = pastWinningNumbers[randomIndex]?.slice(0, 6) || [1, 2, 3, 4, 5, 6];
+      const bonusNumber = pastWinningNumbers[randomIndex]?.[6] || 7;
+
+      // 당첨 확인
+      const matches = simulation.selectedNumbers.filter(num => winningNumbers.includes(num)).length;
+      const bonusMatch = simulation.selectedNumbers.includes(bonusNumber);
+
+      let grade = "";
+      let prize = 0;
+      
+      if (matches === 6) {
+        grade = "1등";
+        prize = Math.floor(Math.random() * 1000000000) + 1000000000; // 10억~20억
+      } else if (matches === 5 && bonusMatch) {
+        grade = "2등";
+        prize = Math.floor(Math.random() * 50000000) + 30000000; // 3000만~8000만
+      } else if (matches === 5) {
+        grade = "3등";
+        prize = Math.floor(Math.random() * 500000) + 1000000; // 100만~150만
+      } else if (matches === 4) {
+        grade = "4등";
+        prize = 50000;
+      } else if (matches === 3) {
+        grade = "5등";
+        prize = 5000;
+      } else {
+        grade = "낙첨";
+        prize = 0;
+      }
+
+      const result = {
+        round: actualLatestRound - randomIndex,
+        userNumbers: [...simulation.selectedNumbers],
+        winningNumbers,
+        bonusNumber,
+        matches,
+        bonusMatch,
+        grade,
+        prize,
+        spent: simulation.ticketPrice,
+        profit: prize - simulation.ticketPrice,
+      };
+
+      setTimeout(() => {
+        setSimulation(prev => ({
+          ...prev,
+          results: [result, ...prev.results.slice(0, 9)], // 최근 10개만 유지
+          isPlaying: false,
+          selectedNumbers: [],
+        }));
+
+        setGameStats(prev => ({
+          ...prev,
+          virtualMoney: prev.virtualMoney - simulation.ticketPrice + prize,
+          totalSpent: prev.totalSpent + simulation.ticketPrice,
+          totalWon: prev.totalWon + prize,
+          gamesPlayed: prev.gamesPlayed + 1,
+          totalWins: prize > 0 ? prev.totalWins + 1 : prev.totalWins,
+        }));
+
+        if (prize > 0) {
+          alert(`🎉 ${grade} 당첨! ${prize.toLocaleString()}원 획득!`);
+        }
+      }, 2000);
+    } catch (error) {
+      console.error("시뮬레이션 시작 실패:", error);
+      setSimulation(prev => ({ ...prev, isPlaying: false }));
+    }
   };
 
   // 번호 선택/해제 (시뮬레이션용)
   const toggleNumber = (num: number) => {
-    if (selectedGame === "guess") {
-      setGuessGame(prev => {
-        if (prev.userGuess.includes(num)) {
-          return { ...prev, userGuess: prev.userGuess.filter(n => n !== num) };
-        } else if (prev.userGuess.length < 6) {
-          return { ...prev, userGuess: [...prev.userGuess, num].sort((a, b) => a - b) };
-        }
-        return prev;
-      });
-    } else if (selectedGame === "simulation") {
-      setSimulation(prev => {
-        if (prev.selectedNumbers.includes(num)) {
-          return { ...prev, selectedNumbers: prev.selectedNumbers.filter(n => n !== num) };
-        } else if (prev.selectedNumbers.length < 6) {
-          return { ...prev, selectedNumbers: [...prev.selectedNumbers, num].sort((a, b) => a - b) };
-        }
-        return prev;
-      });
+    try {
+      if (selectedGame === "guess") {
+        setGuessGame(prev => {
+          if (prev.userGuess.includes(num)) {
+            return { ...prev, userGuess: prev.userGuess.filter(n => n !== num) };
+          } else if (prev.userGuess.length < 6) {
+            return { ...prev, userGuess: [...prev.userGuess, num].sort((a, b) => a - b) };
+          }
+          return prev;
+        });
+      } else if (selectedGame === "simulation") {
+        setSimulation(prev => {
+          if (prev.selectedNumbers.includes(num)) {
+            return { ...prev, selectedNumbers: prev.selectedNumbers.filter(n => n !== num) };
+          } else if (prev.selectedNumbers.length < 6) {
+            return { ...prev, selectedNumbers: [...prev.selectedNumbers, num].sort((a, b) => a - b) };
+          }
+          return prev;
+        });
+      }
+    } catch (error) {
+      console.error("번호 토글 실패:", error);
     }
   };
 
   // 자동 번호 생성
   const generateRandomNumbers = (target: "guess" | "simulation") => {
-    const numbers = new Set<number>();
-    while (numbers.size < 6) {
-      numbers.add(Math.floor(Math.random() * 45) + 1);
-    }
-    const randomNumbers = Array.from(numbers).sort((a, b) => a - b);
+    try {
+      const numbers = new Set<number>();
+      let attempts = 0;
+      while (numbers.size < 6 && attempts < 100) {
+        numbers.add(Math.floor(Math.random() * 45) + 1);
+        attempts++;
+      }
+      const randomNumbers = Array.from(numbers).sort((a, b) => a - b);
 
-    if (target === "guess") {
-      setGuessGame(prev => ({ ...prev, userGuess: randomNumbers }));
-    } else {
-      setSimulation(prev => ({ ...prev, selectedNumbers: randomNumbers }));
+      if (target === "guess") {
+        setGuessGame(prev => ({ ...prev, userGuess: randomNumbers }));
+      } else {
+        setSimulation(prev => ({ ...prev, selectedNumbers: randomNumbers }));
+      }
+    } catch (error) {
+      console.error("랜덤 번호 생성 실패:", error);
     }
   };
 
+  // ✅ 로딩 상태 처리
+  if (isDataLoading) {
+    return (
+      <div 
+        style={{ 
+          padding: "12px",
+          backgroundColor: currentColors.background,
+          minHeight: "100vh",
+          color: currentColors.text
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: currentColors.surface,
+            padding: "32px 16px",
+            borderRadius: "12px",
+            border: `1px solid ${currentColors.border}`,
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              border: `4px solid ${currentColors.border}`,
+              borderTop: `4px solid ${currentColors.primary}`,
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto 16px",
+            }}
+          />
+          <p style={{ color: currentColors.textSecondary, margin: "0", fontSize: "14px" }}>
+            🎮 미니게임 로딩 중...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ 에러 상태 처리
+  if (!pastWinningNumbers || pastWinningNumbers.length === 0) {
+    return (
+      <div 
+        style={{ 
+          padding: "12px",
+          backgroundColor: currentColors.background,
+          minHeight: "100vh",
+          color: currentColors.text
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: currentColors.surface,
+            padding: "32px 16px",
+            borderRadius: "12px",
+            border: `1px solid ${currentColors.border}`,
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontSize: "48px", marginBottom: "16px" }}>😔</div>
+          <h3 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0 0 8px 0" }}>
+            데이터를 불러올 수 없습니다
+          </h3>
+          <p style={{ color: currentColors.textSecondary, margin: "0", fontSize: "14px" }}>
+            로또 데이터가 로드되지 않아 미니게임을 시작할 수 없습니다.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  console.log("🎮 MiniGame 정상 렌더링", { selectedGame, gamesCount: games.length });
+
   return (
-    <div style={{ padding: "12px" }}>
+    <div 
+      style={{ 
+        padding: "12px",
+        backgroundColor: currentColors.background,
+        minHeight: "100vh",
+        color: currentColors.text
+      }}
+    >
       {/* 헤더 */}
       <div
         style={{
@@ -449,6 +586,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
               <button
                 key={game.id}
                 onClick={() => {
+                  console.log(`🎮 ${game.name} 선택됨`);
                   setSelectedGame(game.id);
                   if (game.id === "guess") startGuessGame();
                 }}
@@ -541,7 +679,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
               🎯 번호 맞추기 게임
             </h3>
             <button
-              onClick={() => setSelectedGame(null)}
+              onClick={() => {
+                console.log("🔙 게임 선택으로 돌아가기");
+                setSelectedGame(null);
+              }}
               style={{
                 padding: "6px 12px",
                 backgroundColor: currentColors.textSecondary,
@@ -740,7 +881,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
               🎲 가상 로또 시뮬레이션
             </h3>
             <button
-              onClick={() => setSelectedGame(null)}
+              onClick={() => {
+                console.log("🔙 게임 선택으로 돌아가기");
+                setSelectedGame(null);
+              }}
               style={{
                 padding: "6px 12px",
                 backgroundColor: currentColors.textSecondary,
