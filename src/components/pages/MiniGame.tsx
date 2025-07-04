@@ -12,15 +12,15 @@ interface MiniGameProps {
   theme?: "light" | "dark";
 }
 
-// 🎯 타입 정의 (color 프로퍼티 포함)
+// 🎯 타입 정의 (color를 별도로 관리)
 interface BallPosition {
   x: number;
   y: number;
-  color: 'gold' | 'red' | 'blue' | 'purple' | 'green';
 }
 
 interface DrawGameState {
   ballPosition: BallPosition | null;
+  ballColor: 'gold' | 'red' | 'blue' | 'purple' | 'green';
   isDrawing: boolean;
   drawnNumbers: number[];
   currentNumber: number | null;
@@ -70,6 +70,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
   // 럭키 드로우 게임 상태
   const [drawGame, setDrawGame] = useState<DrawGameState>({
     ballPosition: null,
+    ballColor: 'gold',
     isDrawing: false,
     drawnNumbers: [],
     currentNumber: null,
@@ -212,6 +213,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
   const startLuckyDraw = () => {
     setDrawGame({
       ballPosition: null,
+      ballColor: 'gold',
       isDrawing: false,
       drawnNumbers: [],
       currentNumber: null,
@@ -242,8 +244,8 @@ const MiniGame: React.FC<MiniGameProps> = ({
         ballPosition: {
           x: Math.random() * 300,
           y: Math.random() * 200,
-          color: colors[Math.floor(Math.random() * colors.length)]
-        }
+        },
+        ballColor: colors[Math.floor(Math.random() * colors.length)]
       }));
 
       if (animationStep >= maxSteps) {
@@ -264,8 +266,8 @@ const MiniGame: React.FC<MiniGameProps> = ({
             ballPosition: {
               x: 150,
               y: 100,
-              color: 'gold'
-            }
+            },
+            ballColor: 'gold'
           }));
 
           // 점수 계산 (과거 당첨번호에 포함된 번호면 보너스)
@@ -449,6 +451,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     setGameScore(0);
     setDrawGame({
       ballPosition: null,
+      ballColor: 'gold',
       isDrawing: false,
       drawnNumbers: [],
       currentNumber: null,
@@ -747,10 +750,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   width: "20px",
                   height: "20px",
                   borderRadius: "50%",
-                  backgroundColor: drawGame.ballPosition.color === 'gold' ? '#fbbf24' :
-                                 drawGame.ballPosition.color === 'red' ? '#ef4444' :
-                                 drawGame.ballPosition.color === 'blue' ? '#3b82f6' :
-                                 drawGame.ballPosition.color === 'purple' ? '#8b5cf6' : '#10b981',
+                  backgroundColor: drawGame.ballColor === 'gold' ? '#fbbf24' :
+                                 drawGame.ballColor === 'red' ? '#ef4444' :
+                                 drawGame.ballColor === 'blue' ? '#3b82f6' :
+                                 drawGame.ballColor === 'purple' ? '#8b5cf6' : '#10b981',
                   transition: drawGame.isDrawing ? "none" : "all 0.5s ease",
                   boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
                 }}
