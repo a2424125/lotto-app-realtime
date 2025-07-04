@@ -78,11 +78,11 @@ const nextConfig = {
     ];
   },
 
-  // 환경 변수 설정
+  // 환경 변수 설정 - 최대 회차 증가
   env: {
     CUSTOM_API_BASE_URL: process.env.CUSTOM_API_BASE_URL || "",
     CRAWLER_TIMEOUT: process.env.CRAWLER_TIMEOUT || "30000",
-    MAX_ROUNDS_PER_REQUEST: process.env.MAX_ROUNDS_PER_REQUEST || "500",
+    MAX_ROUNDS_PER_REQUEST: process.env.MAX_ROUNDS_PER_REQUEST || "1200", // 500 → 1200
     CACHE_DURATION: process.env.CACHE_DURATION || "300000", // 5분
   },
 
