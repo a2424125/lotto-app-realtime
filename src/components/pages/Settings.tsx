@@ -141,8 +141,7 @@ const Settings: React.FC<SettingsProps> = ({
           borderRadius: "8px",
           border: `1px solid ${currentColors.border}`,
           marginBottom: "12px",
-          textAlign: "center",
-        }}
+          }}
       >
         <h2
           style={{
