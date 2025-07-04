@@ -862,8 +862,8 @@ const LottoApp = () => {
         )}
         {/* 다음 추첨 미니 정보 */}
         {nextDrawInfo && nextDrawInfo.daysUntilDraw <= 3 && (
-          <span
-            style={{ color: "#dc2626", marginLeft: "8px", fontWeight: "bold" }}
+          <div
+            style={{ color: "#dc2626", marginLeft: "8px", fontWeight: "bold", textAlign: "center" }}
           >
             • 다음 추첨{" "}
             {nextDrawInfo.daysUntilDraw === 0
@@ -871,7 +871,7 @@ const LottoApp = () => {
               : nextDrawInfo.daysUntilDraw === 1
               ? "내일!"
               : `${nextDrawInfo.daysUntilDraw}일 후`}
-          </span>
+          </div>
         )}
       </div>
 
