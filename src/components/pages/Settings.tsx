@@ -158,7 +158,7 @@ const Settings: React.FC<SettingsProps> = ({
           style={{
             fontSize: "12px",
             color: currentColors.textSecondary,
-            margin: "0 0 16px 0",
+            margin: "0",
           }}
         >
           실시간 로또 앱 환경설정 및 시스템 관리
