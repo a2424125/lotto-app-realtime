@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+  // 스크래치 뽑기 게임 상태
+  const [import React, { useState, useEffect } from "react";
 import LottoNumberBall from "../shared/LottoNumberBall";
 
 interface MiniGameProps {
@@ -21,20 +22,20 @@ interface GameStats {
   totalEarned: number;
   guessGameWins: number;
   simulationWins: number;
-  gachaWins: number;
-  collectedCombos: string[];
+  scratchWins: number;
   lastDailyBonus: string;
   emergencyCharges: number;
   lastEmergencyCharge: string;
 }
 
-interface GachaItem {
-  id: string;
-  name: string;
-  numbers: number[];
-  rarity: "common" | "rare" | "epic" | "legendary";
-  points: number;
-  description: string;
+interface ScratchCard {
+  id: number;
+  isScratched: boolean;
+  prize: {
+    type: "1st" | "2nd" | "3rd" | "lose";
+    points: number;
+    name: string;
+  };
 }
 
 const MiniGame: React.FC<MiniGameProps> = ({
@@ -60,8 +61,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
           totalEarned: parsed.totalEarned || 0,
           guessGameWins: parsed.guessGameWins || 0,
           simulationWins: parsed.simulationWins || 0,
-          gachaWins: parsed.gachaWins || 0,
-          collectedCombos: parsed.collectedCombos || [],
+          scratchWins: parsed.scratchWins || parsed.gachaWins || 0, // 이전 gachaWins 호환
           lastDailyBonus: parsed.lastDailyBonus || "",
           emergencyCharges: parsed.emergencyCharges || 0,
           lastEmergencyCharge: parsed.lastEmergencyCharge || "",
@@ -83,8 +83,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
       totalEarned: 0,
       guessGameWins: 0,
       simulationWins: 0,
-      gachaWins: 0,
-      collectedCombos: [],
+      scratchWins: 0,
       lastDailyBonus: "",
       emergencyCharges: 0,
       lastEmergencyCharge: "",
@@ -115,13 +114,14 @@ const MiniGame: React.FC<MiniGameProps> = ({
     speed: 1,
   });
 
-  // 뽑기 게임 상태
-  const [gachaGame, setGachaGame] = useState({
-    isOpening: false,
-    lastPulled: null as GachaItem | null,
-    pullCost: 20,
-    inventory: [] as GachaItem[],
-    showInventory: false,
+  // 스크래치 뽑기 게임 상태
+  const [scratchGame, setScratchGame] = useState({
+    cards: [] as ScratchCard[],
+    scratchCost: 20,
+    cardsPerBoard: 48, // 6x8 격자
+    currentBoard: 1,
+    isScratching: false,
+    lastScratched: null as ScratchCard | null,
   });
 
   // 실제 회차 범위 정보 사용
@@ -191,7 +191,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
   const currentColors = colors[theme];
 
-  // 게임 목록 - 3개로 확장
+  // 게임 목록 - 스크래치 게임으로 변경
   const games = [
     {
       id: "guess",
@@ -212,37 +212,63 @@ const MiniGame: React.FC<MiniGameProps> = ({
       earnPoints: "당첨시 20-1000pt",
     },
     {
-      id: "gacha",
-      name: "번호 뽑기",
-      desc: "신비한 캡슐에서 특별한 번호 조합을 뽑아보세요!",
-      emoji: "🎁",
+      id: "scratch",
+      name: "추억의 뽑기",
+      desc: "스크래치 카드를 긁어서 숨겨진 상품을 찾아보세요!",
+      emoji: "🎫",
       color: "#f59e0b",
       difficulty: "초급",
-      earnPoints: "뽑기시 10-500pt",
+      earnPoints: "1등 500pt, 2등 100pt",
     },
   ];
 
-  // 뽑기 아이템 풀
-  const gachaPool: GachaItem[] = [
-    // 일반 (70%)
-    { id: "c1", name: "연속번호 조합", numbers: [1, 2, 3, 4, 5, 6], rarity: "common", points: 10, description: "1부터 6까지 연속번호" },
-    { id: "c2", name: "짝수 조합", numbers: [2, 4, 6, 8, 10, 12], rarity: "common", points: 15, description: "모두 짝수인 조합" },
-    { id: "c3", name: "홀수 조합", numbers: [1, 3, 5, 7, 9, 11], rarity: "common", points: 15, description: "모두 홀수인 조합" },
-    { id: "c4", name: "저번대 조합", numbers: [1, 5, 9, 13, 17, 21], rarity: "common", points: 12, description: "1-20대 위주 조합" },
+  // 스크래치 카드 보드 생성
+  const generateScratchBoard = (): ScratchCard[] => {
+    const cards: ScratchCard[] = [];
+    const totalCards = scratchGame.cardsPerBoard;
     
-    // 레어 (20%)
-    { id: "r1", name: "피보나치 조합", numbers: [1, 1, 2, 3, 5, 8], rarity: "rare", points: 50, description: "수학적 피보나치 수열" },
-    { id: "r2", name: "소수 조합", numbers: [2, 3, 5, 7, 11, 13], rarity: "rare", points: 60, description: "모두 소수인 조합" },
-    { id: "r3", name: "제곱수 조합", numbers: [1, 4, 9, 16, 25, 36], rarity: "rare", points: 55, description: "완전제곱수 조합" },
+    // 당첨 확률 설정
+    const prizes = [
+      { type: "1st" as const, points: 500, name: "1등", count: 1 },      // 2% (1/48)
+      { type: "2nd" as const, points: 100, name: "2등", count: 2 },      // 4% (2/48)  
+      { type: "3rd" as const, points: 50, name: "3등", count: 5 },       // 10% (5/48)
+      { type: "lose" as const, points: 0, name: "꽝", count: 40 },       // 84% (40/48)
+    ];
     
-    // 에픽 (8%)
-    { id: "e1", name: "황금비율 조합", numbers: [8, 13, 21, 34, 55, 89], rarity: "epic", points: 150, description: "황금비율 기반 조합" },
-    { id: "e2", name: "별자리 조합", numbers: [7, 14, 21, 28, 35, 42], rarity: "epic", points: 120, description: "7의 배수 별자리 조합" },
+    // 당첨 카드들 생성
+    let cardId = 0;
+    prizes.forEach(prize => {
+      for (let i = 0; i < prize.count; i++) {
+        cards.push({
+          id: cardId++,
+          isScratched: false,
+          prize: {
+            type: prize.type,
+            points: prize.points,
+            name: prize.name,
+          },
+        });
+      }
+    });
     
-    // 레전드 (2%)
-    { id: "l1", name: "행운의 777", numbers: [7, 17, 27, 37, 41, 43], rarity: "legendary", points: 500, description: "전설의 럭키 세븐 조합" },
-    { id: "l2", name: "완벽한 균형", numbers: [3, 15, 23, 31, 39, 44], rarity: "legendary", points: 400, description: "모든 구간 완벽 분배" },
-  ];
+    // 카드 순서 섞기
+    for (let i = cards.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [cards[i], cards[j]] = [cards[j], cards[i]];
+    }
+    
+    return cards;
+  };
+
+  // 게임 시작시 스크래치 보드 초기화
+  useEffect(() => {
+    if (scratchGame.cards.length === 0) {
+      setScratchGame(prev => ({
+        ...prev,
+        cards: generateScratchBoard(),
+      }));
+    }
+  }, [scratchGame.cardsPerBoard]);
 
   // 현재 날짜 문자열 가져오기
   const getTodayString = (): string => {
@@ -595,62 +621,69 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }, 2000);
   };
 
-  // 뽑기 게임 실행
-  const pullGacha = () => {
-    if (gameStats.gamePoints < gachaGame.pullCost) {
+  // 스크래치 카드 긁기
+  const scratchCard = (cardId: number) => {
+    if (gameStats.gamePoints < scratchGame.scratchCost) {
       showChargeOptions();
       return;
     }
 
-    setGachaGame(prev => ({ ...prev, isOpening: true }));
+    const card = scratchGame.cards.find(c => c.id === cardId);
+    if (!card || card.isScratched) return;
+
+    setScratchGame(prev => ({ ...prev, isScratching: true }));
 
     setTimeout(() => {
-      // 확률에 따른 뽑기
-      const rand = Math.random();
-      let selectedItem: GachaItem;
-
-      if (rand < 0.02) {
-        // 2% 레전드
-        selectedItem = gachaPool.filter(item => item.rarity === "legendary")[Math.floor(Math.random() * 2)];
-      } else if (rand < 0.10) {
-        // 8% 에픽
-        selectedItem = gachaPool.filter(item => item.rarity === "epic")[Math.floor(Math.random() * 2)];
-      } else if (rand < 0.30) {
-        // 20% 레어
-        selectedItem = gachaPool.filter(item => item.rarity === "rare")[Math.floor(Math.random() * 3)];
-      } else {
-        // 70% 일반
-        selectedItem = gachaPool.filter(item => item.rarity === "common")[Math.floor(Math.random() * 4)];
-      }
-
-      setGachaGame(prev => ({
+      // 카드 긁기
+      setScratchGame(prev => ({
         ...prev,
-        isOpening: false,
-        lastPulled: selectedItem,
-        inventory: [...prev.inventory, selectedItem],
+        cards: prev.cards.map(c => 
+          c.id === cardId ? { ...c, isScratched: true } : c
+        ),
+        lastScratched: card,
+        isScratching: false,
       }));
 
+      // 포인트 계산
+      const earnedPoints = card.prize.points;
+      
       setGameStats(prev => ({
         ...prev,
-        gamePoints: prev.gamePoints - gachaGame.pullCost + selectedItem.points,
-        totalUsed: prev.totalUsed + gachaGame.pullCost,
-        totalEarned: prev.totalEarned + selectedItem.points,
+        gamePoints: prev.gamePoints - scratchGame.scratchCost + earnedPoints,
+        totalUsed: prev.totalUsed + scratchGame.scratchCost,
+        totalEarned: prev.totalEarned + earnedPoints,
         gamesPlayed: prev.gamesPlayed + 1,
-        gachaWins: prev.gachaWins + 1,
-        collectedCombos: prev.collectedCombos.includes(selectedItem.id) 
-          ? prev.collectedCombos 
-          : [...prev.collectedCombos, selectedItem.id],
+        totalWins: earnedPoints > 0 ? prev.totalWins + 1 : prev.totalWins,
+        scratchWins: earnedPoints > 0 ? prev.scratchWins + 1 : prev.scratchWins,
       }));
 
-      const rarityText = {
-        common: "일반",
-        rare: "레어",
-        epic: "에픽",
-        legendary: "레전드"
-      };
+      if (earnedPoints > 0) {
+        alert(`🎉 ${card.prize.name} 당첨!\n${earnedPoints}pt 획득!`);
+      }
+    }, 1000);
+  };
 
-      alert(`🎁 ${rarityText[selectedItem.rarity]} 등급!\n"${selectedItem.name}" 획득!\n${selectedItem.points}pt 획득!`);
-    }, 2000);
+  // 새 보드 생성
+  const generateNewBoard = () => {
+    if (gameStats.gamePoints < 100) {
+      alert("새 보드 생성에는 100pt가 필요합니다! 🎫");
+      return;
+    }
+
+    setScratchGame(prev => ({
+      ...prev,
+      cards: generateScratchBoard(),
+      currentBoard: prev.currentBoard + 1,
+      lastScratched: null,
+    }));
+
+    setGameStats(prev => ({
+      ...prev,
+      gamePoints: prev.gamePoints - 100,
+      totalUsed: prev.totalUsed + 100,
+    }));
+
+    alert("🎫 새로운 스크래치 보드가 생성되었습니다!");
   };
 
   // 번호 선택/해제
@@ -774,13 +807,23 @@ const MiniGame: React.FC<MiniGameProps> = ({
           >
             🔋 포인트 충전소
           </h4>
-          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+          <div 
+            style={{ 
+              display: "grid",
+              gridTemplateColumns: canGetDailyBonus() && canUseEmergencyCharge() 
+                ? "repeat(3, 1fr)" 
+                : canGetDailyBonus() || canUseEmergencyCharge() 
+                ? "repeat(2, 1fr)" 
+                : "1fr",
+              gap: "8px",
+              alignItems: "stretch",
+            }}
+          >
             {canGetDailyBonus() && (
               <button
                 onClick={claimDailyBonus}
                 style={{
-                  flex: 1,
-                  padding: "8px 6px",
+                  padding: "12px 8px",
                   backgroundColor: "#10b981",
                   color: "white",
                   border: "none",
@@ -789,18 +832,23 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   fontWeight: "600",
                   cursor: "pointer",
                   textAlign: "center",
-                  minWidth: "60px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: "60px",
                 }}
               >
-                📅<br/>일일보너스<br/>+100pt
+                <div style={{ fontSize: "16px", marginBottom: "4px" }}>📅</div>
+                <div>일일보너스</div>
+                <div style={{ fontSize: "11px", fontWeight: "bold" }}>+100pt</div>
               </button>
             )}
             {canUseEmergencyCharge() && (
               <button
                 onClick={useEmergencyCharge}
                 style={{
-                  flex: 1,
-                  padding: "8px 6px",
+                  padding: "12px 8px",
                   backgroundColor: "#ef4444",
                   color: "white",
                   border: "none",
@@ -809,17 +857,22 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   fontWeight: "600",
                   cursor: "pointer",
                   textAlign: "center",
-                  minWidth: "60px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: "60px",
                 }}
               >
-                🆘<br/>긴급충전<br/>+50pt
+                <div style={{ fontSize: "16px", marginBottom: "4px" }}>🆘</div>
+                <div>긴급충전</div>
+                <div style={{ fontSize: "11px", fontWeight: "bold" }}>+50pt</div>
               </button>
             )}
             <button
               onClick={watchAd}
               style={{
-                flex: 1,
-                padding: "8px 6px",
+                padding: "12px 8px",
                 backgroundColor: "#8b5cf6",
                 color: "white",
                 border: "none",
@@ -828,10 +881,16 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 fontWeight: "600",
                 cursor: "pointer",
                 textAlign: "center",
-                minWidth: "60px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: "60px",
               }}
             >
-              📺<br/>광고시청<br/>+30pt
+              <div style={{ fontSize: "16px", marginBottom: "4px" }}>📺</div>
+              <div>광고시청</div>
+              <div style={{ fontSize: "11px", fontWeight: "bold" }}>+30pt</div>
             </button>
           </div>
           <div
