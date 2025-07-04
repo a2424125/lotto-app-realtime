@@ -454,11 +454,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
       // 랜덤 결과 생성 (3-5초 후)
       const spinTime = 3000 + Math.random() * 2000;
       const resultNumber = Math.floor(Math.random() * 45) + 1;
-      const targetAngle = prev => prev.currentAngle + 360 * 5 + (resultNumber * 8); // 5바퀴 + 결과 각도
 
       setRouletteGame(prev => ({
         ...prev,
-        targetAngle: targetAngle(prev),
+        targetAngle: prev.currentAngle + 360 * 5 + (resultNumber * 8), // 5바퀴 + 결과 각도
       }));
 
       setTimeout(() => {
