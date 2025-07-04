@@ -626,7 +626,7 @@ const Settings: React.FC<SettingsProps> = ({
                 color: currentColors.text,
               }}
             >
-              2.0.0 (실시간)
+              2.0.0
             </span>
           </div>
           <div
