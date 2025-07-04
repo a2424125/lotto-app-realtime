@@ -636,11 +636,11 @@ const MiniGame: React.FC<MiniGameProps> = ({
       const wrongPosition = numberMatches - exactMatches;
 
       let pointReward = 0;
-      if (exactMatches === 6) pointReward = 3000;
-      else if (exactMatches >= 4) pointReward = 800;
-      else if (exactMatches >= 2) pointReward = 400;
-      else if (numberMatches >= 3) pointReward = 200;
-      else if (numberMatches >= 1) pointReward = 80;
+      if (exactMatches === 6) pointReward = 100000;
+      else if (exactMatches >= 4) pointReward = 30000;
+      else if (exactMatches >= 2) pointReward = 10000;
+      else if (numberMatches >= 3) pointReward = 5000;
+      else if (numberMatches >= 1) pointReward = 2000;
 
       let hint = "";
       if (exactMatches === 6) {
