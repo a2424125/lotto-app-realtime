@@ -46,12 +46,39 @@ const MiniGame: React.FC<MiniGameProps> = ({
 }) => {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [gameStats, setGameStats] = useState<GameStats>(() => {
-    const saved = localStorage.getItem("lotto-game-stats");
-    return saved ? JSON.parse(saved) : {
+    try {
+      const saved = localStorage.getItem("lotto-game-stats");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // 기존 데이터에 새 필드들을 안전하게 추가
+        return {
+          gamesPlayed: parsed.gamesPlayed || 0,
+          bestScore: parsed.bestScore || 0,
+          totalWins: parsed.totalWins || 0,
+          gamePoints: parsed.gamePoints || 1000,
+          totalUsed: parsed.totalUsed || 0,
+          totalEarned: parsed.totalEarned || 0,
+          guessGameWins: parsed.guessGameWins || 0,
+          simulationWins: parsed.simulationWins || 0,
+          gachaWins: parsed.gachaWins || 0,
+          collectedCombos: parsed.collectedCombos || [],
+          lastDailyBonus: parsed.lastDailyBonus || "",
+          emergencyCharges: parsed.emergencyCharges || 0,
+          lastEmergencyCharge: parsed.lastEmergencyCharge || "",
+        };
+      }
+    } catch (error) {
+      console.error("게임 데이터 로딩 오류:", error);
+      // 오류 발생시 localStorage 클리어
+      localStorage.removeItem("lotto-game-stats");
+    }
+    
+    // 기본값 반환
+    return {
       gamesPlayed: 0,
       bestScore: 0,
       totalWins: 0,
-      gamePoints: 1000, // 시작 포인트 1000점
+      gamePoints: 1000,
       totalUsed: 0,
       totalEarned: 0,
       guessGameWins: 0,
@@ -219,136 +246,174 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
   // 현재 날짜 문자열 가져오기
   const getTodayString = (): string => {
-    return new Date().toISOString().split('T')[0];
+    try {
+      return new Date().toISOString().split('T')[0];
+    } catch (error) {
+      console.error("날짜 가져오기 오류:", error);
+      return "2025-01-01"; // 기본값
+    }
   };
 
   // 일일 보너스 확인
   const canGetDailyBonus = (): boolean => {
-    const today = getTodayString();
-    return gameStats.lastDailyBonus !== today;
+    try {
+      const today = getTodayString();
+      return gameStats.lastDailyBonus !== today;
+    } catch (error) {
+      console.error("일일 보너스 확인 오류:", error);
+      return true;
+    }
   };
 
   // 긴급 충전 가능 확인
   const canUseEmergencyCharge = (): boolean => {
-    const today = getTodayString();
-    if (gameStats.lastEmergencyCharge !== today) {
-      return true; // 새로운 날이면 초기화
+    try {
+      const today = getTodayString();
+      if (gameStats.lastEmergencyCharge !== today) {
+        return true;
+      }
+      return (gameStats.emergencyCharges || 0) < 2;
+    } catch (error) {
+      console.error("긴급 충전 확인 오류:", error);
+      return true;
     }
-    return gameStats.emergencyCharges < 2; // 하루 2회 제한
   };
 
   // 일일 보너스 받기
   const claimDailyBonus = () => {
-    if (!canGetDailyBonus()) {
-      alert("오늘은 이미 일일 보너스를 받았습니다! 🎁");
-      return;
+    try {
+      if (!canGetDailyBonus()) {
+        alert("오늘은 이미 일일 보너스를 받았습니다! 🎁");
+        return;
+      }
+
+      const bonusPoints = 100;
+      setGameStats(prev => ({
+        ...prev,
+        gamePoints: prev.gamePoints + bonusPoints,
+        totalEarned: prev.totalEarned + bonusPoints,
+        lastDailyBonus: getTodayString(),
+      }));
+
+      alert(`🎁 일일 출석 보너스!\n${bonusPoints}pt를 받았습니다! ✨`);
+    } catch (error) {
+      console.error("일일 보너스 오류:", error);
     }
-
-    const bonusPoints = 100;
-    setGameStats(prev => ({
-      ...prev,
-      gamePoints: prev.gamePoints + bonusPoints,
-      totalEarned: prev.totalEarned + bonusPoints,
-      lastDailyBonus: getTodayString(),
-    }));
-
-    alert(`🎁 일일 출석 보너스!\n${bonusPoints}pt를 받았습니다! ✨`);
   };
 
   // 긴급 충전
   const useEmergencyCharge = () => {
-    if (!canUseEmergencyCharge()) {
-      alert("오늘의 긴급 충전을 모두 사용했습니다! (하루 2회 제한) 🚫");
-      return;
+    try {
+      if (!canUseEmergencyCharge()) {
+        alert("오늘의 긴급 충전을 모두 사용했습니다! (하루 2회 제한) 🚫");
+        return;
+      }
+
+      const chargePoints = 50;
+      const today = getTodayString();
+      
+      setGameStats(prev => ({
+        ...prev,
+        gamePoints: prev.gamePoints + chargePoints,
+        totalEarned: prev.totalEarned + chargePoints,
+        emergencyCharges: prev.lastEmergencyCharge === today ? (prev.emergencyCharges || 0) + 1 : 1,
+        lastEmergencyCharge: today,
+      }));
+
+      const remaining = canUseEmergencyCharge() ? 1 : 0;
+      alert(`🆘 긴급 충전 완료!\n${chargePoints}pt를 받았습니다!\n오늘 남은 긴급 충전: ${remaining}회`);
+    } catch (error) {
+      console.error("긴급 충전 오류:", error);
     }
-
-    const chargePoints = 50;
-    const today = getTodayString();
-    
-    setGameStats(prev => ({
-      ...prev,
-      gamePoints: prev.gamePoints + chargePoints,
-      totalEarned: prev.totalEarned + chargePoints,
-      emergencyCharges: prev.lastEmergencyCharge === today ? prev.emergencyCharges + 1 : 1,
-      lastEmergencyCharge: today,
-    }));
-
-    const remaining = canUseEmergencyCharge() ? 1 : 0;
-    alert(`🆘 긴급 충전 완료!\n${chargePoints}pt를 받았습니다!\n오늘 남은 긴급 충전: ${remaining}회`);
   };
 
   // 광고 시청 (시뮬레이션)
   const watchAd = () => {
-    // 실제로는 광고 SDK 연동
-    const adPoints = 30;
-    
-    // 2초 딜레이로 광고 시청 시뮬레이션
-    const confirmWatch = window.confirm("광고를 시청하여 30pt를 받으시겠습니까? 📺");
-    if (!confirmWatch) return;
+    try {
+      const adPoints = 30;
+      
+      const confirmWatch = window.confirm("광고를 시청하여 30pt를 받으시겠습니까? 📺");
+      if (!confirmWatch) return;
 
-    setTimeout(() => {
-      setGameStats(prev => ({
-        ...prev,
-        gamePoints: prev.gamePoints + adPoints,
-        totalEarned: prev.totalEarned + adPoints,
-      }));
-      alert(`📺 광고 시청 완료!\n${adPoints}pt를 받았습니다! 감사합니다! ✨`);
-    }, 2000);
+      setTimeout(() => {
+        setGameStats(prev => ({
+          ...prev,
+          gamePoints: prev.gamePoints + adPoints,
+          totalEarned: prev.totalEarned + adPoints,
+        }));
+        alert(`📺 광고 시청 완료!\n${adPoints}pt를 받았습니다! 감사합니다! ✨`);
+      }, 2000);
+    } catch (error) {
+      console.error("광고 시청 오류:", error);
+    }
   };
 
   // 포인트 부족 시 충전 옵션 표시
   const showChargeOptions = () => {
-    let options = [];
-    
-    if (canGetDailyBonus()) {
-      options.push("📅 일일 보너스 (100pt)");
-    }
-    
-    if (canUseEmergencyCharge()) {
-      const remaining = gameStats.lastEmergencyCharge === getTodayString() ? 2 - gameStats.emergencyCharges : 2;
-      options.push(`🆘 긴급 충전 (50pt) - 오늘 ${remaining}회 남음`);
-    }
-    
-    options.push("📺 광고 시청 (30pt)");
+    try {
+      let options = [];
+      
+      if (canGetDailyBonus()) {
+        options.push("📅 일일 보너스 (100pt)");
+      }
+      
+      if (canUseEmergencyCharge()) {
+        const today = getTodayString();
+        const remaining = gameStats.lastEmergencyCharge === today ? 2 - (gameStats.emergencyCharges || 0) : 2;
+        options.push(`🆘 긴급 충전 (50pt) - 오늘 ${remaining}회 남음`);
+      }
+      
+      options.push("📺 광고 시청 (30pt)");
 
-    if (options.length === 1 && !canGetDailyBonus() && !canUseEmergencyCharge()) {
-      // 광고만 남은 경우
-      const watchAdConfirm = window.confirm("포인트가 부족합니다! 😅\n\n📺 광고를 시청하여 30pt를 받으시겠습니까?");
-      if (watchAdConfirm) {
+      if (options.length === 1 && !canGetDailyBonus() && !canUseEmergencyCharge()) {
+        const watchAdConfirm = window.confirm("포인트가 부족합니다! 😅\n\n📺 광고를 시청하여 30pt를 받으시겠습니까?");
+        if (watchAdConfirm) {
+          watchAd();
+        }
+        return;
+      }
+
+      const choice = window.prompt(
+        "포인트가 부족합니다! 어떻게 충전하시겠습니까? 🔋\n\n" +
+        options.map((opt, i) => `${i + 1}. ${opt}`).join("\n") + 
+        "\n\n번호를 입력하세요:"
+      );
+
+      const choiceNum = parseInt(choice || "0");
+      if (choiceNum < 1 || choiceNum > options.length) return;
+
+      let currentIndex = 1;
+      
+      if (canGetDailyBonus()) {
+        if (choiceNum === currentIndex) {
+          claimDailyBonus();
+          return;
+        }
+        currentIndex++;
+      }
+      
+      if (canUseEmergencyCharge()) {
+        if (choiceNum === currentIndex) {
+          useEmergencyCharge();
+          return;
+        }
+        currentIndex++;
+      }
+      
+      if (choiceNum === currentIndex) {
         watchAd();
       }
-      return;
-    }
-
-    const choice = window.prompt(
-      "포인트가 부족합니다! 어떻게 충전하시겠습니까? 🔋\n\n" +
-      options.map((opt, i) => `${i + 1}. ${opt}`).join("\n") + 
-      "\n\n번호를 입력하세요:"
-    );
-
-    const choiceNum = parseInt(choice || "0");
-    if (choiceNum < 1 || choiceNum > options.length) return;
-
-    let currentIndex = 1;
-    
-    if (canGetDailyBonus()) {
-      if (choiceNum === currentIndex) {
-        claimDailyBonus();
-        return;
+    } catch (error) {
+      console.error("충전 옵션 표시 오류:", error);
+      // 폴백으로 간단한 충전 제공
+      const simpleCharge = window.confirm("포인트가 부족합니다! 100pt를 받으시겠습니까?");
+      if (simpleCharge) {
+        setGameStats(prev => ({
+          ...prev,
+          gamePoints: prev.gamePoints + 100,
+          totalEarned: prev.totalEarned + 100,
+        }));
       }
-      currentIndex++;
-    }
-    
-    if (canUseEmergencyCharge()) {
-      if (choiceNum === currentIndex) {
-        useEmergencyCharge();
-        return;
-      }
-      currentIndex++;
-    }
-    
-    if (choiceNum === currentIndex) {
-      watchAd();
     }
   };
   useEffect(() => {
