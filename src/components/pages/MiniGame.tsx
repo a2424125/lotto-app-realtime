@@ -26,6 +26,49 @@ interface GameStats {
   dailyAdDate?: string;
 }
 
+interface RouletteGameState {
+  isSpinning: boolean;
+  currentAngle: number;
+  targetAngle: number;
+  selectedNumber: number | null;
+  userBet: number | null;
+  betAmount: number;
+  cost: number;
+  multipliers: Array<{
+    range: [number, number];
+    multiplier: number;
+    color: string;
+  }>;
+  spinHistory: Array<{
+    bet: number;
+    result: number;
+    multiplier: number;
+    winnings: number;
+    timestamp: string;
+  }>;
+}
+
+interface DrawGameState {
+  isPlaying: boolean;
+  selectedSlot: number | null;
+  hoveredSlot: number | null;
+  slots: Array<{
+    id: number;
+    isRevealed: boolean;
+    prize: any;
+    isWinner: boolean;
+  }>;
+  result: any;
+  cost: number;
+  prizes: Array<{
+    name: string;
+    points: number;
+    probability: number;
+    emoji: string;
+    color: string;
+  }>;
+}
+
 const MiniGame: React.FC<MiniGameProps> = ({
   pastWinningNumbers,
   isDataLoading = false,
@@ -99,17 +142,17 @@ const MiniGame: React.FC<MiniGameProps> = ({
   });
 
   // 🆕 업그레이드된 실제 뽑기게임 상태
-  const [drawGame, setDrawGame] = useState({
+  const [drawGame, setDrawGame] = useState<DrawGameState>({
     isPlaying: false,
-    selectedSlot: null as number | null,
-    hoveredSlot: null as number | null,
+    selectedSlot: null,
+    hoveredSlot: null,
     slots: Array.from({ length: 20 }, (_, i) => ({
       id: i,
       isRevealed: false,
-      prize: null as any,
+      prize: null,
       isWinner: false,
     })),
-    result: null as any,
+    result: null,
     cost: 150,
     prizes: [
       { name: "1등 대박!", points: 2000, probability: 0.05, emoji: "🏆", color: "#FFD700" },
@@ -120,13 +163,13 @@ const MiniGame: React.FC<MiniGameProps> = ({
     ],
   });
 
-  // 🆕 스피드 룰렛 게임 상태 (신비한 점술소 대체)
-  const [rouletteGame, setRouletteGame] = useState({
+  // 🆕 스피드 룰렛 게임 상태
+  const [rouletteGame, setRouletteGame] = useState<RouletteGameState>({
     isSpinning: false,
     currentAngle: 0,
     targetAngle: 0,
-    selectedNumber: null as number | null,
-    userBet: null as number | null,
+    selectedNumber: null,
+    userBet: null,
     betAmount: 300,
     cost: 250,
     multipliers: [
@@ -136,7 +179,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
       { range: [26, 35], multiplier: 2, color: "#96CEB4" },
       { range: [36, 45], multiplier: 1.5, color: "#FFEAA7" },
     ],
-    spinHistory: [] as any[],
+    spinHistory: [],
   });
 
   // 실제 회차 범위 정보 사용
@@ -481,7 +524,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
           // 구간별 배율 확인
           for (const mult of rouletteGame.multipliers) {
             if (resultNumber >= mult.range[0] && resultNumber <= mult.range[1]) {
-              if (rouletteGame.userBet >= mult.range[0] && rouletteGame.userBet <= mult.range[1]) {
+              if (rouletteGame.userBet && rouletteGame.userBet >= mult.range[0] && rouletteGame.userBet <= mult.range[1]) {
                 winnings = rouletteGame.betAmount * mult.multiplier;
                 multiplier = mult.multiplier;
               }
@@ -514,7 +557,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
           ...prev,
           spinHistory: [
             {
-              bet: prev.userBet,
+              bet: prev.userBet || 0,
               result: resultNumber,
               multiplier,
               winnings,
@@ -535,7 +578,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }
   };
 
-  // 기존 게임들 (번호맞추기, 가상로또) 함수들은 그대로 유지
+  // 기존 게임들 함수들
   const startGuessGame = () => {
     try {
       if ((gameStats?.points || 0) < guessGame.cost) {
@@ -1620,7 +1663,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
         </div>
       )}
 
-      {/* 기존 게임들 (번호맞추기, 가상로또) - 동일하게 유지 */}
+      {/* 기존 게임들 (번호맞추기, 가상로또) */}
       {selectedGame === "guess" && (
         <div
           style={{
@@ -1854,7 +1897,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
         </div>
       )}
 
-      {/* 가상 로또 시뮬레이션 - 기존과 동일 */}
+      {/* 가상 로또 시뮬레이션 */}
       {selectedGame === "simulation" && (
         <div
           style={{
