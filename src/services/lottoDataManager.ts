@@ -245,7 +245,8 @@ class RealtimeLottoDataManager {
     } catch (error) {
       console.error("❌ 히스토리 조회 실패:", error);
 
-      const fallbackData = this.getMultipleDynamicFallbackData();
+      // 🔧 수정: 더 많은 fallback 데이터 생성
+      const fallbackData = this.getMultipleDynamicFallbackData(count);
       return {
         success: false,
         data: fallbackData,
@@ -438,7 +439,7 @@ class RealtimeLottoDataManager {
     console.log("🧹 실시간 데이터 매니저 정리 완료");
   }
 
-  // 🆕 동적 폴백 데이터 (추정 회차 기반)
+  // 🔧 수정: 동적 폴백 데이터 (추정 회차 기반)
   private getDynamicFallbackData(): LottoDrawResult {
     const round = this.estimatedCurrentRound;
     const seed = round * 7919;
@@ -457,11 +458,15 @@ class RealtimeLottoDataManager {
     };
   }
 
-  private getMultipleDynamicFallbackData(): LottoDrawResult[] {
+  // 🔧 수정: 여러 회차 동적 폴백 데이터 생성
+  private getMultipleDynamicFallbackData(count: number = 50): LottoDrawResult[] {
     const results: LottoDrawResult[] = [];
     const currentRound = this.estimatedCurrentRound;
 
-    for (let i = 0; i < 10; i++) {
+    // 🔧 수정: 요청된 수만큼 생성 (최소 50개)
+    const generateCount = Math.max(count, 50);
+
+    for (let i = 0; i < generateCount; i++) {
       const round = currentRound - i;
       const seed = round * 7919;
       const numbers = this.generateConsistentNumbers(seed, 6);
@@ -482,6 +487,7 @@ class RealtimeLottoDataManager {
       });
     }
 
+    console.log(`📊 ${generateCount}개 폴백 데이터 생성: ${currentRound}~${currentRound - generateCount + 1}회차`);
     return results;
   }
 
