@@ -24,6 +24,23 @@ const LottoApp = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [purchaseHistory, setPurchaseHistory] = useState<PurchaseItem[]>([]);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  
+  const [latestResult, setLatestResult] = useState(null);
+
+  useEffect(() => {
+    const fetchLatestResult = async () => {
+      try {
+        const res = await fetch("/api/lotto/latest-result");
+        const data = await res.json();
+        setLatestResult(data);
+      } catch (error) {
+        console.error("로또 당첨 결과를 불러오는 데 실패했습니다:", error);
+      }
+    };
+
+    fetchLatestResult();
+  }, []);
+
   const [autoSave, setAutoSave] = useState<boolean>(false);
 
   // 🆕 실시간 데이터 상태들 (1179회차 반영)
@@ -560,7 +577,7 @@ const LottoApp = () => {
     switch (currentMenu) {
       case "dashboard":
         return (
-          <Dashboard
+          <Dashboard latestResult={latestResult}
             {...commonProps}
             onMenuChange={setCurrentMenu}
             generate1stGradeNumbers={generate1stGradeNumbers}
@@ -595,7 +612,7 @@ const LottoApp = () => {
         return <Settings {...settingsProps} />;
       default:
         return (
-          <Dashboard
+          <Dashboard latestResult={latestResult}
             {...commonProps}
             onMenuChange={setCurrentMenu}
             generate1stGradeNumbers={generate1stGradeNumbers}
