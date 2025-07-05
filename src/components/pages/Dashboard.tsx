@@ -41,11 +41,11 @@ interface NextDrawInfo {
   hasDrawPassed: boolean;
 }
 
+const Dashboard: React.FC<DashboardProps> = (
 
   const winningNumbers = latestResult?.numbers || [];
   const bonusNumber = latestResult?.bonus || null;
-
-const Dashboard: React.FC<DashboardProps> = ({
+{
   pastWinningNumbers,
   onMenuChange,
   generate1stGradeNumbers,
