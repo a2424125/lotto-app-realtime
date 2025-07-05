@@ -48,9 +48,10 @@ const Dashboard: React.FC<DashboardProps> = ({
   theme = "light",
   nextDrawInfo: propNextDrawInfo
 }) => {
+  // 🔧 수정: 정확한 회차 정보 (1179회차 기준)
   const totalRounds = pastWinningNumbers.length;
-  const actualLatestRound = roundRange?.latestRound || 0;
-  const actualOldestRound = roundRange?.oldestRound || 0;
+  const actualLatestRound = roundRange?.latestRound || 1179;
+  const actualOldestRound = roundRange?.oldestRound || Math.max(1, actualLatestRound - totalRounds + 1);
 
   const [nextDrawInfo, setNextDrawInfo] = useState<NextDrawInfo | null>(null);
   const [isLoadingNextDraw, setIsLoadingNextDraw] = useState(false);
@@ -66,6 +67,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     lastUpdate: null,
     source: "unknown"
   });
+
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const colors = {
     light: {
@@ -202,7 +205,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     } catch (error) {
       console.error("❌ 최신 당첨 결과 로드 실패:", error);
 
-      // 🔧 수정: pastWinningNumbers에서 최신 데이터 사용
+      // 🔧 수정: pastWinningNumbers에서 정확한 최신 데이터 사용
       if (pastWinningNumbers.length > 0 && actualLatestRound > 0) {
         const fallbackResult: LottoDrawResult = {
           round: actualLatestRound,
@@ -282,6 +285,36 @@ const Dashboard: React.FC<DashboardProps> = ({
       return `${eok}억원`;
     }
   };
+
+  // 🔧 수정: 정확한 당첨번호 표시 로직
+  const getDisplayNumbers = (): { numbers: number[]; bonusNumber: number; round: number } => {
+    // 1순위: API에서 가져온 최신 결과
+    if (latestResult && latestResult.numbers && latestResult.bonusNumber) {
+      return {
+        numbers: latestResult.numbers,
+        bonusNumber: latestResult.bonusNumber,
+        round: latestResult.round
+      };
+    }
+
+    // 2순위: pastWinningNumbers (App.tsx에서 전달된 데이터)
+    if (pastWinningNumbers.length > 0 && pastWinningNumbers[0].length >= 7) {
+      return {
+        numbers: pastWinningNumbers[0].slice(0, 6),
+        bonusNumber: pastWinningNumbers[0][6],
+        round: actualLatestRound
+      };
+    }
+
+    // 3순위: fallback (로딩 중이거나 데이터 없음)
+    return {
+      numbers: [],
+      bonusNumber: 0,
+      round: actualLatestRound
+    };
+  };
+
+  const displayData = getDisplayNumbers();
 
   return (
     <div style={{ padding: "12px" }}>
@@ -450,7 +483,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         )}
       </div>
 
-      {/* 최신 당첨결과 */}
+      {/* 🔧 수정된 최신 당첨결과 */}
       <div
         style={{
           backgroundColor: currentColors.surface,
@@ -461,67 +494,39 @@ const Dashboard: React.FC<DashboardProps> = ({
         }}
       >
         <div style={{ textAlign: "center", marginBottom: "12px" }}>
-          {latestResult ? (
-            <>
-              <h2
+          <h2
+            style={{
+              fontSize: "18px",
+              fontWeight: "bold",
+              color: currentColors.text,
+              margin: "0 0 4px 0",
+            }}
+          >
+            {displayData.round}회 당첨결과
+            {isLoadingLatest && (
+              <span
                 style={{
-                  fontSize: "18px",
-                  fontWeight: "bold",
-                  color: currentColors.text,
-                  margin: "0 0 4px 0",
-                }}
-              >
-                {latestResult.round}회 당첨결과
-                {isLoadingLatest && (
-                  <span
-                    style={{
-                      marginLeft: "8px",
-                      fontSize: "12px",
-                      opacity: 0.7,
-                    }}
-                  >
-                    ⏳
-                  </span>
-                )}
-              </h2>
-              <p
-                style={{
+                  marginLeft: "8px",
                   fontSize: "12px",
-                  color: currentColors.textSecondary,
-                  margin: "0",
+                  opacity: 0.7,
                 }}
               >
-                ({formatResultDate(latestResult.date)})
-              </p>
-            </>
-          ) : (
-            <>
-              <h2
-                style={{
-                  fontSize: "18px",
-                  fontWeight: "bold",
-                  color: currentColors.text,
-                  margin: "0 0 4px 0",
-                }}
-              >
-                당첨결과 로딩 중...
-              </h2>
-              <div
-                style={{
-                  width: "20px",
-                  height: "20px",
-                  border: `2px solid ${currentColors.border}`,
-                  borderTop: `2px solid ${currentColors.primary}`,
-                  borderRadius: "50%",
-                  animation: "spin 1s linear infinite",
-                  margin: "8px auto",
-                }}
-              />
-            </>
-          )}
+                ⏳
+              </span>
+            )}
+          </h2>
+          <p
+            style={{
+              fontSize: "12px",
+              color: currentColors.textSecondary,
+              margin: "0",
+            }}
+          >
+            ({formatResultDate(latestResult?.date || new Date().toISOString().split('T')[0])})
+          </p>
         </div>
 
-        {/* 당첨번호 + 보너스 번호 표시 */}
+        {/* 🔧 수정된 당첨번호 + 보너스 번호 표시 */}
         <div style={{ textAlign: "center" }}>
           <p
             style={{
@@ -541,11 +546,11 @@ const Dashboard: React.FC<DashboardProps> = ({
               flexWrap: "wrap",
             }}
           >
-            {/* 🔧 수정: 실제 데이터 또는 로딩 상태 표시 */}
-            {latestResult ? (
+            {/* 당첨번호 표시 */}
+            {displayData.numbers.length > 0 ? (
               <>
                 {/* 당첨번호 6개 */}
-                {latestResult.numbers.map((num, i) => (
+                {displayData.numbers.map((num, i) => (
                   <LottoNumberBall key={i} number={num} size="md" theme={theme} />
                 ))}
 
@@ -561,20 +566,37 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </span>
 
                 {/* 보너스 번호 */}
-                <LottoNumberBall
-                  number={latestResult.bonusNumber}
-                  isBonus={true}
-                  size="md"
-                  theme={theme}
-                />
+                {displayData.bonusNumber > 0 && (
+                  <LottoNumberBall
+                    number={displayData.bonusNumber}
+                    isBonus={true}
+                    size="md"
+                    theme={theme}
+                  />
+                )}
               </>
-            ) : pastWinningNumbers.length > 0 ? (
+            ) : (
+              /* 로딩 중일 때 */
               <>
-                {/* fallback: pastWinningNumbers 사용 */}
-                {pastWinningNumbers[0].slice(0, 6).map((num, i) => (
-                  <LottoNumberBall key={i} number={num} size="md" theme={theme} />
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "50%",
+                      backgroundColor: currentColors.gray,
+                      border: `2px dashed ${currentColors.border}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "12px",
+                      color: currentColors.textSecondary,
+                    }}
+                  >
+                    ?
+                  </div>
                 ))}
-
                 <span
                   style={{
                     fontSize: "16px",
@@ -584,19 +606,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 >
                   +
                 </span>
-
-                <LottoNumberBall
-                  number={pastWinningNumbers[0][6]}
-                  isBonus={true}
-                  size="md"
-                  theme={theme}
-                />
-              </>
-            ) : (
-              /* 로딩 중일 때 */
-              Array.from({ length: 7 }).map((_, i) => (
                 <div
-                  key={i}
                   style={{
                     width: "32px",
                     height: "32px",
@@ -610,9 +620,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                     color: currentColors.textSecondary,
                   }}
                 >
-                  {i === 6 ? "+" : "?"}
+                  ?
                 </div>
-              ))
+              </>
             )}
           </div>
           <p
@@ -676,7 +686,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               margin: "0 0 6px 0",
             }}
           >
-            🧠 AI 빅데이터 분석
+            🧠 AI 전체 회차 분석
           </h3>
           <p
             style={{
@@ -710,7 +720,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               lineHeight: "1.4",
             }}
           >
-            🕷️ {actualLatestRound > 0 ? `${actualLatestRound}~${actualOldestRound}회차 (${totalRounds}개)` : "최신"} 데이터를 분석한 추천번호입니다
+            🕷️ 전체 1~{actualLatestRound}회차 ({totalRounds}개) 데이터를 분석한 추천번호입니다
           </p>
         </div>
         <button
