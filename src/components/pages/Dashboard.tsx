@@ -4,6 +4,10 @@ import { lottoDataManager } from "../../services/lottoDataManager";
 import { LottoDrawResult } from "../../types/lotto";
 
 interface DashboardProps {
+  latestResult?: {
+    numbers: number[];
+    bonus: number;
+  } | null;
   pastWinningNumbers: number[][];
   onMenuChange: (menu: string) => void;
   generate1stGradeNumbers: () => number[];
@@ -36,6 +40,10 @@ interface NextDrawInfo {
   isToday: boolean;
   hasDrawPassed: boolean;
 }
+
+
+  const winningNumbers = latestResult?.numbers || [];
+  const bonusNumber = latestResult?.bonus || null;
 
 const Dashboard: React.FC<DashboardProps> = ({
   pastWinningNumbers,
