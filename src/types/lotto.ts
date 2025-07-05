@@ -1,5 +1,5 @@
 // 🔧 src/types/lotto.ts
-// 실시간 크롤링 시스템용 타입 정의
+// 실시간 크롤링 시스템용 타입 정의 - 추첨일 관련 타입 업데이트
 
 export interface LottoDrawResult {
   round: number; // 회차
@@ -62,6 +62,9 @@ export interface CheckResult {
   checkedAt?: string;
   drawDate?: string;
   isRealTimeCheck?: boolean;
+  // 🔧 추첨전 상태 관련 추가
+  status?: "winning" | "losing" | "pending";
+  message?: string;
 }
 
 export interface RecommendStrategy {
@@ -97,6 +100,22 @@ export interface LottoHistoryAPIResponse {
   source?: string;
   totalCount?: number;
   dataRange?: string;
+}
+
+// 🔧 수정된 다음 추첨 정보 타입 - 정확한 시간 계산 포함
+export interface NextDrawInfo {
+  round: number;
+  date: string; // YYYY-MM-DD 형식
+  estimatedJackpot: number;
+  daysUntilDraw: number; // 정확한 일수 (0 = 오늘)
+  isToday: boolean; // 오늘이 추첨일인지
+  timeUntilDraw: string; // 사용자 친화적 시간 표시 ("오늘 추첨!", "내일 추첨!" 등)
+  hasDrawPassed: boolean; // 추첨 시간이 지났는지
+  formattedDate?: string; // 한국어 포맷팅된 날짜
+  // 🆕 정확한 시간 계산 관련
+  drawDateTime?: Date; // 정확한 추첨 일시 (토요일 오후 8시 35분)
+  minutesUntilDraw?: number; // 추첨까지 남은 분수
+  hoursUntilDraw?: number; // 추첨까지 남은 시간수
 }
 
 // 🆕 크롤링 시스템 관련 타입들
@@ -139,7 +158,7 @@ export interface HealthCheckResponse {
   version: string;
 }
 
-// 🆕 실시간 데이터 매니저 상태 타입
+// 🔧 수정된 실시간 데이터 매니저 상태 타입 - 추첨일 정보 포함
 export interface RealtimeDataStatus {
   lastUpdate: Date | null;
   isRealTime: boolean;
@@ -150,12 +169,7 @@ export interface RealtimeDataStatus {
     oldestRound: number;
     totalCount: number;
   };
-  nextDrawInfo?: {
-    round: number;
-    date: string;
-    estimatedJackpot: number;
-    daysUntilDraw: number;
-  };
+  nextDrawInfo?: NextDrawInfo; // 🔧 업데이트된 타입 사용
   crawlerInfo?: {
     version: string;
     source: string;
@@ -180,16 +194,22 @@ export interface CrawlerConfig {
   maxRoundsPerRequest: number;
 }
 
-// 🆕 실시간 알림 타입
+// 🔧 수정된 실시간 알림 타입 - 추첨일 관련 알림 추가
 export interface RealtimeNotification {
   id: string;
-  type: "new_draw" | "system_update" | "error" | "maintenance";
+  type: "new_draw" | "draw_today" | "draw_soon" | "system_update" | "error" | "maintenance";
   title: string;
   message: string;
   timestamp: string;
   isRead: boolean;
   data?: any;
   priority: "low" | "medium" | "high" | "critical";
+  // 🔧 추첨일 관련 추가
+  drawInfo?: {
+    isToday: boolean;
+    hoursUntilDraw?: number;
+    round?: number;
+  };
 }
 
 // 🆕 크롤링 메트릭스 타입
@@ -223,7 +243,7 @@ export interface RealtimeAnalysisResult {
   };
 }
 
-// 🆕 실시간 앱 설정 타입
+// 🔧 수정된 실시간 앱 설정 타입 - 추첨일 알림 설정 포함
 export interface RealtimeAppSettings {
   theme: "light" | "dark";
   autoSave: boolean;
@@ -231,6 +251,8 @@ export interface RealtimeAppSettings {
     drawResults: boolean;
     systemUpdates: boolean;
     errors: boolean;
+    drawReminders: boolean; // 🔧 추첨일 리마인더 알림
+    todayDraw: boolean; // 🔧 오늘 추첨 알림
   };
   crawler: {
     autoUpdate: boolean;
@@ -246,6 +268,13 @@ export interface RealtimeAppSettings {
     includeMetadata: boolean;
     format: "json" | "csv" | "xlsx";
     compression: boolean;
+  };
+  // 🔧 추첨일 관련 설정 추가
+  drawSettings: {
+    showTodayIndicator: boolean;
+    showCountdown: boolean;
+    reminderHoursBefore: number; // 몇 시간 전에 알림할지
+    autoCheckAfterDraw: boolean; // 추첨 후 자동 당첨 확인
   };
 }
 
@@ -279,6 +308,28 @@ export interface RealtimeStats {
   };
 }
 
+// 🔧 추첨일 계산 관련 유틸리티 타입들
+export interface DrawTimeCalculation {
+  nextDrawDate: Date;
+  currentTime: Date;
+  daysUntilDraw: number;
+  hoursUntilDraw: number;
+  minutesUntilDraw: number;
+  isToday: boolean;
+  isTomorrow: boolean;
+  hasDrawPassed: boolean;
+  timeMessage: string;
+  urgencyLevel: "low" | "medium" | "high" | "critical"; // 추첨까지 남은 시간에 따른 긴급도
+}
+
+export interface DrawScheduleInfo {
+  dayOfWeek: number; // 6 (토요일)
+  hour: number; // 20 (오후 8시)
+  minute: number; // 35 (35분)
+  timezone: string; // "Asia/Seoul"
+  description: string; // "매주 토요일 오후 8시 35분"
+}
+
 // 기존 타입들은 그대로 유지하되 실시간 기능 호환성 추가
 export type DataSource =
   | "realtime_crawler"
@@ -288,10 +339,20 @@ export type DataSource =
 export type CrawlerStatus = "active" | "inactive" | "error" | "maintenance";
 export type DataQuality = "high" | "medium" | "low" | "unknown";
 
+// 🔧 추첨일 상태 타입 추가
+export type DrawStatus = 
+  | "waiting" // 추첨 대기중 (평상시)
+  | "today" // 오늘 추첨
+  | "soon" // 곧 추첨 (몇 시간 내)
+  | "imminent" // 추첨 임박 (1시간 내)
+  | "in_progress" // 추첨 진행중
+  | "completed" // 추첨 완료
+  | "results_pending"; // 결과 발표 대기
+
 // 🆕 실시간 이벤트 타입
 export interface RealtimeEvent {
   eventId: string;
-  eventType: "data_update" | "new_draw" | "system_status" | "user_action";
+  eventType: "data_update" | "new_draw" | "draw_reminder" | "system_status" | "user_action";
   timestamp: string;
   data: any;
   metadata?: {
@@ -299,4 +360,44 @@ export interface RealtimeEvent {
     version: string;
     userId?: string;
   };
+  // 🔧 추첨일 관련 이벤트 데이터
+  drawEventData?: {
+    round?: number;
+    drawStatus?: DrawStatus;
+    timeUntilDraw?: number;
+    isToday?: boolean;
+  };
+}
+
+// 🔧 Component Props 타입들도 업데이트
+export interface DashboardProps {
+  pastWinningNumbers: number[][];
+  onMenuChange: (menu: string) => void;
+  generate1stGradeNumbers: () => number[];
+  onRefreshData?: () => void;
+  isDataLoading?: boolean;
+  dataStatus?: RealtimeDataStatus;
+  roundRange?: {
+    latestRound: number;
+    oldestRound: number;
+  };
+  theme?: "light" | "dark";
+  nextDrawInfo?: NextDrawInfo; // 🔧 업데이트된 타입 사용
+}
+
+export interface AppState {
+  currentMenu: string;
+  sidebarOpen: boolean;
+  purchaseHistory: PurchaseItem[];
+  theme: "light" | "dark";
+  autoSave: boolean;
+  pastWinningNumbers: number[][];
+  roundRange: {
+    latestRound: number;
+    oldestRound: number;
+  };
+  isDataLoading: boolean;
+  dataStatus: RealtimeDataStatus;
+  nextDrawInfo: NextDrawInfo | null; // 🔧 업데이트된 타입 사용
+  currentTime: Date; // 🔧 실시간 시간 추가
 }
