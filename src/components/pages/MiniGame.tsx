@@ -48,7 +48,6 @@ interface RouletteGameState {
   }>;
 }
 
-// 🔧 수정된 뽑기게임 상태 - 10x10 격자
 interface DrawGameState {
   isPlaying: boolean;
   selectedSlot: number | null;
@@ -68,6 +67,42 @@ interface DrawGameState {
     emoji: string;
     color: string;
   }>;
+}
+
+interface GuessGameState {
+  secretNumbers: number[];
+  userGuess: number[];
+  attempts: number;
+  maxAttempts: number;
+  hints: string[];
+  gameOver: boolean;
+  won: boolean;
+  score: number;
+  cost: number;
+  isPlaying: boolean;
+  currentRound: number;
+}
+
+interface SimulationState {
+  selectedNumbers: number[];
+  ticketPrice: number;
+  currentRound: number;
+  results: Array<{
+    round: number;
+    userNumbers: number[];
+    winningNumbers: number[];
+    bonusNumber: number;
+    matches: number;
+    grade: string;
+    prize: number;
+    spent: number;
+  }>;
+  isPlaying: boolean;
+  autoPlay: boolean;
+  speed: number;
+  totalSpent: number;
+  totalWon: number;
+  isSimulating: boolean;
 }
 
 const MiniGame: React.FC<MiniGameProps> = ({
@@ -119,30 +154,35 @@ const MiniGame: React.FC<MiniGameProps> = ({
   });
 
   // 번호 맞추기 게임 상태
-  const [guessGame, setGuessGame] = useState({
-    secretNumbers: [] as number[],
-    userGuess: [] as number[],
+  const [guessGame, setGuessGame] = useState<GuessGameState>({
+    secretNumbers: [],
+    userGuess: [],
     attempts: 0,
     maxAttempts: 10,
-    hints: [] as string[],
+    hints: [],
     gameOver: false,
     won: false,
     score: 0,
     cost: 2000,
+    isPlaying: false,
+    currentRound: 1,
   });
 
   // 가상 로또 시뮬레이션 상태
-  const [simulation, setSimulation] = useState({
-    selectedNumbers: [] as number[],
+  const [simulation, setSimulation] = useState<SimulationState>({
+    selectedNumbers: [],
     ticketPrice: 2000,
     currentRound: 0,
-    results: [] as any[],
+    results: [],
     isPlaying: false,
     autoPlay: false,
     speed: 1,
+    totalSpent: 0,
+    totalWon: 0,
+    isSimulating: false,
   });
 
-  // 🔧 수정된 뽑기게임 상태 - 10x10 = 100개 슬롯
+  // 뽑기게임 상태
   const [drawGame, setDrawGame] = useState<DrawGameState>({
     isPlaying: false,
     selectedSlot: null,
@@ -164,7 +204,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     ],
   });
 
-  // 스피드 룰렛 게임 상태 (기존과 동일)
+  // 스피드 룰렛 게임 상태
   const [rouletteGame, setRouletteGame] = useState<RouletteGameState>({
     isSpinning: false,
     currentAngle: 0,
@@ -234,7 +274,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
       purple: "#f3e8ff",
       purpleBorder: "#c084fc",
       purpleText: "#7c3aed",
-      // 🔧 뽑기판 조화로운 색상 (라이트모드)
       drawBg: "#f0f9ff",
       drawBorder: "#0ea5e9",
       slotDefault: "#e0f2fe",
@@ -266,7 +305,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
       purple: "#581c87",
       purpleBorder: "#8b5cf6",
       purpleText: "#c4b5fd",
-      // 🔧 뽑기판 조화로운 색상 (다크모드)
       drawBg: "#1e3a8a",
       drawBorder: "#3b82f6",
       slotDefault: "#1e293b",
@@ -277,7 +315,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
   const currentColors = colors[theme] || colors.light;
 
-  // 업데이트된 게임 목록
+  // 게임 목록
   const games = [
     {
       id: "guess",
@@ -377,7 +415,234 @@ const MiniGame: React.FC<MiniGameProps> = ({
     alert(`💎 ${safeFormatNumber(chargeAmount)}P 충전 완료! 오늘 ${remaining}번 더 충전 가능합니다.`);
   };
 
-  // 🔧 수정된 뽑기게임 시작 함수
+  // 🎯 번호맞추기 게임 함수들
+  const startGuessGame = () => {
+    const currentPoints = gameStats?.points || 0;
+    const cost = guessGame.cost;
+    
+    if (currentPoints < cost) {
+      alert(`포인트가 부족합니다! ${safeFormatNumber(cost)}P가 필요해요.`);
+      return;
+    }
+
+    // 포인트 차감
+    setGameStats(prev => ({
+      ...prev,
+      points: (prev?.points || 0) - cost,
+      totalSpent: (prev?.totalSpent || 0) + cost,
+    }));
+
+    // 비밀번호 생성 (과거 당첨번호 기반)
+    const secretNumbers = generateSecretNumbers();
+    
+    setGuessGame(prev => ({
+      ...prev,
+      secretNumbers,
+      userGuess: [],
+      attempts: 0,
+      hints: [],
+      gameOver: false,
+      won: false,
+      isPlaying: true,
+      currentRound: prev.currentRound + 1,
+    }));
+
+    console.log("🎯 번호맞추기 게임 시작! 비밀번호:", secretNumbers);
+  };
+
+  const generateSecretNumbers = (): number[] => {
+    if (pastWinningNumbers.length > 0) {
+      // 과거 당첨번호에서 랜덤 선택
+      const randomDraw = pastWinningNumbers[Math.floor(Math.random() * Math.min(10, pastWinningNumbers.length))];
+      return randomDraw.slice(0, 6).sort((a, b) => a - b);
+    } else {
+      // 폴백: 랜덤 생성
+      const numbers = new Set<number>();
+      while (numbers.size < 6) {
+        numbers.add(Math.floor(Math.random() * 45) + 1);
+      }
+      return Array.from(numbers).sort((a, b) => a - b);
+    }
+  };
+
+  const submitGuess = (guess: number[]) => {
+    if (guess.length !== 6) {
+      alert("6개 번호를 모두 선택해주세요!");
+      return;
+    }
+
+    const matches = guess.filter(num => guessGame.secretNumbers.includes(num)).length;
+    const newAttempts = guessGame.attempts + 1;
+    
+    let hint = "";
+    if (matches === 6) {
+      hint = "🎉 완벽! 모든 번호를 맞췄습니다!";
+    } else if (matches >= 4) {
+      hint = `🔥 훌륭해요! ${matches}개 맞췄습니다! 거의 다 왔어요!`;
+    } else if (matches >= 2) {
+      hint = `👍 좋아요! ${matches}개 맞췄습니다! 계속 도전하세요!`;
+    } else {
+      hint = `😅 ${matches}개 맞췄습니다. 다시 한번 시도해보세요!`;
+    }
+
+    const newHints = [...guessGame.hints, hint];
+    const won = matches === 6;
+    const gameOver = won || newAttempts >= guessGame.maxAttempts;
+
+    setGuessGame(prev => ({
+      ...prev,
+      userGuess: guess,
+      attempts: newAttempts,
+      hints: newHints,
+      gameOver,
+      won,
+    }));
+
+    // 게임 완료 처리
+    if (gameOver) {
+      if (won) {
+        const prize = 10000; // 1만 포인트 상금
+        setGameStats(prev => ({
+          ...prev,
+          points: (prev?.points || 0) + prize,
+          totalWon: (prev?.totalWon || 0) + prize,
+          gamesPlayed: (prev?.gamesPlayed || 0) + 1,
+          totalWins: (prev?.totalWins || 0) + 1,
+        }));
+        setTimeout(() => alert(`🎉 축하합니다! ${safeFormatNumber(prize)}P 상금을 획득했습니다!`), 500);
+      } else {
+        setGameStats(prev => ({
+          ...prev,
+          gamesPlayed: (prev?.gamesPlayed || 0) + 1,
+        }));
+        setTimeout(() => alert(`😢 게임 종료! 정답: ${guessGame.secretNumbers.join(", ")}`), 500);
+      }
+    }
+  };
+
+  // 🎲 가상 로또 시뮬레이션 함수들
+  const startSimulation = () => {
+    if (simulation.selectedNumbers.length !== 6) {
+      alert("6개 번호를 선택해주세요!");
+      return;
+    }
+
+    const currentPoints = gameStats?.points || 0;
+    const cost = simulation.ticketPrice;
+    
+    if (currentPoints < cost) {
+      alert(`포인트가 부족합니다! ${safeFormatNumber(cost)}P가 필요해요.`);
+      return;
+    }
+
+    setSimulation(prev => ({
+      ...prev,
+      isPlaying: true,
+      isSimulating: true,
+      currentRound: prev.currentRound + 1,
+      totalSpent: prev.totalSpent + cost,
+    }));
+
+    // 포인트 차감
+    setGameStats(prev => ({
+      ...prev,
+      points: (prev?.points || 0) - cost,
+      totalSpent: (prev?.totalSpent || 0) + cost,
+    }));
+
+    // 시뮬레이션 실행
+    setTimeout(() => {
+      runLottoSimulation();
+    }, 1000);
+  };
+
+  const runLottoSimulation = () => {
+    // 가상 당첨번호 생성
+    const winningNumbers = new Set<number>();
+    while (winningNumbers.size < 6) {
+      winningNumbers.add(Math.floor(Math.random() * 45) + 1);
+    }
+    const winningArray = Array.from(winningNumbers).sort((a, b) => a - b);
+    const bonusNumber = Math.floor(Math.random() * 45) + 1;
+
+    // 매치 계산
+    const matches = simulation.selectedNumbers.filter(num => winningArray.includes(num)).length;
+    const bonusMatch = simulation.selectedNumbers.includes(bonusNumber);
+
+    // 등급 및 상금 계산
+    let grade = "낙첨";
+    let prize = 0;
+
+    if (matches === 6) {
+      grade = "1등";
+      prize = 2000000000; // 20억
+    } else if (matches === 5 && bonusMatch) {
+      grade = "2등";
+      prize = 60000000; // 6천만
+    } else if (matches === 5) {
+      grade = "3등";
+      prize = 1500000; // 150만
+    } else if (matches === 4) {
+      grade = "4등";
+      prize = 50000; // 5만
+    } else if (matches === 3) {
+      grade = "5등";
+      prize = 5000; // 5천
+    }
+
+    const newResult = {
+      round: simulation.currentRound,
+      userNumbers: [...simulation.selectedNumbers],
+      winningNumbers: winningArray,
+      bonusNumber,
+      matches,
+      grade,
+      prize,
+      spent: simulation.ticketPrice,
+    };
+
+    setSimulation(prev => ({
+      ...prev,
+      results: [newResult, ...prev.results],
+      totalWon: prev.totalWon + prize,
+      isSimulating: false,
+    }));
+
+    // 상금 지급
+    if (prize > 0) {
+      setGameStats(prev => ({
+        ...prev,
+        points: (prev?.points || 0) + prize,
+        totalWon: (prev?.totalWon || 0) + prize,
+        gamesPlayed: (prev?.gamesPlayed || 0) + 1,
+        totalWins: (prev?.totalWins || 0) + 1,
+      }));
+    } else {
+      setGameStats(prev => ({
+        ...prev,
+        gamesPlayed: (prev?.gamesPlayed || 0) + 1,
+      }));
+    }
+  };
+
+  const selectSimulationNumber = (num: number) => {
+    setSimulation(prev => {
+      if (prev.selectedNumbers.includes(num)) {
+        return {
+          ...prev,
+          selectedNumbers: prev.selectedNumbers.filter(n => n !== num),
+        };
+      } else if (prev.selectedNumbers.length < 6) {
+        return {
+          ...prev,
+          selectedNumbers: [...prev.selectedNumbers, num].sort((a, b) => a - b),
+        };
+      }
+      return prev;
+    });
+  };
+
+  // 뽑기게임 함수들 (기존과 동일)
   const startRealisticDrawGame = () => {
     try {
       const currentPoints = gameStats?.points || 0;
@@ -388,14 +653,12 @@ const MiniGame: React.FC<MiniGameProps> = ({
         return;
       }
 
-      // 포인트 차감
       setGameStats(prev => ({
         ...prev,
         points: (prev?.points || 0) - cost,
         totalSpent: (prev?.totalSpent || 0) + cost,
       }));
 
-      // 뽑기게임 초기화 - 100개 슬롯
       setDrawGame(prev => ({ 
         ...prev, 
         isPlaying: true,
@@ -420,17 +683,14 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }
   };
 
-  // 🔧 수정된 뽑기판 슬롯 선택 - 즉시 결과 표시
   const selectDrawSlot = (slotId: number) => {
     if (!drawGame.isPlaying || drawGame.selectedSlot !== null) return;
 
-    // 슬롯 선택
     setDrawGame(prev => ({
       ...prev,
       selectedSlot: slotId
     }));
 
-    // 즉시 결과 계산 및 표시
     const random = Math.random();
     let cumulativeProbability = 0;
     let selectedPrize = drawGame.prizes[drawGame.prizes.length - 1];
@@ -443,7 +703,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
       }
     }
 
-    // 🔧 즉시 결과 적용 - 알림창 제거하고 바로 뽑기판에 표시
     setTimeout(() => {
       setDrawGame(prev => ({
         ...prev,
@@ -456,7 +715,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
         result: selectedPrize,
       }));
 
-      // 통계 업데이트 (알림창 제거)
       if (selectedPrize.points > 0) {
         setGameStats(prev => ({
           ...prev,
@@ -471,10 +729,91 @@ const MiniGame: React.FC<MiniGameProps> = ({
           gamesPlayed: (prev?.gamesPlayed || 0) + 1,
         }));
       }
-    }, 500); // 0.5초 딜레이로 효과 연출
+    }, 500);
   };
 
-  // 로딩 상태 처리 (나머지 코드는 기존과 동일)
+  // 🎡 스피드 룰렛 함수들
+  const startRouletteGame = () => {
+    const currentPoints = gameStats?.points || 0;
+    const cost = rouletteGame.cost;
+    
+    if (currentPoints < cost) {
+      alert(`포인트가 부족합니다! ${safeFormatNumber(cost)}P가 필요해요.`);
+      return;
+    }
+
+    if (rouletteGame.userBet === null) {
+      alert("먼저 번호를 선택해주세요!");
+      return;
+    }
+
+    // 포인트 차감
+    setGameStats(prev => ({
+      ...prev,
+      points: (prev?.points || 0) - cost,
+      totalSpent: (prev?.totalSpent || 0) + cost,
+    }));
+
+    // 룰렛 회전 시작
+    setRouletteGame(prev => ({
+      ...prev,
+      isSpinning: true,
+    }));
+
+    // 결과 계산 및 애니메이션
+    setTimeout(() => {
+      const result = Math.floor(Math.random() * 45) + 1;
+      let multiplier = 1;
+      let winnings = 0;
+
+      // 배율 계산
+      for (const mult of rouletteGame.multipliers) {
+        if (result >= mult.range[0] && result <= mult.range[1]) {
+          multiplier = mult.multiplier;
+          break;
+        }
+      }
+
+      // 당첨 확인
+      if (result === rouletteGame.userBet) {
+        winnings = rouletteGame.betAmount * multiplier;
+      }
+
+      const newHistory = {
+        bet: rouletteGame.userBet!,
+        result,
+        multiplier,
+        winnings,
+        timestamp: new Date().toLocaleTimeString(),
+      };
+
+      setRouletteGame(prev => ({
+        ...prev,
+        isSpinning: false,
+        selectedNumber: result,
+        spinHistory: [newHistory, ...prev.spinHistory.slice(0, 4)],
+      }));
+
+      // 상금 지급
+      if (winnings > 0) {
+        setGameStats(prev => ({
+          ...prev,
+          points: (prev?.points || 0) + winnings,
+          totalWon: (prev?.totalWon || 0) + winnings,
+          gamesPlayed: (prev?.gamesPlayed || 0) + 1,
+          totalWins: (prev?.totalWins || 0) + 1,
+        }));
+        setTimeout(() => alert(`🎉 당첨! ${safeFormatNumber(winnings)}P 획득!`), 500);
+      } else {
+        setGameStats(prev => ({
+          ...prev,
+          gamesPlayed: (prev?.gamesPlayed || 0) + 1,
+        }));
+      }
+    }, 2000);
+  };
+
+  // 로딩 상태 처리
   if (isDataLoading) {
     return (
       <div 
@@ -553,7 +892,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
         color: currentColors.text
       }}
     >
-      {/* 헤더 (기존과 동일) */}
+      {/* 헤더 */}
       <div
         style={{
           backgroundColor: currentColors.surface,
@@ -587,7 +926,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
           업그레이드된 인터랙티브 게임으로 포인트를 모아보세요!
         </p>
 
-        {/* 포인트 정보 (기존과 동일) */}
+        {/* 포인트 정보 */}
         <div
           style={{
             backgroundColor: currentColors.success,
@@ -799,7 +1138,426 @@ const MiniGame: React.FC<MiniGameProps> = ({
         </div>
       )}
 
-      {/* 🔧 수정된 추억의 뽑기판 - 10x10 사각형, 별 아이콘, 즉시 결과 표시 */}
+      {/* 🎯 번호맞추기 게임 */}
+      {selectedGame === "guess" && (
+        <div
+          style={{
+            backgroundColor: currentColors.surface,
+            borderRadius: "12px",
+            padding: "16px",
+            border: `1px solid ${currentColors.border}`,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0" }}>
+              🎯 번호맞추기
+            </h3>
+            <button
+              onClick={() => setSelectedGame(null)}
+              style={{
+                padding: "6px 12px",
+                backgroundColor: currentColors.textSecondary,
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "12px",
+                cursor: "pointer",
+              }}
+            >
+              게임 선택으로
+            </button>
+          </div>
+
+          {!guessGame.isPlaying ? (
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: "64px", marginBottom: "16px" }}>🎯</div>
+              <h4 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0 0 8px 0" }}>
+                AI 비밀번호 맞추기
+              </h4>
+              <p style={{ color: currentColors.textSecondary, margin: "0 0 16px 0", fontSize: "14px" }}>
+                과거 당첨번호 중 하나가 비밀번호입니다. 힌트를 보고 맞춰보세요!
+              </p>
+              <button
+                onClick={startGuessGame}
+                disabled={(gameStats?.points || 0) < guessGame.cost}
+                style={{
+                  padding: "16px 24px",
+                  backgroundColor: (gameStats?.points || 0) >= guessGame.cost ? currentColors.primary : currentColors.textSecondary,
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                  cursor: (gameStats?.points || 0) >= guessGame.cost ? "pointer" : "not-allowed",
+                }}
+              >
+                🎯 게임 시작! ({safeFormatNumber(guessGame.cost)}P)
+              </button>
+            </div>
+          ) : (
+            <div>
+              {/* 게임 정보 */}
+              <div style={{ marginBottom: "16px", textAlign: "center" }}>
+                <div style={{ fontSize: "14px", color: currentColors.text, marginBottom: "8px" }}>
+                  라운드 {guessGame.currentRound} | 시도: {guessGame.attempts}/{guessGame.maxAttempts}
+                </div>
+              </div>
+
+              {/* 번호 선택 */}
+              <div style={{ marginBottom: "16px" }}>
+                <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
+                  번호 선택 (6개)
+                </h4>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(9, 1fr)", gap: "4px", marginBottom: "12px" }}>
+                  {Array.from({ length: 45 }, (_, i) => i + 1).map((num) => (
+                    <button
+                      key={num}
+                      onClick={() => {
+                        const newGuess = [...guessGame.userGuess];
+                        if (newGuess.includes(num)) {
+                          const index = newGuess.indexOf(num);
+                          newGuess.splice(index, 1);
+                        } else if (newGuess.length < 6) {
+                          newGuess.push(num);
+                        }
+                        setGuessGame(prev => ({ ...prev, userGuess: newGuess.sort((a, b) => a - b) }));
+                      }}
+                      style={{
+                        width: "32px",
+                        height: "28px",
+                        borderRadius: "4px",
+                        border: guessGame.userGuess.includes(num) ? `2px solid ${currentColors.primary}` : `1px solid ${currentColors.border}`,
+                        backgroundColor: guessGame.userGuess.includes(num) ? currentColors.primary : currentColors.surface,
+                        color: guessGame.userGuess.includes(num) ? "white" : currentColors.text,
+                        fontSize: "11px",
+                        cursor: "pointer",
+                        fontWeight: guessGame.userGuess.includes(num) ? "bold" : "normal",
+                      }}
+                    >
+                      {num}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 선택된 번호 표시 */}
+                <div style={{ display: "flex", gap: "4px", justifyContent: "center", marginBottom: "12px" }}>
+                  {guessGame.userGuess.map((num, i) => (
+                    <LottoNumberBall key={i} number={num} size="sm" theme={theme} />
+                  ))}
+                  {Array.from({ length: 6 - guessGame.userGuess.length }).map((_, i) => (
+                    <div
+                      key={`empty-${i}`}
+                      style={{
+                        width: "28px",
+                        height: "28px",
+                        borderRadius: "50%",
+                        backgroundColor: currentColors.gray,
+                        border: `2px dashed ${currentColors.grayBorder}`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "12px",
+                        color: currentColors.textSecondary,
+                      }}
+                    >
+                      ?
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => submitGuess(guessGame.userGuess)}
+                  disabled={guessGame.userGuess.length !== 6 || guessGame.gameOver}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    backgroundColor: guessGame.userGuess.length === 6 && !guessGame.gameOver ? currentColors.accent : currentColors.textSecondary,
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    fontWeight: "bold",
+                    cursor: guessGame.userGuess.length === 6 && !guessGame.gameOver ? "pointer" : "not-allowed",
+                  }}
+                >
+                  정답 제출!
+                </button>
+              </div>
+
+              {/* 힌트 히스토리 */}
+              {guessGame.hints.length > 0 && (
+                <div style={{ marginBottom: "16px" }}>
+                  <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
+                    힌트 히스토리
+                  </h4>
+                  <div style={{ maxHeight: "150px", overflowY: "auto" }}>
+                    {guessGame.hints.map((hint, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          padding: "8px",
+                          backgroundColor: currentColors.gray,
+                          borderRadius: "6px",
+                          marginBottom: "4px",
+                          fontSize: "12px",
+                          color: currentColors.text,
+                        }}
+                      >
+                        {index + 1}차: {hint}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 게임 종료 */}
+              {guessGame.gameOver && (
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ 
+                    padding: "16px",
+                    backgroundColor: guessGame.won ? currentColors.success : currentColors.error,
+                    borderRadius: "8px",
+                    marginBottom: "12px",
+                  }}>
+                    <div style={{ fontSize: "48px", marginBottom: "8px" }}>
+                      {guessGame.won ? "🎉" : "😢"}
+                    </div>
+                    <h4 style={{ 
+                      fontSize: "18px", 
+                      fontWeight: "bold", 
+                      color: guessGame.won ? currentColors.successText : currentColors.errorText,
+                      margin: "0 0 8px 0"
+                    }}>
+                      {guessGame.won ? "축하합니다!" : "게임 종료"}
+                    </h4>
+                    <p style={{
+                      color: guessGame.won ? currentColors.successText : currentColors.errorText,
+                      margin: "0",
+                      fontSize: "14px",
+                    }}>
+                      {guessGame.won ? "10,000P 상금 획득!" : `정답: ${guessGame.secretNumbers.join(", ")}`}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setGuessGame(prev => ({ ...prev, isPlaying: false }))}
+                    style={{
+                      padding: "12px 24px",
+                      backgroundColor: currentColors.primary,
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    새 게임
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 🎲 가상 로또 시뮬레이션 */}
+      {selectedGame === "simulation" && (
+        <div
+          style={{
+            backgroundColor: currentColors.surface,
+            borderRadius: "12px",
+            padding: "16px",
+            border: `1px solid ${currentColors.border}`,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0" }}>
+              🎲 가상 로또 시뮬레이션
+            </h3>
+            <button
+              onClick={() => setSelectedGame(null)}
+              style={{
+                padding: "6px 12px",
+                backgroundColor: currentColors.textSecondary,
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "12px",
+                cursor: "pointer",
+              }}
+            >
+              게임 선택으로
+            </button>
+          </div>
+
+          {/* 번호 선택 */}
+          <div style={{ marginBottom: "16px" }}>
+            <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
+              로또 번호 선택 (6개)
+            </h4>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(9, 1fr)", gap: "4px", marginBottom: "12px" }}>
+              {Array.from({ length: 45 }, (_, i) => i + 1).map((num) => (
+                <button
+                  key={num}
+                  onClick={() => selectSimulationNumber(num)}
+                  style={{
+                    width: "32px",
+                    height: "28px",
+                    borderRadius: "4px",
+                    border: simulation.selectedNumbers.includes(num) ? `2px solid ${currentColors.primary}` : `1px solid ${currentColors.border}`,
+                    backgroundColor: simulation.selectedNumbers.includes(num) ? currentColors.primary : currentColors.surface,
+                    color: simulation.selectedNumbers.includes(num) ? "white" : currentColors.text,
+                    fontSize: "11px",
+                    cursor: "pointer",
+                    fontWeight: simulation.selectedNumbers.includes(num) ? "bold" : "normal",
+                  }}
+                >
+                  {num}
+                </button>
+              ))}
+            </div>
+
+            {/* 선택된 번호 표시 */}
+            <div style={{ display: "flex", gap: "4px", justifyContent: "center", marginBottom: "12px" }}>
+              {simulation.selectedNumbers.map((num, i) => (
+                <LottoNumberBall key={i} number={num} size="sm" theme={theme} />
+              ))}
+              {Array.from({ length: 6 - simulation.selectedNumbers.length }).map((_, i) => (
+                <div
+                  key={`empty-${i}`}
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "50%",
+                    backgroundColor: currentColors.gray,
+                    border: `2px dashed ${currentColors.grayBorder}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "12px",
+                    color: currentColors.textSecondary,
+                  }}
+                >
+                  ?
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={startSimulation}
+              disabled={simulation.selectedNumbers.length !== 6 || simulation.isSimulating}
+              style={{
+                width: "100%",
+                padding: "12px",
+                backgroundColor: simulation.selectedNumbers.length === 6 && !simulation.isSimulating ? "#8b5cf6" : currentColors.textSecondary,
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "14px",
+                fontWeight: "bold",
+                cursor: simulation.selectedNumbers.length === 6 && !simulation.isSimulating ? "pointer" : "not-allowed",
+              }}
+            >
+              {simulation.isSimulating ? "추첨 중..." : `🎲 가상 추첨! (${safeFormatNumber(simulation.ticketPrice)}P)`}
+            </button>
+          </div>
+
+          {/* 통계 */}
+          <div style={{ 
+            display: "grid", 
+            gridTemplateColumns: "repeat(3, 1fr)", 
+            gap: "8px",
+            marginBottom: "16px"
+          }}>
+            <div style={{ padding: "8px", backgroundColor: currentColors.gray, borderRadius: "6px", textAlign: "center" }}>
+              <div style={{ fontSize: "14px", fontWeight: "bold", color: currentColors.text }}>
+                {simulation.results.length}
+              </div>
+              <div style={{ fontSize: "10px", color: currentColors.textSecondary }}>
+                총 게임
+              </div>
+            </div>
+            <div style={{ padding: "8px", backgroundColor: currentColors.gray, borderRadius: "6px", textAlign: "center" }}>
+              <div style={{ fontSize: "14px", fontWeight: "bold", color: currentColors.text }}>
+                {safeFormatNumber(simulation.totalSpent)}P
+              </div>
+              <div style={{ fontSize: "10px", color: currentColors.textSecondary }}>
+                총 지출
+              </div>
+            </div>
+            <div style={{ padding: "8px", backgroundColor: currentColors.gray, borderRadius: "6px", textAlign: "center" }}>
+              <div style={{ fontSize: "14px", fontWeight: "bold", color: currentColors.text }}>
+                {safeFormatNumber(simulation.totalWon)}P
+              </div>
+              <div style={{ fontSize: "10px", color: currentColors.textSecondary }}>
+                총 상금
+              </div>
+            </div>
+          </div>
+
+          {/* 결과 히스토리 */}
+          {simulation.results.length > 0 && (
+            <div>
+              <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
+                추첨 결과 ({simulation.results.length}회)
+              </h4>
+              <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+                {simulation.results.map((result, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      padding: "12px",
+                      backgroundColor: result.grade !== "낙첨" ? currentColors.success : currentColors.gray,
+                      borderRadius: "6px",
+                      marginBottom: "8px",
+                      border: result.grade !== "낙첨" ? `1px solid ${currentColors.successBorder}` : `1px solid ${currentColors.grayBorder}`,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                      <span style={{ fontSize: "12px", fontWeight: "bold", color: currentColors.text }}>
+                        {result.round}회차 - {result.grade}
+                      </span>
+                      <span style={{ 
+                        fontSize: "12px", 
+                        fontWeight: "bold", 
+                        color: result.prize > 0 ? currentColors.successText : currentColors.textSecondary
+                      }}>
+                        {result.prize > 0 ? `+${safeFormatNumber(result.prize)}P` : "꽝"}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: "2px", justifyContent: "center", marginBottom: "4px" }}>
+                      {result.userNumbers.map((num, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            width: "20px",
+                            height: "20px",
+                            borderRadius: "50%",
+                            backgroundColor: result.winningNumbers.includes(num) ? "#10b981" : "#6b7280",
+                            color: "white",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "8px",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {num}
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: "10px", color: currentColors.textSecondary, textAlign: "center" }}>
+                      당첨번호: {result.winningNumbers.join(", ")} + {result.bonusNumber} | {result.matches}개 일치
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 🎪 추억의 뽑기판 (기존과 동일) */}
       {selectedGame === "draw" && (
         <div
           style={{
@@ -829,7 +1587,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
             </button>
           </div>
 
-          {/* 🔧 수정된 뽑기판 - 10x10 사각형 격자 */}
+          {/* 뽑기판 */}
           <div
             style={{
               backgroundColor: currentColors.drawBg,
@@ -855,7 +1613,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
               🎪 추억의 뽑기판 🎪
             </div>
 
-            {/* 🔧 10x10 사각형 격자 */}
+            {/* 10x10 사각형 격자 */}
             <div
               style={{
                 display: "grid",
@@ -876,7 +1634,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   style={{
                     width: "26px",
                     height: "26px",
-                    borderRadius: "4px", // 🔧 사각형으로 변경 (이전: 50%)
+                    borderRadius: "4px",
                     backgroundColor: slot.isRevealed 
                       ? slot.isWinner ? slot.prize?.color || "#4CAF50" : "#9E9E9E"
                       : drawGame.hoveredSlot === slot.id 
@@ -898,10 +1656,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   }}
                 >
                   {slot.isRevealed 
-                    ? slot.prize?.emoji // 🔧 결과 즉시 표시
+                    ? slot.prize?.emoji
                     : drawGame.selectedSlot === slot.id 
                       ? "⏳" 
-                      : "⭐"} {/* 🔧 별 아이콘으로 변경 */}
+                      : "⭐"}
                 </button>
               ))}
             </div>
@@ -1032,8 +1790,212 @@ const MiniGame: React.FC<MiniGameProps> = ({
         </div>
       )}
 
-      {/* 나머지 게임들은 다음에 수정... */}
-      {/* (기존 코드 생략) */}
+      {/* 🎡 스피드 룰렛 */}
+      {selectedGame === "roulette" && (
+        <div
+          style={{
+            backgroundColor: currentColors.surface,
+            borderRadius: "12px",
+            padding: "16px",
+            border: `1px solid ${currentColors.border}`,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0" }}>
+              🎡 스피드 룰렛
+            </h3>
+            <button
+              onClick={() => setSelectedGame(null)}
+              style={{
+                padding: "6px 12px",
+                backgroundColor: currentColors.textSecondary,
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "12px",
+                cursor: "pointer",
+              }}
+            >
+              게임 선택으로
+            </button>
+          </div>
+
+          {/* 룰렛 */}
+          <div style={{ textAlign: "center", marginBottom: "16px" }}>
+            <div
+              style={{
+                width: "200px",
+                height: "200px",
+                borderRadius: "50%",
+                background: `conic-gradient(
+                  #FF6B6B 0deg 36deg,
+                  #4ECDC4 36deg 108deg,
+                  #45B7D1 108deg 180deg,
+                  #96CEB4 180deg 252deg,
+                  #FFEAA7 252deg 360deg
+                )`,
+                margin: "0 auto 16px",
+                position: "relative",
+                border: "4px solid #333",
+                transform: rouletteGame.isSpinning ? `rotate(${rouletteGame.currentAngle}deg)` : "rotate(0deg)",
+                transition: rouletteGame.isSpinning ? "transform 2s cubic-bezier(0.25, 0.46, 0.45, 0.94)" : "none",
+              }}
+            >
+              {/* 룰렛 중앙 */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  width: "60px",
+                  height: "60px",
+                  borderRadius: "50%",
+                  backgroundColor: "#333",
+                  color: "white",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                }}
+              >
+                {rouletteGame.selectedNumber || "?"}
+              </div>
+              
+              {/* 룰렛 포인터 */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: "10px",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: "0",
+                  height: "0",
+                  borderLeft: "10px solid transparent",
+                  borderRight: "10px solid transparent",
+                  borderTop: "20px solid #333",
+                }}
+              />
+            </div>
+
+            {/* 배율 정보 */}
+            <div style={{ marginBottom: "16px" }}>
+              <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
+                배율 정보
+              </h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {rouletteGame.multipliers.map((mult, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "4px 8px",
+                      backgroundColor: mult.color,
+                      borderRadius: "4px",
+                      color: "white",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    <span>{mult.range[0]}-{mult.range[1]}번</span>
+                    <span>{mult.multiplier}배</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* 번호 선택 */}
+          <div style={{ marginBottom: "16px" }}>
+            <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
+              베팅할 번호 선택
+            </h4>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(9, 1fr)", gap: "4px", marginBottom: "12px" }}>
+              {Array.from({ length: 45 }, (_, i) => i + 1).map((num) => (
+                <button
+                  key={num}
+                  onClick={() => setRouletteGame(prev => ({ ...prev, userBet: num }))}
+                  disabled={rouletteGame.isSpinning}
+                  style={{
+                    width: "32px",
+                    height: "28px",
+                    borderRadius: "4px",
+                    border: rouletteGame.userBet === num ? `2px solid #ef4444` : `1px solid ${currentColors.border}`,
+                    backgroundColor: rouletteGame.userBet === num ? "#ef4444" : currentColors.surface,
+                    color: rouletteGame.userBet === num ? "white" : currentColors.text,
+                    fontSize: "11px",
+                    cursor: rouletteGame.isSpinning ? "not-allowed" : "pointer",
+                    fontWeight: rouletteGame.userBet === num ? "bold" : "normal",
+                    opacity: rouletteGame.isSpinning ? 0.6 : 1,
+                  }}
+                >
+                  {num}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={startRouletteGame}
+              disabled={rouletteGame.userBet === null || rouletteGame.isSpinning || (gameStats?.points || 0) < rouletteGame.cost}
+              style={{
+                width: "100%",
+                padding: "12px",
+                backgroundColor: rouletteGame.userBet !== null && !rouletteGame.isSpinning && (gameStats?.points || 0) >= rouletteGame.cost ? "#ef4444" : currentColors.textSecondary,
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "14px",
+                fontWeight: "bold",
+                cursor: rouletteGame.userBet !== null && !rouletteGame.isSpinning && (gameStats?.points || 0) >= rouletteGame.cost ? "pointer" : "not-allowed",
+              }}
+            >
+              {rouletteGame.isSpinning ? "룰렛 회전 중..." : `🎡 룰렛 돌리기! (${safeFormatNumber(rouletteGame.cost)}P)`}
+            </button>
+          </div>
+
+          {/* 게임 히스토리 */}
+          {rouletteGame.spinHistory.length > 0 && (
+            <div>
+              <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
+                최근 게임 기록
+              </h4>
+              <div style={{ maxHeight: "150px", overflowY: "auto" }}>
+                {rouletteGame.spinHistory.map((history, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      padding: "8px",
+                      backgroundColor: history.winnings > 0 ? currentColors.success : currentColors.gray,
+                      borderRadius: "6px",
+                      marginBottom: "4px",
+                      border: history.winnings > 0 ? `1px solid ${currentColors.successBorder}` : `1px solid ${currentColors.grayBorder}`,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "12px", color: currentColors.text }}>
+                        베팅: {history.bet} → 결과: {history.result}
+                      </span>
+                      <span style={{ 
+                        fontSize: "12px", 
+                        fontWeight: "bold",
+                        color: history.winnings > 0 ? currentColors.successText : currentColors.textSecondary
+                      }}>
+                        {history.winnings > 0 ? `+${safeFormatNumber(history.winnings)}P` : "꽝"}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: "10px", color: currentColors.textSecondary }}>
+                      {history.timestamp} | {history.multiplier}배율
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* CSS 애니메이션 */}
       <style>
