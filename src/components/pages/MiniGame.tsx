@@ -38,6 +38,8 @@ interface RouletteGameState {
     range: [number, number];
     multiplier: number;
     color: string;
+    startAngle: number;
+    endAngle: number;
   }>;
   spinHistory: Array<{
     bet: number;
@@ -204,7 +206,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     ],
   });
 
-  // 스피드 룰렛 게임 상태
+  // 🆕 12단계 스피드 룰렛 게임 상태 (완전히 수정됨)
   const [rouletteGame, setRouletteGame] = useState<RouletteGameState>({
     isSpinning: false,
     currentAngle: 0,
@@ -213,12 +215,20 @@ const MiniGame: React.FC<MiniGameProps> = ({
     userBet: null,
     betAmount: 2000,
     cost: 2000,
+    // 🔥 12단계 배율 시스템 (각 구간 30도씩)
     multipliers: [
-      { range: [1, 5], multiplier: 8, color: "#FF6B6B" },
-      { range: [6, 15], multiplier: 4, color: "#4ECDC4" },
-      { range: [16, 25], multiplier: 3, color: "#45B7D1" },
-      { range: [26, 35], multiplier: 2, color: "#96CEB4" },
-      { range: [36, 45], multiplier: 1.5, color: "#FFEAA7" },
+      { range: [1, 1], multiplier: 50, color: "#FFD700", startAngle: 0, endAngle: 30 },
+      { range: [2, 3], multiplier: 25, color: "#FF6B6B", startAngle: 30, endAngle: 60 },
+      { range: [4, 6], multiplier: 20, color: "#4ECDC4", startAngle: 60, endAngle: 90 },
+      { range: [7, 10], multiplier: 15, color: "#45B7D1", startAngle: 90, endAngle: 120 },
+      { range: [11, 15], multiplier: 12, color: "#96CEB4", startAngle: 120, endAngle: 150 },
+      { range: [16, 20], multiplier: 10, color: "#FFEAA7", startAngle: 150, endAngle: 180 },
+      { range: [21, 25], multiplier: 8, color: "#DDA0DD", startAngle: 180, endAngle: 210 },
+      { range: [26, 30], multiplier: 6, color: "#98D8C8", startAngle: 210, endAngle: 240 },
+      { range: [31, 35], multiplier: 5, color: "#F7DC6F", startAngle: 240, endAngle: 270 },
+      { range: [36, 39], multiplier: 4, color: "#BB8FCE", startAngle: 270, endAngle: 300 },
+      { range: [40, 42], multiplier: 3, color: "#85C1E9", startAngle: 300, endAngle: 330 },
+      { range: [43, 45], multiplier: 2, color: "#F8C471", startAngle: 330, endAngle: 360 },
     ],
     spinHistory: [],
   });
@@ -347,7 +357,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     {
       id: "roulette",
       name: "스피드 룰렛",
-      desc: "룰렛을 돌려서 번호를 맞춰보세요! 배율이 다양해요!",
+      desc: "12단계 배율! 룰렛을 돌려서 번호를 맞춰보세요!",
       emoji: "🎡",
       color: "#ef4444",
       difficulty: "중급",
@@ -415,7 +425,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     alert(`💎 ${safeFormatNumber(chargeAmount)}P 충전 완료! 오늘 ${remaining}번 더 충전 가능합니다.`);
   };
 
-  // 🎯 번호맞추기 게임 함수들
+  // 🎯 번호맞추기 게임 함수들 (랜덤 선택 기능 추가)
   const startGuessGame = () => {
     const currentPoints = gameStats?.points || 0;
     const cost = guessGame.cost;
@@ -463,6 +473,16 @@ const MiniGame: React.FC<MiniGameProps> = ({
       }
       return Array.from(numbers).sort((a, b) => a - b);
     }
+  };
+
+  // 🆕 랜덤 번호 선택 함수 (번호 맞추기용)
+  const selectRandomGuessNumbers = () => {
+    const numbers = new Set<number>();
+    while (numbers.size < 6) {
+      numbers.add(Math.floor(Math.random() * 45) + 1);
+    }
+    const randomNumbers = Array.from(numbers).sort((a, b) => a - b);
+    setGuessGame(prev => ({ ...prev, userGuess: randomNumbers }));
   };
 
   const submitGuess = (guess: number[]) => {
@@ -520,7 +540,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }
   };
 
-  // 🎲 가상 로또 시뮬레이션 함수들
+  // 🎲 가상 로또 시뮬레이션 함수들 (새게임, 랜덤번호 기능 추가)
   const startSimulation = () => {
     if (simulation.selectedNumbers.length !== 6) {
       alert("6개 번호를 선택해주세요!");
@@ -554,6 +574,31 @@ const MiniGame: React.FC<MiniGameProps> = ({
     setTimeout(() => {
       runLottoSimulation();
     }, 1000);
+  };
+
+  // 🆕 새 게임 시작 함수 (시뮬레이션)
+  const startNewSimulation = () => {
+    setSimulation(prev => ({
+      ...prev,
+      selectedNumbers: [],
+      currentRound: 0,
+      results: [],
+      isPlaying: false,
+      autoPlay: false,
+      totalSpent: 0,
+      totalWon: 0,
+      isSimulating: false,
+    }));
+  };
+
+  // 🆕 랜덤 번호 선택 함수 (시뮬레이션용)
+  const selectRandomSimulationNumbers = () => {
+    const numbers = new Set<number>();
+    while (numbers.size < 6) {
+      numbers.add(Math.floor(Math.random() * 45) + 1);
+    }
+    const randomNumbers = Array.from(numbers).sort((a, b) => a - b);
+    setSimulation(prev => ({ ...prev, selectedNumbers: randomNumbers }));
   };
 
   const runLottoSimulation = () => {
@@ -732,7 +777,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }, 500);
   };
 
-  // 🎡 스피드 룰렛 함수들
+  // 🎡 완전히 수정된 12단계 스피드 룰렛 함수들
   const startRouletteGame = () => {
     const currentPoints = gameStats?.points || 0;
     const cost = rouletteGame.cost;
@@ -754,19 +799,21 @@ const MiniGame: React.FC<MiniGameProps> = ({
       totalSpent: (prev?.totalSpent || 0) + cost,
     }));
 
-    // 룰렛 회전 시작
+    // 🎡 실제 룰렛 회전 시작
+    const result = Math.floor(Math.random() * 45) + 1;
+    const rotations = 5 + Math.random() * 5; // 5-10바퀴 회전
+    const finalAngle = rotations * 360 + (result - 1) * 8; // 각 번호는 8도씩 차지
+
     setRouletteGame(prev => ({
       ...prev,
       isSpinning: true,
+      targetAngle: finalAngle,
     }));
 
-    // 결과 계산 및 애니메이션
+    // 2.5초 후 결과 처리
     setTimeout(() => {
-      const result = Math.floor(Math.random() * 45) + 1;
-      let multiplier = 1;
-      let winnings = 0;
-
       // 배율 계산
+      let multiplier = 2; // 기본 배율
       for (const mult of rouletteGame.multipliers) {
         if (result >= mult.range[0] && result <= mult.range[1]) {
           multiplier = mult.multiplier;
@@ -775,6 +822,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
       }
 
       // 당첨 확인
+      let winnings = 0;
       if (result === rouletteGame.userBet) {
         winnings = rouletteGame.betAmount * multiplier;
       }
@@ -791,6 +839,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
         ...prev,
         isSpinning: false,
         selectedNumber: result,
+        currentAngle: finalAngle,
         spinHistory: [newHistory, ...prev.spinHistory.slice(0, 4)],
       }));
 
@@ -803,14 +852,24 @@ const MiniGame: React.FC<MiniGameProps> = ({
           gamesPlayed: (prev?.gamesPlayed || 0) + 1,
           totalWins: (prev?.totalWins || 0) + 1,
         }));
-        setTimeout(() => alert(`🎉 당첨! ${safeFormatNumber(winnings)}P 획득!`), 500);
+        setTimeout(() => alert(`🎉 당첨! ${safeFormatNumber(winnings)}P 획득! (${multiplier}배 적용)`), 500);
       } else {
         setGameStats(prev => ({
           ...prev,
           gamesPlayed: (prev?.gamesPlayed || 0) + 1,
         }));
       }
-    }, 2000);
+    }, 2500);
+  };
+
+  // 🆕 12단계 배율에 따른 색상 및 각도 계산
+  const getMultiplierForNumber = (num: number): { multiplier: number; color: string } => {
+    for (const mult of rouletteGame.multipliers) {
+      if (num >= mult.range[0] && num <= mult.range[1]) {
+        return { multiplier: mult.multiplier, color: mult.color };
+      }
+    }
+    return { multiplier: 2, color: "#F8C471" };
   };
 
   // 로딩 상태 처리
@@ -1138,7 +1197,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
         </div>
       )}
 
-      {/* 🎯 번호맞추기 게임 */}
+      {/* 🎯 번호맞추기 게임 (랜덤 선택 기능 추가) */}
       {selectedGame === "guess" && (
         <div
           style={{
@@ -1205,9 +1264,28 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
               {/* 번호 선택 */}
               <div style={{ marginBottom: "16px" }}>
-                <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
-                  번호 선택 (6개)
-                </h4>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0" }}>
+                    번호 선택 (6개)
+                  </h4>
+                  {/* 🆕 랜덤 선택 버튼 */}
+                  <button
+                    onClick={selectRandomGuessNumbers}
+                    disabled={guessGame.gameOver}
+                    style={{
+                      padding: "6px 12px",
+                      backgroundColor: "#8b5cf6",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      cursor: guessGame.gameOver ? "not-allowed" : "pointer",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    🎲 랜덤선택
+                  </button>
+                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(9, 1fr)", gap: "4px", marginBottom: "12px" }}>
                   {Array.from({ length: 45 }, (_, i) => i + 1).map((num) => (
                     <button
@@ -1222,6 +1300,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                         }
                         setGuessGame(prev => ({ ...prev, userGuess: newGuess.sort((a, b) => a - b) }));
                       }}
+                      disabled={guessGame.gameOver}
                       style={{
                         width: "32px",
                         height: "28px",
@@ -1230,8 +1309,9 @@ const MiniGame: React.FC<MiniGameProps> = ({
                         backgroundColor: guessGame.userGuess.includes(num) ? currentColors.primary : currentColors.surface,
                         color: guessGame.userGuess.includes(num) ? "white" : currentColors.text,
                         fontSize: "11px",
-                        cursor: "pointer",
+                        cursor: guessGame.gameOver ? "not-allowed" : "pointer",
                         fontWeight: guessGame.userGuess.includes(num) ? "bold" : "normal",
+                        opacity: guessGame.gameOver ? 0.6 : 1,
                       }}
                     >
                       {num}
@@ -1360,7 +1440,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
         </div>
       )}
 
-      {/* 🎲 가상 로또 시뮬레이션 */}
+      {/* 🎲 가상 로또 시뮬레이션 (새게임, 랜덤번호 기능 추가) */}
       {selectedGame === "simulation" && (
         <div
           style={{
@@ -1387,6 +1467,40 @@ const MiniGame: React.FC<MiniGameProps> = ({
               }}
             >
               게임 선택으로
+            </button>
+          </div>
+
+          {/* 🆕 게임 컨트롤 버튼들 */}
+          <div style={{ display: "flex", gap: "8px", marginBottom: "16px", justifyContent: "center" }}>
+            <button
+              onClick={startNewSimulation}
+              style={{
+                padding: "8px 16px",
+                backgroundColor: "#10b981",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "12px",
+                fontWeight: "bold",
+                cursor: "pointer",
+              }}
+            >
+              🆕 새 게임
+            </button>
+            <button
+              onClick={selectRandomSimulationNumbers}
+              style={{
+                padding: "8px 16px",
+                backgroundColor: "#8b5cf6",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "12px",
+                fontWeight: "bold",
+                cursor: "pointer",
+              }}
+            >
+              🎲 랜덤번호
             </button>
           </div>
 
@@ -1790,7 +1904,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
         </div>
       )}
 
-      {/* 🎡 스피드 룰렛 */}
+      {/* 🎡 완전히 새로운 12단계 스피드 룰렛 */}
       {selectedGame === "roulette" && (
         <div
           style={{
@@ -1802,7 +1916,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
             <h3 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0" }}>
-              🎡 스피드 룰렛
+              🎡 12단계 스피드 룰렛
             </h3>
             <button
               onClick={() => setSelectedGame(null)}
@@ -1820,25 +1934,24 @@ const MiniGame: React.FC<MiniGameProps> = ({
             </button>
           </div>
 
-          {/* 룰렛 */}
+          {/* 🆕 개선된 룰렛 휠 (배율 정보 포함) */}
           <div style={{ textAlign: "center", marginBottom: "16px" }}>
             <div
               style={{
-                width: "200px",
-                height: "200px",
+                width: "240px",
+                height: "240px",
                 borderRadius: "50%",
-                background: `conic-gradient(
-                  #FF6B6B 0deg 36deg,
-                  #4ECDC4 36deg 108deg,
-                  #45B7D1 108deg 180deg,
-                  #96CEB4 180deg 252deg,
-                  #FFEAA7 252deg 360deg
-                )`,
                 margin: "0 auto 16px",
                 position: "relative",
-                border: "4px solid #333",
-                transform: rouletteGame.isSpinning ? `rotate(${rouletteGame.currentAngle}deg)` : "rotate(0deg)",
-                transition: rouletteGame.isSpinning ? "transform 2s cubic-bezier(0.25, 0.46, 0.45, 0.94)" : "none",
+                border: "6px solid #333",
+                background: `conic-gradient(
+                  ${rouletteGame.multipliers.map(mult => 
+                    `${mult.color} ${mult.startAngle}deg ${mult.endAngle}deg`
+                  ).join(', ')}
+                )`,
+                transform: `rotate(${rouletteGame.currentAngle}deg)`,
+                transition: rouletteGame.isSpinning ? "transform 2.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)" : "transform 0.3s ease",
+                overflow: "hidden",
               }}
             >
               {/* 룰렛 중앙 */}
@@ -1848,63 +1961,96 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   top: "50%",
                   left: "50%",
                   transform: "translate(-50%, -50%)",
-                  width: "60px",
-                  height: "60px",
+                  width: "80px",
+                  height: "80px",
                   borderRadius: "50%",
                   backgroundColor: "#333",
                   color: "white",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "18px",
+                  fontSize: "22px",
                   fontWeight: "bold",
+                  border: "3px solid #FFD700",
+                  boxShadow: "0 0 20px rgba(255, 215, 0, 0.5)",
                 }}
               >
-                {rouletteGame.selectedNumber || "?"}
+                {rouletteGame.selectedNumber || "🎡"}
               </div>
+              
+              {/* 🆕 배율 정보를 룰렛 모서리에 표시 */}
+              {rouletteGame.multipliers.map((mult, index) => {
+                const centerAngle = (mult.startAngle + mult.endAngle) / 2;
+                const radius = 95; // 룰렛 가장자리
+                const x = Math.cos((centerAngle - 90) * Math.PI / 180) * radius;
+                const y = Math.sin((centerAngle - 90) * Math.PI / 180) * radius;
+                
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      position: "absolute",
+                      top: "50%",
+                      left: "50%",
+                      transform: `translate(${x}px, ${y}px) translate(-50%, -50%) rotate(${-rouletteGame.currentAngle}deg)`,
+                      fontSize: "8px",
+                      fontWeight: "bold",
+                      color: "white",
+                      textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
+                      pointerEvents: "none",
+                      width: "20px",
+                      textAlign: "center",
+                    }}
+                  >
+                    {mult.multiplier}x
+                  </div>
+                );
+              })}
               
               {/* 룰렛 포인터 */}
               <div
                 style={{
                   position: "absolute",
-                  top: "10px",
+                  top: "15px",
                   left: "50%",
                   transform: "translateX(-50%)",
                   width: "0",
                   height: "0",
-                  borderLeft: "10px solid transparent",
-                  borderRight: "10px solid transparent",
-                  borderTop: "20px solid #333",
+                  borderLeft: "12px solid transparent",
+                  borderRight: "12px solid transparent",
+                  borderTop: "30px solid #FFD700",
+                  filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))",
+                  zIndex: 10,
                 }}
               />
             </div>
 
-            {/* 배율 정보 */}
-            <div style={{ marginBottom: "16px" }}>
-              <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
-                배율 정보
-              </h4>
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                {rouletteGame.multipliers.map((mult, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "4px 8px",
-                      backgroundColor: mult.color,
-                      borderRadius: "4px",
-                      color: "white",
-                      fontSize: "12px",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    <span>{mult.range[0]}-{mult.range[1]}번</span>
-                    <span>{mult.multiplier}배</span>
-                  </div>
-                ))}
-              </div>
+            {/* 🆕 간략한 배율 범례 */}
+            <div style={{ 
+              display: "flex", 
+              flexWrap: "wrap", 
+              gap: "4px", 
+              justifyContent: "center",
+              marginBottom: "16px",
+              maxWidth: "240px",
+              margin: "0 auto 16px"
+            }}>
+              {rouletteGame.multipliers.map((mult, index) => (
+                <div
+                  key={index}
+                  style={{
+                    fontSize: "9px",
+                    padding: "2px 4px",
+                    backgroundColor: mult.color,
+                    color: "white",
+                    borderRadius: "3px",
+                    fontWeight: "bold",
+                    textShadow: "1px 1px 1px rgba(0,0,0,0.5)",
+                  }}
+                >
+                  {mult.range[0]}{mult.range[0] !== mult.range[1] ? `-${mult.range[1]}` : ""}: {mult.multiplier}x
+                </div>
+              ))}
             </div>
           </div>
 
@@ -1914,28 +2060,62 @@ const MiniGame: React.FC<MiniGameProps> = ({
               베팅할 번호 선택
             </h4>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(9, 1fr)", gap: "4px", marginBottom: "12px" }}>
-              {Array.from({ length: 45 }, (_, i) => i + 1).map((num) => (
-                <button
-                  key={num}
-                  onClick={() => setRouletteGame(prev => ({ ...prev, userBet: num }))}
-                  disabled={rouletteGame.isSpinning}
-                  style={{
-                    width: "32px",
-                    height: "28px",
-                    borderRadius: "4px",
-                    border: rouletteGame.userBet === num ? `2px solid #ef4444` : `1px solid ${currentColors.border}`,
-                    backgroundColor: rouletteGame.userBet === num ? "#ef4444" : currentColors.surface,
-                    color: rouletteGame.userBet === num ? "white" : currentColors.text,
-                    fontSize: "11px",
-                    cursor: rouletteGame.isSpinning ? "not-allowed" : "pointer",
-                    fontWeight: rouletteGame.userBet === num ? "bold" : "normal",
-                    opacity: rouletteGame.isSpinning ? 0.6 : 1,
-                  }}
-                >
-                  {num}
-                </button>
-              ))}
+              {Array.from({ length: 45 }, (_, i) => i + 1).map((num) => {
+                const { multiplier, color } = getMultiplierForNumber(num);
+                return (
+                  <button
+                    key={num}
+                    onClick={() => setRouletteGame(prev => ({ ...prev, userBet: num }))}
+                    disabled={rouletteGame.isSpinning}
+                    style={{
+                      width: "32px",
+                      height: "28px",
+                      borderRadius: "4px",
+                      border: rouletteGame.userBet === num ? `2px solid #ef4444` : `1px solid ${currentColors.border}`,
+                      backgroundColor: rouletteGame.userBet === num ? "#ef4444" : currentColors.surface,
+                      color: rouletteGame.userBet === num ? "white" : currentColors.text,
+                      fontSize: "10px",
+                      cursor: rouletteGame.isSpinning ? "not-allowed" : "pointer",
+                      fontWeight: rouletteGame.userBet === num ? "bold" : "normal",
+                      opacity: rouletteGame.isSpinning ? 0.6 : 1,
+                      position: "relative",
+                    }}
+                  >
+                    {num}
+                    {/* 배율 표시 */}
+                    <div style={{
+                      position: "absolute",
+                      top: "-4px",
+                      right: "-4px",
+                      fontSize: "6px",
+                      backgroundColor: color,
+                      color: "white",
+                      borderRadius: "2px",
+                      padding: "1px 2px",
+                      fontWeight: "bold",
+                      lineHeight: "1",
+                    }}>
+                      {multiplier}x
+                    </div>
+                  </button>
+                );
+              })}
             </div>
+
+            {/* 선택된 번호 정보 */}
+            {rouletteGame.userBet && (
+              <div style={{
+                padding: "8px",
+                backgroundColor: currentColors.info,
+                borderRadius: "6px",
+                textAlign: "center",
+                marginBottom: "12px",
+              }}>
+                <span style={{ fontSize: "14px", fontWeight: "bold", color: currentColors.infoText }}>
+                  선택: {rouletteGame.userBet}번 | 배율: {getMultiplierForNumber(rouletteGame.userBet).multiplier}배
+                </span>
+              </div>
+            )}
 
             <button
               onClick={startRouletteGame}
@@ -1952,7 +2132,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 cursor: rouletteGame.userBet !== null && !rouletteGame.isSpinning && (gameStats?.points || 0) >= rouletteGame.cost ? "pointer" : "not-allowed",
               }}
             >
-              {rouletteGame.isSpinning ? "룰렛 회전 중..." : `🎡 룰렛 돌리기! (${safeFormatNumber(rouletteGame.cost)}P)`}
+              {rouletteGame.isSpinning ? "🎡 룰렛 회전 중..." : `🎡 룰렛 돌리기! (${safeFormatNumber(rouletteGame.cost)}P)`}
             </button>
           </div>
 
