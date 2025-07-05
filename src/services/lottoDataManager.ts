@@ -270,7 +270,7 @@ class RealtimeLottoDataManager {
     }
   }
 
-  // 📅 다음 추첨 정보 (수정됨 - 토요일 오후 8시 35분 기준)
+  // 📅 🔧 완전히 수정된 다음 추첨 정보 - 정확한 시간 계산
   async getNextDrawInfo(): Promise<{
     round: number;
     date: string;
@@ -290,8 +290,7 @@ class RealtimeLottoDataManager {
       }
 
       const nextRound = latestRound + 1;
-      const nextDate = this.getCorrectNextSaturday();
-      const daysUntil = this.getCorrectDaysUntilNextSaturday();
+      const drawInfo = this.calculatePreciseNextDrawInfo();
 
       console.log(
         `📅 다음 추첨: ${nextRound}회차 (현재 최신: ${latestRound}회차)`
@@ -299,21 +298,102 @@ class RealtimeLottoDataManager {
 
       return {
         round: nextRound,
-        date: nextDate,
+        date: drawInfo.nextDrawDate.toISOString().split("T")[0],
         estimatedJackpot: 3500000000,
-        daysUntilDraw: daysUntil,
+        daysUntilDraw: drawInfo.daysUntilDraw,
       };
     } catch (error) {
       console.error("❌ 다음 추첨 정보 오류:", error);
 
       // 폴백 정보
+      const fallbackInfo = this.calculatePreciseNextDrawInfo();
       return {
         round: 1179,
-        date: this.getCorrectNextSaturday(),
+        date: fallbackInfo.nextDrawDate.toISOString().split("T")[0],
         estimatedJackpot: 3500000000,
-        daysUntilDraw: this.getCorrectDaysUntilNextSaturday(),
+        daysUntilDraw: fallbackInfo.daysUntilDraw,
       };
     }
+  }
+
+  // 🔧 완전히 새로운 정확한 추첨일 계산 함수
+  private calculatePreciseNextDrawInfo(): {
+    nextDrawDate: Date;
+    daysUntilDraw: number;
+    isToday: boolean;
+    hasDrawPassed: boolean;
+  } {
+    // 로또 추첨: 매주 토요일 오후 8시 35분
+    const DRAW_DAY = 6; // 토요일 (0: 일요일, 6: 토요일)
+    const DRAW_HOUR = 20; // 오후 8시
+    const DRAW_MINUTE = 35; // 35분
+
+    const now = new Date();
+    const currentDay = now.getDay();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+
+    // 이번 주 토요일 추첨 시간 계산
+    const thisWeekSaturday = new Date(now);
+    const daysToSaturday = (DRAW_DAY - currentDay + 7) % 7;
+    thisWeekSaturday.setDate(now.getDate() + daysToSaturday);
+    thisWeekSaturday.setHours(DRAW_HOUR, DRAW_MINUTE, 0, 0);
+
+    // 만약 오늘이 토요일이라면
+    if (currentDay === DRAW_DAY) {
+      thisWeekSaturday.setDate(now.getDate()); // 오늘로 설정
+      thisWeekSaturday.setHours(DRAW_HOUR, DRAW_MINUTE, 0, 0);
+    }
+
+    // 다음 주 토요일 추첨 시간 계산
+    const nextWeekSaturday = new Date(thisWeekSaturday);
+    nextWeekSaturday.setDate(thisWeekSaturday.getDate() + 7);
+
+    let nextDrawDate: Date;
+    let isToday = false;
+    let hasDrawPassed = false;
+
+    // 추첨 시간 결정 로직
+    if (currentDay === DRAW_DAY) {
+      // 오늘이 토요일인 경우
+      if (currentHour < DRAW_HOUR || (currentHour === DRAW_HOUR && currentMinute < DRAW_MINUTE)) {
+        // 추첨 시간 전 - 오늘 추첨
+        nextDrawDate = thisWeekSaturday;
+        isToday = true;
+        hasDrawPassed = false;
+      } else {
+        // 추첨 시간 후 - 다음 주 토요일 추첨
+        nextDrawDate = nextWeekSaturday;
+        isToday = false;
+        hasDrawPassed = true;
+      }
+    } else {
+      // 오늘이 토요일이 아닌 경우
+      if (daysToSaturday === 0) {
+        // 이미 이번 주 토요일이 지났으면 다음 주
+        nextDrawDate = nextWeekSaturday;
+      } else {
+        // 이번 주 토요일이 아직 오지 않았으면 이번 주
+        nextDrawDate = thisWeekSaturday;
+      }
+      isToday = false;
+      hasDrawPassed = false;
+    }
+
+    // 남은 시간 계산
+    const timeDiff = nextDrawDate.getTime() - now.getTime();
+    const daysUntilDraw = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+    
+    // 정확한 일수 계산 (같은 날이면 0일)
+    const exactDaysUntilDraw = timeDiff <= 0 ? 0 : 
+      nextDrawDate.toDateString() === now.toDateString() ? 0 : daysUntilDraw;
+
+    return {
+      nextDrawDate,
+      daysUntilDraw: exactDaysUntilDraw,
+      isToday,
+      hasDrawPassed,
+    };
   }
 
   // 🔄 강제 업데이트 (기존 인터페이스 호환) - 최대 데이터로 변경
@@ -410,68 +490,6 @@ class RealtimeLottoDataManager {
       jackpotWinners: 12,
       jackpotPrize: 2391608407,
     };
-  }
-
-  // 📅 수정된 유틸리티 함수들 - 토요일 오후 8시 35분 기준
-  private getCorrectNextSaturday(): string {
-    const now = new Date();
-    const currentDay = now.getDay(); // 0: 일요일, 6: 토요일
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    
-    // 추첨 시간: 토요일 오후 8시 35분 (20시 35분)
-    const drawHour = 20;
-    const drawMinute = 35;
-    
-    let nextDraw = new Date(now);
-    
-    if (currentDay === 6) { // 현재가 토요일인 경우
-      // 추첨 시간(20:35) 이전이면 오늘, 이후면 다음 주 토요일
-      if (currentHour < drawHour || (currentHour === drawHour && currentMinute < drawMinute)) {
-        // 오늘 토요일이 추첨일
-        nextDraw.setHours(drawHour, drawMinute, 0, 0);
-      } else {
-        // 추첨 시간이 지났으므로 다음 주 토요일
-        nextDraw.setDate(now.getDate() + 7);
-        nextDraw.setHours(drawHour, drawMinute, 0, 0);
-      }
-    } else {
-      // 토요일이 아닌 경우 다음 토요일
-      const daysUntilSaturday = (6 - currentDay + 7) % 7;
-      if (daysUntilSaturday === 0) {
-        // 이미 처리됨 (위의 토요일 케이스)
-        nextDraw.setDate(now.getDate() + 7);
-      } else {
-        nextDraw.setDate(now.getDate() + daysUntilSaturday);
-      }
-      nextDraw.setHours(drawHour, drawMinute, 0, 0);
-    }
-    
-    return nextDraw.toISOString().split("T")[0];
-  }
-
-  private getCorrectDaysUntilNextSaturday(): number {
-    const now = new Date();
-    const currentDay = now.getDay(); // 0: 일요일, 6: 토요일
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    
-    // 추첨 시간: 토요일 오후 8시 35분 (20시 35분)
-    const drawHour = 20;
-    const drawMinute = 35;
-    
-    if (currentDay === 6) { // 현재가 토요일인 경우
-      // 추첨 시간(20:35) 이전이면 0일 (오늘), 이후면 7일 (다음 주)
-      if (currentHour < drawHour || (currentHour === drawHour && currentMinute < drawMinute)) {
-        return 0; // 오늘 추첨
-      } else {
-        return 7; // 다음 주 토요일
-      }
-    } else {
-      // 토요일이 아닌 경우
-      const daysUntilSaturday = (6 - currentDay + 7) % 7;
-      return daysUntilSaturday === 0 ? 7 : daysUntilSaturday;
-    }
   }
 
   // 🎯 헬스체크 API 호출
