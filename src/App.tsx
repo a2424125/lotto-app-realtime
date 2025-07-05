@@ -176,24 +176,32 @@ const LottoApp = () => {
     setIsDataLoading(true);
     try {
       console.log("🔄 실시간 로또 데이터 로딩...");
+
       const health = await lottoDataManager.checkHealth();
       console.log("💚 헬스체크 결과:", health);
-      const historyResponse = await lottoDataManager.getHistory('all');
+
+      const historyResponse = await lottoDataManager.getHistory(50);
+
       if (historyResponse.success && historyResponse.data && historyResponse.data.length > 0) {
         console.log(`📊 수신된 데이터: ${historyResponse.data.length}회차`);
+        
         const formattedData = historyResponse.data.map(
           (result: LottoDrawResult) => [...result.numbers, result.bonusNumber]
         );
+
         const latestRound = historyResponse.data[0].round;
         const oldestRound = historyResponse.data[historyResponse.data.length - 1].round;
+
         setRoundRange({ latestRound, oldestRound });
         setPastWinningNumbers(formattedData);
+        
         setDataStatus({
           lastUpdate: new Date(),
           isRealTime: true,
           source: "realtime_crawler",
           crawlerHealth: health.status || "healthy",
         });
+
         console.log(`✅ 데이터 로드 완료: ${latestRound}회 ~ ${oldestRound}회 (${historyResponse.data.length}회차)`);
       } else {
         throw new Error(historyResponse.error || "데이터 없음");

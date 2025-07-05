@@ -63,15 +63,15 @@ class RealtimeLottoDataManager {
     }
   }
 
-  // 🟢 전체 회차를 크롤러에서 불러오는 함수 (rounds=all)
-  private async loadCrawledData(rounds: number | 'all' = 100): Promise<void> {
+  private async loadCrawledData(rounds: number = 100): Promise<void> {
     try {
-      const roundsParam = rounds === 'all' ? 'all' : rounds;
-      console.log(`🔄 크롤링 API 호출: ${roundsParam}회차`);
+      console.log(`🔄 크롤링 API 호출: ${rounds}회차`);
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 25000);
+
       const response = await fetch(
-        `${this.apiBaseUrl}/lotto-crawler?rounds=${roundsParam}`,
+        `${this.apiBaseUrl}/lotto-crawler?rounds=${rounds}`,
         {
           method: "GET",
           headers: {
@@ -80,19 +80,27 @@ class RealtimeLottoDataManager {
           signal: controller.signal,
         }
       );
+
       clearTimeout(timeoutId);
+
       if (!response.ok) {
         throw new Error(`크롤링 API 오류: ${response.status} ${response.statusText}`);
       }
+
       const result = await response.json();
+
       if (!result.success || !result.data) {
         throw new Error(result.error || "크롤링 데이터 없음");
       }
+
       this.cachedData = result.data
         .filter((item: any) => this.isValidLottoResult(item))
         .sort((a: LottoDrawResult, b: LottoDrawResult) => b.round - a.round);
+
       this.lastUpdateTime = new Date();
+
       console.log(`✅ 크롤링 완료: ${this.cachedData.length}회차 (${result.source})`);
+
       if (this.cachedData.length > 0) {
         const latest = this.cachedData[0];
         const oldest = this.cachedData[this.cachedData.length - 1];
@@ -206,22 +214,25 @@ class RealtimeLottoDataManager {
     }
   }
 
-  // 전체 회차 히스토리 반환 (1회차~최신)
-  async getHistory(count: number = 9999): Promise<LottoHistoryAPIResponse> {
+  async getHistory(count: number = 1179): Promise<LottoHistoryAPIResponse> {
     try {
-      console.log(`📈 ${count}회차 히스토리 요청 (전체: 1~최신회차)`);
+      console.log(`📈 ${count}회차 히스토리 요청 (전체: 1~${this.currentRound}회차)`);
+
       if (!this.isDataLoaded || this.isCacheExpired() || this.cachedData.length < Math.min(count, 200)) {
-        // 전체 요청이면 all로 요청
-        const loadCount: number | 'all' = count >= 9999 ? 'all' : count;
+        const loadCount = Math.min(count, 200); // API 제한으로 최대 200회차
         await this.loadCrawledData(loadCount);
       }
+
       if (this.cachedData.length === 0) {
         throw new Error("로드된 데이터가 없습니다");
       }
+
       const results = this.cachedData.slice(0, Math.min(count, this.cachedData.length));
       const latest = results[0];
       const oldest = results[results.length - 1];
+
       console.log(`✅ 히스토리 반환: ${results.length}회차 (${latest.round}~${oldest.round}회차)`);
+
       return {
         success: true,
         data: results,
@@ -229,6 +240,7 @@ class RealtimeLottoDataManager {
       };
     } catch (error) {
       console.error("❌ 히스토리 조회 실패:", error);
+
       // 전체 회차 fallback 데이터 생성
       const fallbackData = this.getMultipleDynamicFallbackData(Math.min(count, this.currentRound));
       return {
@@ -239,15 +251,6 @@ class RealtimeLottoDataManager {
     }
   }
 
-  // 최신 회차를 동적으로 계산
-  getLatestRound(): number {
-    if (this.cachedData.length > 0) {
-      return this.cachedData[0].round;
-    }
-    return this.currentRound;
-  }
-
-  // 다음 추첨 정보 계산 (최신 회차 기반)
   async getNextDrawInfo(): Promise<{
     round: number;
     date: string;
@@ -256,12 +259,20 @@ class RealtimeLottoDataManager {
   }> {
     try {
       if (!this.isDataLoaded || this.isCacheExpired()) {
-        await this.loadCrawledData('all');
+        await this.loadCrawledData(10);
       }
-      let latestRound = this.getLatestRound();
+
+      let latestRound = this.currentRound;
+
+      if (this.cachedData.length > 0) {
+        latestRound = Math.max(this.cachedData[0].round, this.currentRound);
+      }
+
       const nextRound = latestRound + 1;
       const drawInfo = this.calculatePreciseNextDrawInfo();
+
       console.log(`📅 다음 추첨: ${nextRound}회차 (현재 최신: ${latestRound}회차)`);
+
       return {
         round: nextRound,
         date: drawInfo.nextDrawDate.toISOString().split("T")[0],
@@ -270,6 +281,7 @@ class RealtimeLottoDataManager {
       };
     } catch (error) {
       console.error("❌ 다음 추첨 정보 오류:", error);
+
       const fallbackInfo = this.calculatePreciseNextDrawInfo();
       return {
         round: this.currentRound + 1,
