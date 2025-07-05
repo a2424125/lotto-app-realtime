@@ -298,6 +298,51 @@ function generateConsistentNumbers(seed: number): number[] {
   return Array.from(numbers);
 }
 
+// 🕷️ 전체 회차 크롤링 함수 (여러 페이지 순회)
+async function crawlAllLottoData(): Promise<LottoDrawResult[]> {
+  const results: LottoDrawResult[] = [];
+  let page = 1;
+  let keepGoing = true;
+  let latestRound = 0;
+
+  while (keepGoing) {
+    const url = `https://en.lottolyzer.com/history/south-korea/6_slash_45-lotto/page/${page}/per-page/50/summary-view`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate, br",
+        "DNT": "1",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    const html = await response.text();
+    const pageResults = parseExactSummaryTable(html, 50);
+    if (page === 1 && pageResults.length > 0) {
+      latestRound = pageResults[0].round;
+    }
+    results.push(...pageResults);
+    // 마지막 페이지(50개 미만) 또는 1회차 도달 시 종료
+    if (pageResults.length < 50 || results.some(r => r.round === 1)) {
+      keepGoing = false;
+    } else {
+      page++;
+    }
+  }
+  // 중복/정렬 정리
+  const unique = Array.from(new Map(results.map(r => [r.round, r])).values());
+  unique.sort((a, b) => b.round - a.round);
+  return unique;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log("🕷️ 로또 크롤러 API 호출 (최종 수정 버전)...");
 
@@ -315,22 +360,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const roundsParam = req.query.rounds as string;
-    const requestedRounds = roundsParam ? parseInt(roundsParam, 10) : 50;
-    const maxRounds = Math.min(requestedRounds, 50); // summary-view는 최대 50개
-
-    console.log(`📊 ${maxRounds}회차 크롤링 요청 처리 중...`);
-
+    let requestedRounds = 50;
+    let fetchAll = false;
+    if (roundsParam) {
+      if (roundsParam === 'all' || parseInt(roundsParam, 10) > 500) {
+        fetchAll = true;
+      } else {
+        requestedRounds = parseInt(roundsParam, 10);
+      }
+    }
     let lottoData: LottoDrawResult[] = [];
     let dataSource = "unknown";
-
     try {
-      console.log("🕷️ summary-view 정확 크롤링 시도...");
-      lottoData = await crawlLottoData(maxRounds);
-      dataSource = "summary_view_crawling";
-      
+      if (fetchAll) {
+        console.log("🕷️ 전체 회차 크롤링 시작...");
+        lottoData = await crawlAllLottoData();
+        dataSource = "all_summary_view_crawling";
+      } else {
+        console.log("🕷️ summary-view 정확 크롤링 시도...");
+        lottoData = await crawlLottoData(requestedRounds);
+        dataSource = "summary_view_crawling";
+      }
     } catch (crawlError) {
       console.warn("⚠️ 크롤링 실패, 폴백 사용:", crawlError);
-      lottoData = generateReliableFallbackData(maxRounds);
+      lottoData = generateReliableFallbackData(requestedRounds);
       dataSource = "reliable_fallback";
     }
 
