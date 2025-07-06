@@ -138,7 +138,7 @@ class RealtimeLottoDataManager {
   private async initializeData(): Promise<void> {
     try {
       console.log("📡 실시간 데이터 초기화 중...");
-      await this.loadCrawledData(50); // 첫 로딩은 50회차만
+      await this.loadCrawledData(1200); // 전체 데이터 로드
       this.isDataLoaded = true;
       console.log("✅ 실시간 데이터 초기화 완료");
     } catch (error) {
