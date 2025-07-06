@@ -1,5 +1,5 @@
 // api/lotto-crawler.ts
-// 🕷️ 수정된 크롤링 - 정확한 당첨번호 파싱
+// 🕷️ 전체 데이터 크롤링 - 1179개 이상 전체 회차 데이터 수집
 
 import { VercelRequest, VercelResponse } from "@vercel/node";
 
@@ -14,16 +14,102 @@ interface LottoDrawResult {
   source?: string;
 }
 
-// 🕷️ 실제 크롤링 함수
-async function crawlLottoData(maxRounds: number = 50): Promise<LottoDrawResult[]> {
-  console.log(`🕷️ summary-view 크롤링 시작: ${maxRounds}회차 요청`);
+// 🔥 전체 데이터 크롤링 함수 (페이지네이션 처리)
+async function crawlAllLottoData(): Promise<LottoDrawResult[]> {
+  console.log(`🕷️ 전체 로또 데이터 크롤링 시작...`);
+  
+  const allResults: LottoDrawResult[] = [];
+  let currentPage = 1;
+  let hasMoreData = true;
+  const perPage = 100; // 페이지당 100개씩 요청
+  
+  try {
+    while (hasMoreData) {
+      console.log(`📄 ${currentPage}페이지 크롤링 중... (${perPage}개씩)`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30초 타임아웃
+      
+      const url = `https://en.lottolyzer.com/history/south-korea/6_slash_45-lotto/page/${currentPage}/per-page/${perPage}/summary-view`;
+      console.log(`🔗 URL: ${url}`);
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.5",
+          "Accept-Encoding": "gzip, deflate, br",
+          "DNT": "1",
+          "Connection": "keep-alive",
+          "Upgrade-Insecure-Requests": "1",
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.warn(`⚠️ 페이지 ${currentPage} 응답 오류: ${response.status}`);
+        break;
+      }
+
+      const html = await response.text();
+      const pageResults = parseExactSummaryTable(html, perPage);
+      
+      if (pageResults.length === 0) {
+        console.log(`✅ 모든 데이터 크롤링 완료 (${currentPage - 1}페이지까지)`);
+        hasMoreData = false;
+      } else {
+        allResults.push(...pageResults);
+        console.log(`📊 ${currentPage}페이지: ${pageResults.length}개 수집 (누적: ${allResults.length}개)`);
+        
+        // 다음 페이지로
+        currentPage++;
+        
+        // 페이지 간 딜레이 (서버 부하 방지)
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      // 안전장치: 너무 많은 페이지 방지 (최대 20페이지 = 2000개)
+      if (currentPage > 20) {
+        console.log(`⚠️ 최대 페이지 도달 (20페이지)`);
+        break;
+      }
+    }
+    
+    // 중복 제거 및 정렬
+    const uniqueResults = Array.from(
+      new Map(allResults.map(item => [item.round, item])).values()
+    ).sort((a, b) => b.round - a.round);
+    
+    console.log(`🎯 전체 크롤링 완료: ${uniqueResults.length}개 회차 데이터 수집`);
+    
+    // 1179회차 검증
+    const round1179 = uniqueResults.find(r => r.round === 1179);
+    if (round1179) {
+      console.log(`✅ 1179회차 확인: [${round1179.numbers.join(', ')}] + ${round1179.bonusNumber}`);
+      console.log(`   예상값: [3, 16, 18, 24, 40, 44] + 21`);
+    }
+    
+    return uniqueResults;
+
+  } catch (error) {
+    console.error("❌ 전체 크롤링 실패:", error);
+    throw error;
+  }
+}
+
+// 🔥 대용량 단일 요청 시도 (백업 방법)
+async function crawlLottoDataSingleRequest(maxRounds: number = 2000): Promise<LottoDrawResult[]> {
+  console.log(`🕷️ 대용량 단일 요청 시도: ${maxRounds}개`);
   
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60초 타임아웃
     
     const response = await fetch(
-      "https://en.lottolyzer.com/history/south-korea/6_slash_45-lotto/page/1/per-page/50/summary-view",
+      `https://en.lottolyzer.com/history/south-korea/6_slash_45-lotto/page/1/per-page/${maxRounds}/summary-view`,
       {
         method: "GET",
         headers: {
@@ -48,32 +134,19 @@ async function crawlLottoData(maxRounds: number = 50): Promise<LottoDrawResult[]
     const html = await response.text();
     console.log(`✅ HTML 데이터 수신 성공 (${html.length} bytes)`);
 
-    // 정확한 테이블 파싱
     const results = parseExactSummaryTable(html, maxRounds);
     
-    if (results.length === 0) {
-      console.warn("⚠️ 파싱된 데이터가 없음, HTML 일부 확인:", html.substring(0, 500));
-      throw new Error("파싱된 데이터가 없습니다");
-    }
-
-    console.log(`🎯 크롤링 성공: ${results.length}회차 데이터 추출`);
-    
-    // 🔧 1179회차 검증 로그 추가
-    const round1179 = results.find(r => r.round === 1179);
-    if (round1179) {
-      console.log(`✅ 1179회차 검증: [${round1179.numbers.join(', ')}] + ${round1179.bonusNumber}`);
-      console.log(`   예상값: [3, 16, 18, 24, 40, 44] + 21`);
-    }
+    console.log(`🎯 단일 요청 크롤링 성공: ${results.length}회차 데이터 추출`);
     
     return results;
 
   } catch (error) {
-    console.error("❌ 크롤링 실패:", error);
+    console.error("❌ 단일 요청 크롤링 실패:", error);
     throw error;
   }
 }
 
-// 📋 수정된 정확한 summary 테이블 파싱
+// 📋 정확한 summary 테이블 파싱
 function parseExactSummaryTable(html: string, maxRounds: number): LottoDrawResult[] {
   const results: LottoDrawResult[] = [];
   
@@ -314,7 +387,7 @@ function parseDate(dateText: string): string | null {
   }
 }
 
-// 📄 개선된 폴백 데이터 (1179회차 정확한 데이터 포함)
+// 📄 폴백 데이터 생성 (전체 회차)
 function generateReliableFallbackData(count: number): LottoDrawResult[] {
   const results: LottoDrawResult[] = [];
   const currentDate = new Date();
@@ -326,7 +399,7 @@ function generateReliableFallbackData(count: number): LottoDrawResult[] {
     1177: { numbers: [4, 11, 15, 28, 34, 42], bonus: 45, date: '2025-06-21' },
   };
   
-  // 현재 추정 회차 계산 (2025-07-05 = 1179 기준)
+  // 현재 추정 회차 계산
   const referenceDate = new Date('2025-07-05');
   const referenceRound = 1179;
   const weeksSince = Math.floor((currentDate.getTime() - referenceDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
@@ -390,7 +463,7 @@ function generateConsistentNumbers(seed: number): number[] {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log("🕷️ 로또 크롤러 API 호출 (수정 버전)...");
+  console.log("🕷️ 로또 크롤러 API 호출 (전체 데이터 버전)...");
 
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
@@ -406,23 +479,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const roundsParam = req.query.rounds as string;
-    const requestedRounds = roundsParam ? parseInt(roundsParam, 10) : 50;
-    const maxRounds = Math.min(requestedRounds, 50); // summary-view는 최대 50개
-
-    console.log(`📊 ${maxRounds}회차 크롤링 요청 처리 중...`);
+    const requestedRounds = roundsParam ? parseInt(roundsParam, 10) : 1200; // 기본값 1200
+    
+    console.log(`📊 ${requestedRounds}회차 크롤링 요청 처리 중...`);
 
     let lottoData: LottoDrawResult[] = [];
     let dataSource = "unknown";
 
     try {
-      console.log("🕷️ summary-view 정확 크롤링 시도...");
-      lottoData = await crawlLottoData(maxRounds);
-      dataSource = "summary_view_crawling";
+      // 🔥 방법 1: 단일 대용량 요청 시도
+      console.log("🔥 방법 1: 단일 대용량 요청 시도...");
+      const maxRequest = Math.max(requestedRounds, 1500); // 최소 1500개 요청
+      lottoData = await crawlLottoDataSingleRequest(maxRequest);
+      dataSource = "single_large_request";
       
-    } catch (crawlError) {
-      console.warn("⚠️ 크롤링 실패, 폴백 사용:", crawlError);
-      lottoData = generateReliableFallbackData(maxRounds);
-      dataSource = "reliable_fallback";
+    } catch (singleError) {
+      console.warn("⚠️ 단일 요청 실패, 페이지네이션 시도:", singleError);
+      
+      try {
+        // 🔥 방법 2: 페이지네이션으로 전체 데이터 수집
+        console.log("🔥 방법 2: 페이지네이션으로 전체 데이터 수집...");
+        lottoData = await crawlAllLottoData();
+        dataSource = "pagination_crawling";
+        
+      } catch (paginationError) {
+        console.warn("⚠️ 페이지네이션 실패, 폴백 사용:", paginationError);
+        lottoData = generateReliableFallbackData(requestedRounds);
+        dataSource = "reliable_fallback";
+      }
+    }
+
+    // 요청된 수만큼 잘라내기
+    if (lottoData.length > requestedRounds) {
+      lottoData = lottoData.slice(0, requestedRounds);
     }
 
     const crawledAt = new Date().toISOString();
@@ -431,13 +520,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       crawledAt: crawledAt,
     }));
 
+    // 최신순 정렬
     lottoData.sort((a, b) => b.round - a.round);
 
     const responseTime = Date.now() - startTime;
     const latestRound = lottoData.length > 0 ? lottoData[0].round : 0;
     const oldestRound = lottoData.length > 0 ? lottoData[lottoData.length - 1].round : 0;
 
-    console.log(`✅ 크롤링 완료: ${lottoData.length}회차 (${latestRound}~${oldestRound}회차) - ${dataSource}`);
+    console.log(`✅ 전체 크롤링 완료: ${lottoData.length}회차 (${latestRound}~${oldestRound}회차) - ${dataSource}`);
 
     res.status(200).json({
       success: true,
@@ -451,17 +541,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         requestedRounds: requestedRounds,
         actualRounds: lottoData.length,
         dataRange: `${latestRound}~${oldestRound}회차`,
-        dataQuality: dataSource === "summary_view_crawling" ? "high" : "medium",
+        dataQuality: dataSource === "single_large_request" || dataSource === "pagination_crawling" ? "high" : "medium",
         lastValidated: crawledAt,
-        apiVersion: "2.4.0",
+        apiVersion: "3.0.0", // 버전 업그레이드
         crawlingMethod: dataSource,
+        isFullData: lottoData.length >= 1179, // 전체 데이터 여부
       }
     });
 
   } catch (error) {
     console.error("❌ 전체 크롤링 프로세스 실패:", error);
 
-    const emergencyData = generateReliableFallbackData(5);
+    const emergencyData = generateReliableFallbackData(100);
     const responseTime = Date.now() - startTime;
 
     res.status(200).json({
@@ -475,9 +566,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       metadata: {
         responseTime: responseTime,
         dataQuality: "low",
-        apiVersion: "2.4.0",
+        apiVersion: "3.0.0",
         errorInfo: "크롤링 서비스에 일시적인 문제가 발생했습니다.",
         crawlingMethod: "emergency_fallback",
+        isFullData: false,
       }
     });
   }
