@@ -1,5 +1,5 @@
 // 🔄 src/services/lottoDataManager.ts
-// 실시간 크롤링 기반 로또 데이터 매니저 (정확한 회차 계산)
+// 🔧 수정: 정확한 회차 계산 및 추첨일 로직 개선 (2025년 7월 5일 1179회차 기준)
 
 import {
   LottoDrawResult,
@@ -13,31 +13,115 @@ class RealtimeLottoDataManager {
   private lastUpdateTime: Date | null = null;
   private apiBaseUrl: string;
   private cacheTimeout: number = 3 * 60 * 1000; // 3분 캐시
-  private currentRound: number = 1179; // 2025년 7월 6일 기준 정확한 회차
 
   constructor() {
     this.apiBaseUrl = this.getApiBaseUrl();
-    this.currentRound = this.calculateCurrentRound();
-    console.log(`🚀 실시간 로또 데이터 매니저 초기화 (현재 회차: ${this.currentRound})`);
+    console.log(`🚀 실시간 로또 데이터 매니저 초기화`);
     this.initializeData();
   }
 
-  // 🧮 정확한 현재 회차 계산 (2025년 7월 6일 = 1179회차)
+  // 🔧 수정된 정확한 현재 회차 계산 (2025년 7월 5일 1179회차 기준)
   private calculateCurrentRound(): number {
-    const startDate = new Date('2002-12-07'); // 1회차 추첨일
-    const currentDate = new Date('2025-07-06'); // 현재 날짜
+    // 🎯 기준점: 2025년 7월 5일(토) = 1179회차 추첨일
+    const referenceDate = new Date('2025-07-05'); // 2025년 7월 5일 토요일
+    const referenceRound = 1179;
     
-    // 주차 계산
-    const weeksSinceStart = Math.floor((currentDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    const now = new Date();
     
-    // 정확한 회차 계산 (1회차부터 시작)
-    const exactRound = weeksSinceStart + 1;
+    // 기준일로부터 경과된 주 수 계산
+    const timeDiff = now.getTime() - referenceDate.getTime();
+    const weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
     
-    // 2025년 7월 6일 기준으로 1179회차가 정확함
-    const correctedRound = 1179;
+    const currentRound = referenceRound + weeksPassed;
     
-    console.log(`📊 정확한 현재 회차: ${correctedRound}회차`);
-    return correctedRound;
+    console.log(`📊 정확한 현재 회차: ${currentRound}회차 (기준: 2025.7.5 = 1179회차)`);
+    return currentRound;
+  }
+
+  // 🔧 수정된 다음 추첨 회차 및 날짜 계산
+  private calculateNextDrawInfo(): {
+    nextRound: number;
+    nextDrawDate: Date;
+    daysUntilDraw: number;
+    isToday: boolean;
+    hasDrawPassed: boolean;
+    timeUntilDraw: string;
+  } {
+    const DRAW_DAY = 6; // 토요일 (0: 일요일, 6: 토요일)
+    const DRAW_HOUR = 20; // 오후 8시
+    const DRAW_MINUTE = 35; // 35분
+
+    const now = new Date();
+    const currentDay = now.getDay();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+
+    // 현재 회차 계산
+    const currentRound = this.calculateCurrentRound();
+
+    // 🎯 다음 추첨일 계산
+    let nextDrawDate = new Date(now);
+    let nextRound: number;
+    
+    if (currentDay === DRAW_DAY) {
+      // 오늘이 토요일인 경우
+      if (currentHour < DRAW_HOUR || (currentHour === DRAW_HOUR && currentMinute < DRAW_MINUTE)) {
+        // 🕐 아직 추첨시간 전 → 오늘이 현재 회차 추첨일
+        nextDrawDate.setHours(DRAW_HOUR, DRAW_MINUTE, 0, 0);
+        nextRound = currentRound;
+      } else {
+        // 🕐 추첨시간 지남 → 다음 주 토요일이 다음 회차
+        nextDrawDate.setDate(now.getDate() + 7);
+        nextDrawDate.setHours(DRAW_HOUR, DRAW_MINUTE, 0, 0);
+        nextRound = currentRound + 1;
+      }
+    } else {
+      // 오늘이 토요일이 아닌 경우 → 다음 토요일이 현재 회차 추첨일
+      const daysUntilSaturday = (DRAW_DAY - currentDay + 7) % 7;
+      if (daysUntilSaturday === 0) {
+        // 일요일인 경우 다음 토요일은 6일 후
+        nextDrawDate.setDate(now.getDate() + 6);
+      } else {
+        nextDrawDate.setDate(now.getDate() + daysUntilSaturday);
+      }
+      nextDrawDate.setHours(DRAW_HOUR, DRAW_MINUTE, 0, 0);
+      nextRound = currentRound;
+    }
+
+    // 시간 계산
+    const timeDiff = nextDrawDate.getTime() - now.getTime();
+    const exactDaysUntilDraw = Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)));
+    const isToday = nextDrawDate.toDateString() === now.toDateString();
+    const hasDrawPassed = currentDay === DRAW_DAY && currentHour >= DRAW_HOUR && currentMinute >= DRAW_MINUTE;
+
+    // 시간 표시 메시지
+    let timeUntilDraw = "";
+    if (timeDiff <= 0) {
+      timeUntilDraw = "추첨 완료";
+    } else if (isToday) {
+      const hoursLeft = Math.floor(timeDiff / (1000 * 60 * 60));
+      const minutesLeft = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+      if (hoursLeft > 0) {
+        timeUntilDraw = `오늘 추첨! (${hoursLeft}시간 ${minutesLeft}분 후)`;
+      } else {
+        timeUntilDraw = `오늘 추첨! (${minutesLeft}분 후)`;
+      }
+    } else if (exactDaysUntilDraw === 1) {
+      timeUntilDraw = "내일 추첨!";
+    } else {
+      timeUntilDraw = `${exactDaysUntilDraw}일 후 추첨`;
+    }
+
+    console.log(`📅 다음 추첨: ${nextRound}회차 (${nextDrawDate.toLocaleDateString()}) - ${timeUntilDraw}`);
+
+    return {
+      nextRound,
+      nextDrawDate,
+      daysUntilDraw: exactDaysUntilDraw,
+      isToday,
+      hasDrawPassed,
+      timeUntilDraw,
+    };
   }
 
   private getApiBaseUrl(): string {
@@ -106,6 +190,12 @@ class RealtimeLottoDataManager {
         const oldest = this.cachedData[this.cachedData.length - 1];
         console.log(`📊 데이터 범위: ${latest.round}회 ~ ${oldest.round}회`);
         console.log(`🎯 최신 당첨번호: [${latest.numbers.join(', ')}] + ${latest.bonusNumber}`);
+        
+        // 🔧 1179회차 검증
+        const round1179 = this.cachedData.find(data => data.round === 1179);
+        if (round1179) {
+          console.log(`✅ 1179회차 확인: [${round1179.numbers.join(', ')}] + ${round1179.bonusNumber}`);
+        }
       }
     } catch (error) {
       console.error("❌ 크롤링 실패:", error);
@@ -214,9 +304,10 @@ class RealtimeLottoDataManager {
     }
   }
 
-  async getHistory(count: number = 1179): Promise<LottoHistoryAPIResponse> {
+  async getHistory(count: number = 100): Promise<LottoHistoryAPIResponse> {
     try {
-      console.log(`📈 ${count}회차 히스토리 요청 (전체: 1~${this.currentRound}회차)`);
+      const currentRound = this.calculateCurrentRound();
+      console.log(`📈 ${count}회차 히스토리 요청 (현재 회차: ${currentRound})`);
 
       if (!this.isDataLoaded || this.isCacheExpired() || this.cachedData.length < Math.min(count, 200)) {
         const loadCount = Math.min(count, 200); // API 제한으로 최대 200회차
@@ -242,7 +333,8 @@ class RealtimeLottoDataManager {
       console.error("❌ 히스토리 조회 실패:", error);
 
       // 전체 회차 fallback 데이터 생성
-      const fallbackData = this.getMultipleDynamicFallbackData(Math.min(count, this.currentRound));
+      const currentRound = this.calculateCurrentRound();
+      const fallbackData = this.getMultipleDynamicFallbackData(Math.min(count, currentRound));
       return {
         success: false,
         data: fallbackData,
@@ -258,23 +350,12 @@ class RealtimeLottoDataManager {
     daysUntilDraw: number;
   }> {
     try {
-      if (!this.isDataLoaded || this.isCacheExpired()) {
-        await this.loadCrawledData(10);
-      }
+      const drawInfo = this.calculateNextDrawInfo();
 
-      let latestRound = this.currentRound;
-
-      if (this.cachedData.length > 0) {
-        latestRound = Math.max(this.cachedData[0].round, this.currentRound);
-      }
-
-      const nextRound = latestRound + 1;
-      const drawInfo = this.calculatePreciseNextDrawInfo();
-
-      console.log(`📅 다음 추첨: ${nextRound}회차 (현재 최신: ${latestRound}회차)`);
+      console.log(`📅 다음 추첨: ${drawInfo.nextRound}회차`);
 
       return {
-        round: nextRound,
+        round: drawInfo.nextRound,
         date: drawInfo.nextDrawDate.toISOString().split("T")[0],
         estimatedJackpot: 3500000000,
         daysUntilDraw: drawInfo.daysUntilDraw,
@@ -282,79 +363,15 @@ class RealtimeLottoDataManager {
     } catch (error) {
       console.error("❌ 다음 추첨 정보 오류:", error);
 
-      const fallbackInfo = this.calculatePreciseNextDrawInfo();
+      const currentRound = this.calculateCurrentRound();
+      const fallbackInfo = this.calculateNextDrawInfo();
       return {
-        round: this.currentRound + 1,
+        round: currentRound,
         date: fallbackInfo.nextDrawDate.toISOString().split("T")[0],
         estimatedJackpot: 3500000000,
         daysUntilDraw: fallbackInfo.daysUntilDraw,
       };
     }
-  }
-
-  private calculatePreciseNextDrawInfo(): {
-    nextDrawDate: Date;
-    daysUntilDraw: number;
-    isToday: boolean;
-    hasDrawPassed: boolean;
-  } {
-    const DRAW_DAY = 6; // 토요일
-    const DRAW_HOUR = 20; // 오후 8시
-    const DRAW_MINUTE = 35; // 35분
-
-    const now = new Date();
-    const currentDay = now.getDay();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-
-    const thisWeekSaturday = new Date(now);
-    const daysToSaturday = (DRAW_DAY - currentDay + 7) % 7;
-    thisWeekSaturday.setDate(now.getDate() + daysToSaturday);
-    thisWeekSaturday.setHours(DRAW_HOUR, DRAW_MINUTE, 0, 0);
-
-    if (currentDay === DRAW_DAY) {
-      thisWeekSaturday.setDate(now.getDate());
-      thisWeekSaturday.setHours(DRAW_HOUR, DRAW_MINUTE, 0, 0);
-    }
-
-    const nextWeekSaturday = new Date(thisWeekSaturday);
-    nextWeekSaturday.setDate(thisWeekSaturday.getDate() + 7);
-
-    let nextDrawDate: Date;
-    let isToday = false;
-    let hasDrawPassed = false;
-
-    if (currentDay === DRAW_DAY) {
-      if (currentHour < DRAW_HOUR || (currentHour === DRAW_HOUR && currentMinute < DRAW_MINUTE)) {
-        nextDrawDate = thisWeekSaturday;
-        isToday = true;
-        hasDrawPassed = false;
-      } else {
-        nextDrawDate = nextWeekSaturday;
-        isToday = false;
-        hasDrawPassed = true;
-      }
-    } else {
-      if (daysToSaturday === 0) {
-        nextDrawDate = nextWeekSaturday;
-      } else {
-        nextDrawDate = thisWeekSaturday;
-      }
-      isToday = false;
-      hasDrawPassed = false;
-    }
-
-    const timeDiff = nextDrawDate.getTime() - now.getTime();
-    const exactDaysUntilDraw = timeDiff <= 0 ? 0 : 
-      nextDrawDate.toDateString() === now.toDateString() ? 0 : 
-      Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
-
-    return {
-      nextDrawDate,
-      daysUntilDraw: exactDaysUntilDraw,
-      isToday,
-      hasDrawPassed,
-    };
   }
 
   async forceUpdate(): Promise<{ success: boolean; message: string }> {
@@ -392,15 +409,16 @@ class RealtimeLottoDataManager {
     totalCount: number;
   } {
     if (this.cachedData.length === 0) {
+      const currentRound = this.calculateCurrentRound();
       return {
-        latestRound: this.currentRound,
-        oldestRound: Math.max(1, this.currentRound - 49),
+        latestRound: currentRound - 1, // 🔧 수정: 현재 추첨된 최신 회차
+        oldestRound: Math.max(1, currentRound - 50),
         totalCount: 50,
       };
     }
 
     return {
-      latestRound: Math.max(this.cachedData[0].round, this.currentRound),
+      latestRound: this.cachedData[0].round,
       oldestRound: this.cachedData[this.cachedData.length - 1].round,
       totalCount: this.cachedData.length,
     };
@@ -408,6 +426,7 @@ class RealtimeLottoDataManager {
 
   getServiceStatus() {
     const dataRange = this.getDataRange();
+    const currentRound = this.calculateCurrentRound();
 
     return {
       lastUpdateTime: this.lastUpdateTime,
@@ -421,7 +440,7 @@ class RealtimeLottoDataManager {
         dataRange: `${dataRange.latestRound}~${dataRange.oldestRound}회차`,
         lastCrawl: this.lastUpdateTime?.toISOString() || null,
         source: "en.lottolyzer.com",
-        currentRound: this.currentRound,
+        currentRound: currentRound,
       },
       nextUpdateIn: this.cacheTimeout - (Date.now() - (this.lastUpdateTime?.getTime() || 0)),
     };
@@ -436,7 +455,7 @@ class RealtimeLottoDataManager {
 
   // 정확한 회차 기반 폴백 데이터
   private getDynamicFallbackData(): LottoDrawResult {
-    const round = this.currentRound;
+    const round = this.calculateCurrentRound() - 1; // 최신 추첨된 회차
     const seed = round * 7919;
     const numbers = this.generateConsistentNumbers(seed, 6);
     const bonusNumber = (seed % 45) + 1;
@@ -454,13 +473,14 @@ class RealtimeLottoDataManager {
   }
 
   // 전체 회차 폴백 데이터 생성 (1회차부터)
-  private getMultipleDynamicFallbackData(count: number = 1179): LottoDrawResult[] {
+  private getMultipleDynamicFallbackData(count: number): LottoDrawResult[] {
     const results: LottoDrawResult[] = [];
-    const maxCount = Math.min(count, this.currentRound);
+    const currentRound = this.calculateCurrentRound() - 1; // 최신 추첨된 회차
+    const maxCount = Math.min(count, currentRound);
 
-    console.log(`📊 ${maxCount}개 전체 회차 폴백 데이터 생성: 1~${this.currentRound}회차`);
+    console.log(`📊 ${maxCount}개 폴백 데이터 생성: 1~${currentRound}회차`);
 
-    for (let round = this.currentRound; round >= Math.max(1, this.currentRound - maxCount + 1); round--) {
+    for (let round = currentRound; round >= Math.max(1, currentRound - maxCount + 1); round--) {
       const seed = round * 7919;
       const numbers = this.generateConsistentNumbers(seed, 6);
       const bonusNumber = (seed % 45) + 1;
