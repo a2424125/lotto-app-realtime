@@ -286,27 +286,37 @@ const Dashboard: React.FC<DashboardProps> = ({
     }
   };
 
-  // 🔧 수정: 정확한 당첨번호 표시 로직
+  // 🔧 완전히 수정된 당첨번호 표시 로직 - 우선순위 변경
   const getDisplayNumbers = (): { numbers: number[]; bonusNumber: number; round: number } => {
-    // 1순위: API에서 가져온 최신 결과
-    if (latestResult && latestResult.numbers && latestResult.bonusNumber) {
-      return {
-        numbers: latestResult.numbers,
-        bonusNumber: latestResult.bonusNumber,
-        round: latestResult.round
-      };
-    }
+    console.log("🔍 Dashboard getDisplayNumbers 호출");
+    console.log("🔍 pastWinningNumbers:", pastWinningNumbers);
+    console.log("🔍 latestResult:", latestResult);
+    console.log("🔍 actualLatestRound:", actualLatestRound);
 
-    // 2순위: pastWinningNumbers (App.tsx에서 전달된 데이터)
+    // 🔧 수정: 1순위를 pastWinningNumbers로 변경 (App.tsx에서 올바른 데이터가 온다고 확인됨)
     if (pastWinningNumbers.length > 0 && pastWinningNumbers[0].length >= 7) {
-      return {
+      const result = {
         numbers: pastWinningNumbers[0].slice(0, 6),
         bonusNumber: pastWinningNumbers[0][6],
         round: actualLatestRound
       };
+      console.log("✅ pastWinningNumbers 사용:", result);
+      return result;
+    }
+
+    // 2순위: API에서 가져온 최신 결과
+    if (latestResult && latestResult.numbers && latestResult.bonusNumber) {
+      const result = {
+        numbers: latestResult.numbers,
+        bonusNumber: latestResult.bonusNumber,
+        round: latestResult.round
+      };
+      console.log("✅ latestResult 사용:", result);
+      return result;
     }
 
     // 3순위: fallback (로딩 중이거나 데이터 없음)
+    console.log("⚠️ fallback 데이터 사용");
     return {
       numbers: [],
       bonusNumber: 0,
@@ -483,7 +493,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         )}
       </div>
 
-      {/* 🔧 수정된 최신 당첨결과 */}
+      {/* 🔧 수정된 최신 당첨결과 - 디버깅 정보 추가 */}
       <div
         style={{
           backgroundColor: currentColors.surface,
@@ -523,6 +533,17 @@ const Dashboard: React.FC<DashboardProps> = ({
             }}
           >
             ({formatResultDate(latestResult?.date || new Date().toISOString().split('T')[0])})
+          </p>
+          {/* 🔧 추가: 디버깅 정보 (개발 중에만 표시) */}
+          <p
+            style={{
+              fontSize: "10px",
+              color: currentColors.textSecondary,
+              margin: "4px 0 0 0",
+              opacity: 0.7,
+            }}
+          >
+            📊 데이터 소스: pastWinningNumbers[0] = [{pastWinningNumbers[0]?.join(', ') || '없음'}]
           </p>
         </div>
 
