@@ -534,18 +534,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           >
             ({formatResultDate(latestResult?.date || new Date().toISOString().split('T')[0])})
           </p>
-          {/* 🔧 추가: 디버깅 정보 (개발 중에만 표시) */}
-          <p
-            style={{
-              fontSize: "10px",
-              color: currentColors.textSecondary,
-              margin: "4px 0 0 0",
-              opacity: 0.7,
-            }}
-          >
-            📊 데이터 소스: pastWinningNumbers[0] = [{pastWinningNumbers[0]?.join(', ') || '없음'}]
-          </p>
-        </div>
+          </div>
 
         {/* 🔧 수정된 당첨번호 + 보너스 번호 표시 */}
         <div style={{ textAlign: "center" }}>
