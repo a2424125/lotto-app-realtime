@@ -180,7 +180,8 @@ const LottoApp = () => {
       const health = await lottoDataManager.checkHealth();
       console.log("💚 헬스체크 결과:", health);
 
-      const historyResponse = await lottoDataManager.getHistory(50);
+      // 🔧 수정: 전체 데이터 요청 (1200개로 충분한 마진 확보)
+      const historyResponse = await lottoDataManager.getHistory(1200);
 
       if (historyResponse.success && historyResponse.data && historyResponse.data.length > 0) {
         console.log(`📊 수신된 데이터: ${historyResponse.data.length}회차`);
@@ -203,6 +204,15 @@ const LottoApp = () => {
         });
 
         console.log(`✅ 데이터 로드 완료: ${latestRound}회 ~ ${oldestRound}회 (${historyResponse.data.length}회차)`);
+        
+        // 🔧 1179회차 검증
+        const round1179 = historyResponse.data.find((d: LottoDrawResult) => d.round === 1179);
+        if (round1179) {
+          console.log(`✅ 1179회차 확인: [${round1179.numbers.join(', ')}] + ${round1179.bonusNumber}`);
+          const expected = [3, 16, 18, 24, 40, 44];
+          const isCorrect = JSON.stringify(round1179.numbers) === JSON.stringify(expected) && round1179.bonusNumber === 21;
+          console.log(`   예상값과 일치: ${isCorrect ? '✅ 성공' : '❌ 실패'}`);
+        }
       } else {
         throw new Error(historyResponse.error || "데이터 없음");
       }
@@ -242,25 +252,24 @@ const LottoApp = () => {
       const now = new Date();
       const drawInfo = calculateNextDrawInfo(now);
       
-      let currentLatestRound = roundRange.latestRound;
+      // 🔧 수정: 정확한 현재 회차 계산
+      // 기준: 2025년 7월 5일(토) = 1179회차 (추첨 완료)
+      const referenceDate = new Date('2025-07-05');
+      const referenceRound = 1179;
       
-      if (currentLatestRound <= 0) {
-        const startDate = new Date('2002-12-07');
-        const weeksSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-        currentLatestRound = Math.max(1179, weeksSinceStart);
-      }
+      // 기준일로부터 경과된 주 수 계산
+      const timeDiff = now.getTime() - referenceDate.getTime();
+      const weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
       
-      const dayOfWeek = now.getDay();
-      const hour = now.getHours();
+      // 현재까지 추첨 완료된 최신 회차
+      let currentLatestRound = referenceRound + weeksPassed;
       
-      if (dayOfWeek === 6 && hour >= 21) {
-        currentLatestRound = currentLatestRound + 1;
-      } else if (dayOfWeek === 0) {
-        currentLatestRound = currentLatestRound + 1;
-      }
+      // 🔧 중요: 다음 추첨 회차는 단순히 +1
+      // 오늘이 일요일(2025.7.6)이므로 다음 토요일(2025.7.12)에 1180회차 추첨
+      const nextRound = currentLatestRound + 1; // 1179 + 1 = 1180
       
       const nextInfo = {
-        round: currentLatestRound + 1,
+        round: nextRound, // 🔧 수정: 1180회차가 올바른 다음 회차
         date: drawInfo.nextDrawDate.toISOString().split("T")[0],
         estimatedJackpot: 3500000000,
         daysUntilDraw: drawInfo.daysUntilDraw,
@@ -271,6 +280,7 @@ const LottoApp = () => {
       
       setNextDrawInfo(nextInfo);
       console.log("📅 다음 추첨 정보:", nextInfo);
+      console.log(`✅ 현재 완료된 최신 회차: ${currentLatestRound}, 다음 추첨: ${nextRound}회차`);
     } catch (error) {
       console.error("❌ 다음 추첨 정보 로드 실패:", error);
     }
