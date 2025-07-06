@@ -388,6 +388,7 @@ function parseDate(dateText: string): string | null {
 }
 
 // 📄 폴백 데이터 생성 (전체 회차)
+// 🔥 폴백 데이터 생성 (전체 회차)
 function generateReliableFallbackData(count: number): LottoDrawResult[] {
   const results: LottoDrawResult[] = [];
   const currentDate = new Date();
@@ -406,6 +407,9 @@ function generateReliableFallbackData(count: number): LottoDrawResult[] {
   const estimatedCurrentRound = referenceRound + weeksSince;
   
   console.log(`📊 폴백 데이터 생성: ${estimatedCurrentRound}회차부터 ${count}개`);
+  
+  // 시작 날짜 계산 (1회차: 2002-12-07)
+  const startDate = new Date('2002-12-07');
   
   for (let i = 0; i < count; i++) {
     const round = estimatedCurrentRound - i;
@@ -430,8 +434,9 @@ function generateReliableFallbackData(count: number): LottoDrawResult[] {
       const numbers = generateConsistentNumbers(seed);
       const bonusNumber = ((seed * 13) % 45) + 1;
       
-      const drawDate = new Date(currentDate);
-      drawDate.setDate(drawDate.getDate() - (i * 7));
+      // 각 회차의 정확한 날짜 계산
+      const drawDate = new Date(startDate);
+      drawDate.setDate(drawDate.getDate() + (round - 1) * 7);
       
       results.push({
         round,
