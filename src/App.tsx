@@ -139,7 +139,7 @@ const LottoApp = () => {
   }, [currentTime, roundRange]);
 
   // 🔧 수정: 더 많은 fallback 데이터 생성
-  const generateFallbackData = (): number[][] => {
+ const generateFallbackData = (): number[][] => {
     const currentDate = new Date();
     const startDate = new Date('2002-12-07');
     const weeksSinceStart = Math.floor((currentDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
@@ -147,8 +147,8 @@ const LottoApp = () => {
     
     const fallbackData: number[][] = [];
     
-    // 🔧 50개 회차 생성
-    for (let i = 0; i < 50; i++) {
+    // 🔧 전체 1179개 회차 생성
+    for (let i = 0; i < estimatedRound; i++) {
       const round = estimatedRound - i;
       const seed = round * 7919;
       const numbers = generateFallbackNumbers(seed);
