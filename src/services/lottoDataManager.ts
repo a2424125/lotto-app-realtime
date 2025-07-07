@@ -304,33 +304,45 @@ class RealtimeLottoDataManager {
     }
   }
 
-  async getHistory(count: number = 100): Promise<LottoHistoryAPIResponse> {
-    try {
-      const currentRound = this.calculateCurrentRound();
-      console.log(`📈 ${count}회차 히스토리 요청 (현재 회차: ${currentRound})`);
+ // getHistory 메서드 수정
+async getHistory(count: number = 100): Promise<LottoHistoryAPIResponse> {
+  try {
+    const currentRound = this.calculateCurrentRound();
+    console.log(`📈 ${count}회차 히스토리 요청 (현재 회차: ${currentRound})`);
 
-      if (!this.isDataLoaded || this.isCacheExpired() || this.cachedData.length < Math.min(count, 200)) {
-        const loadCount = Math.min(count, 200); // API 제한으로 최대 200회차
-        await this.loadCrawledData(loadCount);
-      }
+    // 🔧 수정: 200 제한 제거하고 요청된 수만큼 로드
+    if (!this.isDataLoaded || this.isCacheExpired() || this.cachedData.length < count) {
+      await this.loadCrawledData(count); // 제한 없이 요청된 수만큼
+    }
 
-      if (this.cachedData.length === 0) {
-        throw new Error("로드된 데이터가 없습니다");
-      }
+    if (this.cachedData.length === 0) {
+      throw new Error("로드된 데이터가 없습니다");
+    }
 
-      const results = this.cachedData.slice(0, Math.min(count, this.cachedData.length));
-      const latest = results[0];
-      const oldest = results[results.length - 1];
+    const results = this.cachedData.slice(0, Math.min(count, this.cachedData.length));
+    const latest = results[0];
+    const oldest = results[results.length - 1];
 
-      console.log(`✅ 히스토리 반환: ${results.length}회차 (${latest.round}~${oldest.round}회차)`);
+    console.log(`✅ 히스토리 반환: ${results.length}회차 (${latest.round}~${oldest.round}회차)`);
 
-      return {
-        success: true,
-        data: results,
-        message: `${results.length}회차 데이터 (${latest.round}~${oldest.round}회차)`,
-      };
-    } catch (error) {
-      console.error("❌ 히스토리 조회 실패:", error);
+    return {
+      success: true,
+      data: results,
+      message: `${results.length}회차 데이터 (${latest.round}~${oldest.round}회차)`,
+    };
+  } catch (error) {
+    console.error("❌ 히스토리 조회 실패:", error);
+
+    // 전체 회차 fallback 데이터 생성
+    const currentRound = this.calculateCurrentRound();
+    const fallbackData = this.getMultipleDynamicFallbackData(Math.min(count, currentRound));
+    return {
+      success: false,
+      data: fallbackData,
+      error: error instanceof Error ? error.message : "히스토리 조회 실패",
+    };
+  }
+}
 
       // 전체 회차 fallback 데이터 생성
       const currentRound = this.calculateCurrentRound();
