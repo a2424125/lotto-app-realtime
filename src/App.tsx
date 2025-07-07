@@ -138,7 +138,7 @@ const LottoApp = () => {
     loadNextDrawInfo();
   }, [currentTime, roundRange]);
 
-  // 🔧 수정: 실시간 로또 데이터 로딩 (최대 1179회차까지)
+  // 🔧 수정: 실시간 로또 데이터 로딩 (동적 회차)
   const loadRealtimeLottoData = async () => {
     try {
       setIsDataLoading(true);
@@ -147,7 +147,14 @@ const LottoApp = () => {
       let maxRetries = 5;
       let retryCount = 0;
       let historyResponse = null;
-      const targetDataCount = 1179; // 🔧 수정: 최대 1179회차까지만
+      
+      // 🔧 수정: 현재 날짜 기준으로 최신 회차 계산
+      const referenceDate = new Date('2025-07-05');
+      const referenceRound = 1179;
+      const now = new Date();
+      const weeksSince = Math.floor((now.getTime() - referenceDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+      const currentRound = referenceRound + weeksSince;
+      const targetDataCount = currentRound; // 동적으로 계산된 현재 회차
 
       while (retryCount < maxRetries) {
         try {
@@ -181,10 +188,7 @@ const LottoApp = () => {
       if (historyResponse && historyResponse.success && historyResponse.data && historyResponse.data.length > 0) {
         const historyData = historyResponse.data;
         
-        // 🔧 수정: 1179회차를 초과하는 데이터 필터링
-        const filteredData = historyData.filter((draw: LottoDrawResult) => draw.round <= 1179);
-        
-        const numbersArray = filteredData.map((draw: LottoDrawResult) => [
+        const numbersArray = historyData.map((draw: LottoDrawResult) => [
           ...draw.numbers,
           draw.bonusNumber
         ]);
@@ -192,8 +196,8 @@ const LottoApp = () => {
         setPastWinningNumbers(numbersArray);
         
         setRoundRange({
-          latestRound: Math.min(filteredData[0].round, 1179),
-          oldestRound: filteredData[filteredData.length - 1].round,
+          latestRound: historyData[0].round,
+          oldestRound: historyData[historyData.length - 1].round,
         });
 
         setDataStatus({
@@ -203,11 +207,11 @@ const LottoApp = () => {
           crawlerHealth: "healthy",
         });
 
-        const coverage = Math.round((filteredData.length / 1179) * 100);
-        console.log(`✅ 실시간 데이터 설정 완료: ${filteredData[0].round}~${filteredData[filteredData.length - 1].round}회차 (${filteredData.length}개)`);
-        console.log(`📈 전체 회차 커버리지: ${coverage}% (${filteredData.length}/1179)`);
+        const coverage = Math.round((historyData.length / currentRound) * 100);
+        console.log(`✅ 실시간 데이터 설정 완료: ${historyData[0].round}~${historyData[historyData.length - 1].round}회차 (${historyData.length}개)`);
+        console.log(`📈 전체 회차 커버리지: ${coverage}% (${historyData.length}/${currentRound})`);
         
-        const round1179 = filteredData.find((d: LottoDrawResult) => d.round === 1179);
+        const round1179 = historyData.find((d: LottoDrawResult) => d.round === 1179);
         if (round1179) {
           console.log(`✅ 1179회차 확인: [${round1179.numbers.join(', ')}] + ${round1179.bonusNumber}`);
           const expected = [3, 16, 18, 24, 40, 44];
@@ -215,8 +219,8 @@ const LottoApp = () => {
           console.log(`   예상값과 일치: ${isCorrect ? '✅ 성공' : '❌ 실패'}`);
         }
 
-        if (filteredData.length < 500) {
-          console.warn(`⚠️ 데이터가 예상보다 적습니다: ${filteredData.length}개 (목표: ${targetDataCount}개)`);
+        if (historyData.length < 500) {
+          console.warn(`⚠️ 데이터가 예상보다 적습니다: ${historyData.length}개 (목표: ${targetDataCount}개)`);
         }
       } else {
         throw new Error("모든 재시도 실패");
@@ -225,7 +229,13 @@ const LottoApp = () => {
       console.error("❌ 실시간 데이터 로드 실패:", error);
 
       const fallbackData = generateMassiveFallbackData();
-      const estimatedRound = 1179; // 🔧 수정: 고정값 사용
+      
+      // 🔧 수정: 동적으로 계산된 현재 회차 사용
+      const referenceDate = new Date('2025-07-05');
+      const referenceRound = 1179;
+      const now = new Date();
+      const weeksSince = Math.floor((now.getTime() - referenceDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+      const estimatedRound = referenceRound + weeksSince;
       
       setPastWinningNumbers(fallbackData);
       setRoundRange({
@@ -246,10 +256,17 @@ const LottoApp = () => {
     }
   };
 
-  // 🔧 수정: fallback 데이터 생성 (최대 1179개)
+  // 🔧 수정: fallback 데이터 생성 (동적 회차)
   const generateMassiveFallbackData = (): number[][] => {
     const fallbackData: number[][] = [];
-    const targetCount = 1179; // 🔧 수정: 최대 1179개로 제한
+    
+    // 🔧 수정: 현재 날짜 기준으로 동적 계산
+    const referenceDate = new Date('2025-07-05');
+    const referenceRound = 1179;
+    const now = new Date();
+    const weeksSince = Math.floor((now.getTime() - referenceDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    const currentRound = referenceRound + weeksSince;
+    const targetCount = currentRound;
     
     const knownResults: { [key: number]: number[] } = {
       1179: [3, 16, 18, 24, 40, 44, 21],
@@ -264,9 +281,10 @@ const LottoApp = () => {
       1170: [10, 17, 26, 33, 40, 1, 2],
     };
     
-    // 🔧 수정: 1179회차부터 1회차까지
+    // 🔧 수정: 현재 회차부터 1회차까지
     for (let i = 0; i < targetCount; i++) {
-      const round = 1179 - i;
+      const round = currentRound - i;
+      if (round < 1) break;
       
       if (knownResults[round]) {
         fallbackData.push(knownResults[round]);
@@ -302,15 +320,15 @@ const LottoApp = () => {
       const now = new Date();
       const drawInfo = calculateNextDrawInfo(now);
       
-      // 🔧 수정: 정확한 현재 회차 계산 (최대 1179)
+      // 🔧 수정: 정확한 현재 회차 계산 (동적)
       const referenceDate = new Date('2025-07-05');
       const referenceRound = 1179;
       
       const timeDiff = now.getTime() - referenceDate.getTime();
       const weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
       
-      // 🔧 수정: 현재 완료된 최신 회차는 1179를 초과하지 않음
-      let currentLatestRound = Math.min(referenceRound + weeksPassed, 1179);
+      // 🔧 수정: 현재 완료된 최신 회차는 동적으로 계산
+      let currentLatestRound = referenceRound + weeksPassed;
       
       const nextRound = currentLatestRound + 1;
       
@@ -566,8 +584,8 @@ const LottoApp = () => {
         updateInterval: "5분",
         health: dataStatus.crawlerHealth,
         dataCount: pastWinningNumbers.length,
-        targetCount: 1179,
-        coverage: `${Math.round((pastWinningNumbers.length / 1179) * 100)}%`,
+        targetCount: roundRange.latestRound || 1179,
+        coverage: `${Math.round((pastWinningNumbers.length / (roundRange.latestRound || 1179)) * 100)}%`,
       },
     },
   };
@@ -886,7 +904,7 @@ const LottoApp = () => {
                     📊 {roundRange.latestRound}~{roundRange.oldestRound}회차 ({pastWinningNumbers.length.toLocaleString()}개)
                   </div>
                   <div style={{ color: theme === "dark" ? "#38bdf8" : "#0277bd", fontSize: "10px" }}>
-                    커버리지: {Math.round((pastWinningNumbers.length / 1179) * 100)}%
+                    커버리지: {Math.round((pastWinningNumbers.length / (roundRange.latestRound || 1179)) * 100)}%
                   </div>
                 </div>
                 
