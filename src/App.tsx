@@ -139,71 +139,54 @@ const LottoApp = () => {
   }, [currentTime, roundRange]);
 
   // 🔧 수정: 더 많은 fallback 데이터 생성
- const generateFallbackData = (): number[][] => {
-    const currentDate = new Date();
-    const startDate = new Date('2002-12-07');
-    const weeksSinceStart = Math.floor((currentDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-    const estimatedRound = Math.max(1179, weeksSinceStart);
-    
-    const fallbackData: number[][] = [];
-    
-    // 🔧 전체 1179개 회차 생성
-    for (let i = 0; i < estimatedRound; i++) {
-      const round = estimatedRound - i;
-      const seed = round * 7919;
-      const numbers = generateFallbackNumbers(seed);
-      const bonusNumber = ((seed * 13) % 45) + 1;
-      fallbackData.push([...numbers.sort((a, b) => a - b), bonusNumber]);
-    }
-    
-    return fallbackData;
-  };
+const generateFallbackData = (): number[][] => {
+  const currentDate = new Date();
+  const startDate = new Date('2002-12-07');
+  const weeksSinceStart = Math.floor((currentDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+  const estimatedRound = Math.max(1179, weeksSinceStart);
+  
+  const fallbackData: number[][] = [];
+  
+  // 🔧 전체 1179개 회차 생성 (50개가 아닌 전체)
+  for (let i = 0; i < estimatedRound; i++) {
+    const round = estimatedRound - i;
+    const seed = round * 7919;
+    const numbers = generateFallbackNumbers(seed);
+    const bonusNumber = ((seed * 13) % 45) + 1;
+    fallbackData.push([...numbers.sort((a, b) => a - b), bonusNumber]);
+  }
+  
+  return fallbackData;
+};
 
-  const generateFallbackNumbers = (seed: number): number[] => {
-    const numbers = new Set<number>();
-    let currentSeed = seed;
-    
-    while (numbers.size < 6) {
-      currentSeed = (currentSeed * 1103515245 + 12345) & 0x7fffffff;
-      const num = (currentSeed % 45) + 1;
-      numbers.add(num);
-    }
-    
-    return Array.from(numbers);
-  };
+// loadRealtimeLottoData 함수의 fallback 부분도 수정
+} catch (error) {
+  console.error("❌ 실시간 데이터 로드 실패:", error);
 
-  const loadRealtimeLottoData = async () => {
-    setIsDataLoading(true);
-    try {
-      console.log("🔄 실시간 로또 데이터 로딩...");
+  // 🔧 수정: 전체 fallback 데이터 생성
+  const fallbackData = generateFallbackData();
+  const currentDate = new Date();
+  const startDate = new Date('2002-12-07');
+  const weeksSinceStart = Math.floor((currentDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+  const estimatedRound = Math.max(1179, weeksSinceStart);
+  
+  setPastWinningNumbers(fallbackData);
+  setRoundRange({
+    latestRound: estimatedRound,
+    oldestRound: 1, // 🔧 수정: 1회차부터
+  });
 
-      const health = await lottoDataManager.checkHealth();
-      console.log("💚 헬스체크 결과:", health);
+  setDataStatus({
+    lastUpdate: new Date(),
+    isRealTime: false,
+    source: "fallback",
+    crawlerHealth: "error",
+  });
 
-      // 🔧 수정: 전체 데이터 요청 (1200개로 충분한 마진 확보)
-      const historyResponse = await lottoDataManager.getHistory(1200);
-
-      if (historyResponse.success && historyResponse.data && historyResponse.data.length > 0) {
-        console.log(`📊 수신된 데이터: ${historyResponse.data.length}회차`);
-        
-        const formattedData = historyResponse.data.map(
-          (result: LottoDrawResult) => [...result.numbers, result.bonusNumber]
-        );
-
-        const latestRound = historyResponse.data[0].round;
-        const oldestRound = historyResponse.data[historyResponse.data.length - 1].round;
-
-        setRoundRange({ latestRound, oldestRound });
-        setPastWinningNumbers(formattedData);
-        
-        setDataStatus({
-          lastUpdate: new Date(),
-          isRealTime: true,
-          source: "realtime_crawler",
-          crawlerHealth: health.status || "healthy",
-        });
-
-        console.log(`✅ 데이터 로드 완료: ${latestRound}회 ~ ${oldestRound}회 (${historyResponse.data.length}회차)`);
+  console.warn(`⚠️ 폴백 모드: ${estimatedRound}회 ~ 1회 (${estimatedRound}회차)`);
+} finally {
+  setIsDataLoading(false);
+}
         
         // 🔧 1179회차 검증
         const round1179 = historyResponse.data.find((d: LottoDrawResult) => d.round === 1179);
