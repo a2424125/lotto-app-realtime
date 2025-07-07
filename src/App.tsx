@@ -19,7 +19,7 @@ interface PurchaseItem {
   purchaseDate?: string;
 }
 
-const LottoApp = () => {
+const LottoApp: FC = () => {
   const [currentMenu, setCurrentMenu] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [purchaseHistory, setPurchaseHistory] = useState<PurchaseItem[]>([]);
