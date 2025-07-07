@@ -7,7 +7,13 @@ import {
   LottoHistoryAPIResponse,
 } from "../types/lotto";
 
-class RealtimeLottoDataManager {
+// Public interface to expose only required methods
+export interface IRealtimeLottoDataManager {
+  forceUpdate(): Promise<{ success: boolean; message: string }>;
+  getHistory(count?: number): Promise<LottoHistoryAPIResponse>;
+}
+
+class RealtimeLottoDataManager implements IRealtimeLottoDataManager {
   private cachedData: LottoDrawResult[] = [];
   private isDataLoaded: boolean = false;
   private lastUpdateTime: Date | null = null;
@@ -558,5 +564,5 @@ async getHistory(count: number = 100): Promise<LottoHistoryAPIResponse> {
   }
 }
 
-export const lottoDataManager = new RealtimeLottoDataManager();
+export const lottoDataManager: IRealtimeLottoDataManager = new RealtimeLottoDataManager();
 export default RealtimeLottoDataManager;

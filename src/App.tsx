@@ -19,6 +19,11 @@ interface PurchaseItem {
   purchaseDate?: string;
 }
 
+interface MenuItem {
+  id: string;
+  name: string;
+}
+
 const LottoApp: FC = () => {
   const [currentMenu, setCurrentMenu] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -114,7 +119,7 @@ const LottoApp: FC = () => {
   // 명시적 단언으로 색상 테마 선택 (TS 인덱싱 오류 방지)
   const currentColors = colors[theme as "light" | "dark"];
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     { id: "dashboard", name: "🏠 홈" },
     { id: "recommend", name: "🎯 번호추천" },
     { id: "stats", name: "📊 통계분석" },
@@ -212,7 +217,7 @@ const LottoApp: FC = () => {
 
       if (historyResponse.success && historyResponse.data && historyResponse.data.length > 0) {
         // LottoDrawResult[]  → number[][] (numbers + bonusNumber)
-        const numbersArray = historyResponse.data.map((d) => [
+        const numbersArray = historyResponse.data.map((d: LottoDrawResult) => [
           ...d.numbers,
           d.bonusNumber,
         ]);
@@ -429,10 +434,10 @@ const LottoApp: FC = () => {
     });
 
     const sorted = Object.keys(frequency)
-      .map((numStr) => ({ num: parseInt(numStr, 10), count: frequency[parseInt(numStr, 10)] }))
+      .map((numStr: string) => ({ num: parseInt(numStr, 10), count: frequency[parseInt(numStr, 10)] }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 15)
-      .map((entry) => entry.num);
+      .map((entry: { num: number; count: number }) => entry.num);
 
     return sorted;
   };
@@ -480,7 +485,7 @@ const LottoApp: FC = () => {
 
   const checkPurchaseItem = (id: number, numbers: number[]) => {
     setPurchaseHistory((prev: PurchaseItem[]) =>
-      prev.map((item) => (item.id === id ? { ...item, checked: true } : item))
+      prev.map((item: PurchaseItem) => (item.id === id ? { ...item, checked: true } : item))
     );
   };
 
@@ -786,7 +791,7 @@ const LottoApp: FC = () => {
             </div>
 
             <div style={{ padding: "8px" }}>
-              {menuItems.map((item) => (
+              {menuItems.map((item: MenuItem) => (
                 <button
                   key={item.id}
                   onClick={() => {
