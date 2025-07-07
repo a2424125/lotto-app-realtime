@@ -1,5 +1,5 @@
 // api/lotto-crawler.ts
-// 🕷️ 전체 데이터 크롤링 - 1179개 이상 전체 회차 데이터 수집
+// 🕷️ 전체 데이터 크롤링 - 개선된 버전
 
 import { VercelRequest, VercelResponse } from "@vercel/node";
 
@@ -14,66 +14,86 @@ interface LottoDrawResult {
   source?: string;
 }
 
-// 🔥 전체 데이터 크롤링 함수 (페이지네이션 처리)
+// 🔥 전체 데이터 크롤링 함수 (개선된 페이지네이션)
 async function crawlAllLottoData(): Promise<LottoDrawResult[]> {
   console.log(`🕷️ 전체 로또 데이터 크롤링 시작...`);
   
   const allResults: LottoDrawResult[] = [];
   let currentPage = 1;
   let hasMoreData = true;
-  const perPage = 100; // 페이지당 100개씩 요청
+  const perPage = 200; // 페이지당 200개씩 요청 (더 효율적)
   
   try {
-    while (hasMoreData) {
+    while (hasMoreData && currentPage <= 15) { // 최대 15페이지 (3000개)
       console.log(`📄 ${currentPage}페이지 크롤링 중... (${perPage}개씩)`);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30초 타임아웃
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45초 타임아웃 증가
       
       const url = `https://en.lottolyzer.com/history/south-korea/6_slash_45-lotto/page/${currentPage}/per-page/${perPage}/summary-view`;
       console.log(`🔗 URL: ${url}`);
       
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-          "Accept-Language": "en-US,en;q=0.5",
-          "Accept-Encoding": "gzip, deflate, br",
-          "DNT": "1",
-          "Connection": "keep-alive",
-          "Upgrade-Insecure-Requests": "1",
-        },
-        signal: controller.signal,
-      });
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9,ko;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Upgrade-Insecure-Requests": "1",
+          },
+          signal: controller.signal,
+        });
 
-      clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        console.warn(`⚠️ 페이지 ${currentPage} 응답 오류: ${response.status}`);
-        break;
-      }
+        if (!response.ok) {
+          console.warn(`⚠️ 페이지 ${currentPage} 응답 오류: ${response.status} ${response.statusText}`);
+          if (response.status === 503 || response.status === 500) {
+            // 서버 오류 시 잠시 대기 후 재시도
+            console.log(`⏳ 서버 오류로 3초 대기 후 재시도...`);
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            continue;
+          }
+          break;
+        }
 
-      const html = await response.text();
-      const pageResults = parseExactSummaryTable(html, perPage);
-      
-      if (pageResults.length === 0) {
-        console.log(`✅ 모든 데이터 크롤링 완료 (${currentPage - 1}페이지까지)`);
-        hasMoreData = false;
-      } else {
-        allResults.push(...pageResults);
-        console.log(`📊 ${currentPage}페이지: ${pageResults.length}개 수집 (누적: ${allResults.length}개)`);
+        const html = await response.text();
         
-        // 다음 페이지로
-        currentPage++;
+        if (!html || html.length < 1000) {
+          console.warn(`⚠️ 페이지 ${currentPage} 응답 데이터 부족`);
+          break;
+        }
+
+        const pageResults = parseExactSummaryTable(html, perPage);
         
-        // 페이지 간 딜레이 (서버 부하 방지)
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      
-      // 안전장치: 너무 많은 페이지 방지 (최대 20페이지 = 2000개)
-      if (currentPage > 20) {
-        console.log(`⚠️ 최대 페이지 도달 (20페이지)`);
+        if (pageResults.length === 0) {
+          console.log(`✅ 모든 데이터 크롤링 완료 (${currentPage - 1}페이지까지)`);
+          hasMoreData = false;
+        } else {
+          allResults.push(...pageResults);
+          console.log(`📊 ${currentPage}페이지: ${pageResults.length}개 수집 (누적: ${allResults.length}개)`);
+          
+          // 다음 페이지로
+          currentPage++;
+          
+          // 페이지 간 딜레이 (서버 부하 방지)
+          await new Promise(resolve => setTimeout(resolve, 1000)); // 1초로 증가
+        }
+      } catch (fetchError) {
+        console.error(`❌ 페이지 ${currentPage} 크롤링 실패:`, fetchError);
+        // 네트워크 오류 시 재시도
+        if (currentPage === 1) {
+          console.log(`🔄 첫 페이지 재시도 중...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        }
         break;
       }
     }
@@ -89,7 +109,6 @@ async function crawlAllLottoData(): Promise<LottoDrawResult[]> {
     const round1179 = uniqueResults.find(r => r.round === 1179);
     if (round1179) {
       console.log(`✅ 1179회차 확인: [${round1179.numbers.join(', ')}] + ${round1179.bonusNumber}`);
-      console.log(`   예상값: [3, 16, 18, 24, 40, 44] + 21`);
     }
     
     return uniqueResults;
@@ -100,7 +119,7 @@ async function crawlAllLottoData(): Promise<LottoDrawResult[]> {
   }
 }
 
-// 🔥 대용량 단일 요청 시도 (백업 방법)
+// 🔥 대용량 단일 요청 시도 (개선된 버전)
 async function crawlLottoDataSingleRequest(maxRounds: number = 2000): Promise<LottoDrawResult[]> {
   console.log(`🕷️ 대용량 단일 요청 시도: ${maxRounds}개`);
   
@@ -113,12 +132,15 @@ async function crawlLottoDataSingleRequest(maxRounds: number = 2000): Promise<Lo
       {
         method: "GET",
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-          "Accept-Language": "en-US,en;q=0.5",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9,ko;q=0.8",
           "Accept-Encoding": "gzip, deflate, br",
-          "DNT": "1",
-          "Connection": "keep-alive",
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache",
+          "Sec-Fetch-Dest": "document",
+          "Sec-Fetch-Mode": "navigate",
+          "Sec-Fetch-Site": "none",
           "Upgrade-Insecure-Requests": "1",
         },
         signal: controller.signal,
@@ -146,53 +168,73 @@ async function crawlLottoDataSingleRequest(maxRounds: number = 2000): Promise<Lo
   }
 }
 
-// 📋 정확한 summary 테이블 파싱
+// 📋 개선된 summary 테이블 파싱
 function parseExactSummaryTable(html: string, maxRounds: number): LottoDrawResult[] {
   const results: LottoDrawResult[] = [];
   
   try {
     console.log("📋 summary-view 테이블 정확 파싱 시작...");
     
-    // 1. 테이블 전체 추출
-    const tableMatch = html.match(/<table[^>]*>[\s\S]*?<\/table>/i);
-    if (!tableMatch) {
+    // 1. 테이블 전체 추출 (더 정확한 패턴)
+    const tableMatches = html.match(/<table[^>]*class[^>]*(?:table|history|results|draw)[^>]*>[\s\S]*?<\/table>/gi);
+    
+    if (!tableMatches || tableMatches.length === 0) {
       console.error("❌ 테이블을 찾을 수 없음");
       return [];
     }
     
-    const tableHtml = tableMatch[0];
+    // 가장 큰 테이블 선택 (보통 메인 데이터 테이블)
+    const tableHtml = tableMatches.reduce((longest, current) => 
+      current.length > longest.length ? current : longest
+    );
+    
     console.log("✅ 테이블 추출 성공");
     
     // 2. tbody 내의 모든 행 추출
     const tbodyMatch = tableHtml.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
     if (!tbodyMatch) {
-      console.error("❌ tbody를 찾을 수 없음");
-      return [];
-    }
-    
-    const tbodyHtml = tbodyMatch[1];
-    
-    // 3. 각 tr 행 추출
-    const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-    const rows = tbodyHtml.match(rowRegex) || [];
-    
-    console.log(`🔍 발견된 데이터 행 수: ${rows.length}`);
-    
-    let count = 0;
-    for (const row of rows) {
-      if (count >= maxRounds) break;
+      console.warn("⚠️ tbody를 찾을 수 없음, tr 직접 추출 시도");
+      // tbody가 없는 경우 테이블에서 직접 tr 추출
+      const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+      const rows = tableHtml.match(rowRegex) || [];
       
-      const result = parseExactRow(row);
-      if (result) {
-        results.push(result);
-        count++;
+      console.log(`🔍 발견된 데이터 행 수: ${rows.length}`);
+      
+      let count = 0;
+      for (const row of rows) {
+        if (count >= maxRounds) break;
         
-        // 🔧 1179회차 특별 로깅
-        if (result.round === 1179) {
-          console.log(`🎯 1179회차 파싱 결과:`);
-          console.log(`   번호: [${result.numbers.join(', ')}]`);
-          console.log(`   보너스: ${result.bonusNumber}`);
-          console.log(`   날짜: ${result.date}`);
+        const result = parseExactRow(row);
+        if (result) {
+          results.push(result);
+          count++;
+        }
+      }
+    } else {
+      const tbodyHtml = tbodyMatch[1];
+      
+      // 3. 각 tr 행 추출
+      const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+      const rows = tbodyHtml.match(rowRegex) || [];
+      
+      console.log(`🔍 발견된 데이터 행 수: ${rows.length}`);
+      
+      let count = 0;
+      for (const row of rows) {
+        if (count >= maxRounds) break;
+        
+        const result = parseExactRow(row);
+        if (result) {
+          results.push(result);
+          count++;
+          
+          // 🔧 1179회차 특별 로깅
+          if (result.round === 1179) {
+            console.log(`🎯 1179회차 파싱 결과:`);
+            console.log(`   번호: [${result.numbers.join(', ')}]`);
+            console.log(`   보너스: ${result.bonusNumber}`);
+            console.log(`   날짜: ${result.date}`);
+          }
         }
       }
     }
@@ -210,7 +252,7 @@ function parseExactSummaryTable(html: string, maxRounds: number): LottoDrawResul
   }
 }
 
-// 🔍 수정된 행 파싱 - 더 정확한 번호 추출
+// 🔍 개선된 행 파싱 - 더 강력한 번호 추출
 function parseExactRow(rowHtml: string): LottoDrawResult | null {
   try {
     // td 요소들을 정확히 추출
@@ -223,92 +265,69 @@ function parseExactRow(rowHtml: string): LottoDrawResult | null {
       const cellText = match[1]
         .replace(/<[^>]*>/g, '') // 모든 HTML 태그 제거
         .replace(/&nbsp;/g, ' ') // &nbsp; 변환
+        .replace(/&amp;/g, '&') // &amp; 변환
+        .replace(/&lt;/g, '<') // &lt; 변환
+        .replace(/&gt;/g, '>') // &gt; 변환
         .replace(/\s+/g, ' ') // 연속 공백 정리
         .trim();
       cells.push(cellText);
     }
     
-    // 🔧 디버그: 1179회차 행 상세 로깅
-    if (cells[0] === '1179') {
-      console.log(`🔍 1179회차 행 발견! 셀 내용:`);
-      cells.forEach((cell, idx) => {
-        console.log(`   [${idx}]: "${cell}"`);
-      });
-    }
-    
-    if (cells.length < 5) {
-      console.log(`⚠️ 셀 수 부족: ${cells.length}개`);
+    if (cells.length < 4) {
       return null;
     }
     
-    // summary-view 테이블 구조:
-    // [0] Draw (회차)
-    // [1] Date (날짜)
-    // [2] Winning No. (당첨번호 - 쉼표로 구분)
-    // [3] Bonus (보너스번호)
-    // [4] From Last
-    // [5] Sum
-    // [6] Average
-    // [7] Low/High
+    // 1. 회차 번호 추출 (첫 번째 셀에서)
+    const roundMatch = cells[0].match(/\d+/);
+    if (!roundMatch) return null;
     
-    // 1. 회차 번호 추출
-    const round = parseInt(cells[0]);
+    const round = parseInt(roundMatch[0]);
     if (isNaN(round) || round <= 0) {
       return null;
     }
     
-    // 2. 날짜 추출
+    // 2. 날짜 추출 (두 번째 셀에서)
     const dateText = cells[1];
     const date = parseDate(dateText);
     if (!date) {
       return null;
     }
     
-    // 3. 당첨번호 추출 - 수정된 로직
+    // 3. 당첨번호 추출 - 개선된 로직
     const winningNoText = cells[2];
-    console.log(`🎯 ${round}회차 당첨번호 원본: "${winningNoText}"`);
     
-    // 여러 구분자로 분리 (쉼표, 공백, 탭 등)
-    const numberStrings = winningNoText.split(/[,\s\t]+/).filter(s => s.trim() !== '');
-    const numbers: number[] = [];
-    
-    for (const numStr of numberStrings) {
-      const cleaned = numStr.trim();
-      if (cleaned) {
-        const num = parseInt(cleaned);
-        if (!isNaN(num) && num >= 1 && num <= 45) {
-          numbers.push(num);
-        }
-      }
-    }
-    
-    // 🔧 번호가 정확히 6개가 아니면 다른 방법 시도
-    if (numbers.length !== 6) {
-      console.log(`⚠️ ${round}회차 번호 개수 이상: ${numbers.length}개`);
-      
-      // 숫자만 추출하는 정규식 사용
-      const numMatches = winningNoText.match(/\d+/g);
-      if (numMatches) {
-        numbers.length = 0; // 초기화
-        for (const numStr of numMatches) {
-          const num = parseInt(numStr);
-          if (num >= 1 && num <= 45 && numbers.length < 6) {
-            numbers.push(num);
-          }
-        }
-      }
-    }
-    
-    if (numbers.length !== 6) {
-      console.log(`⚠️ ${round}회차 당첨번호 파싱 실패: ${numbers.length}개`);
+    // 모든 숫자 추출
+    const allNumbers = winningNoText.match(/\d+/g);
+    if (!allNumbers || allNumbers.length < 6) {
       return null;
     }
     
-    // 4. 보너스 번호 추출
-    const bonusText = cells[3];
-    const bonusNumber = parseInt(bonusText);
-    if (isNaN(bonusNumber) || bonusNumber < 1 || bonusNumber > 45) {
-      console.log(`⚠️ ${round}회차 보너스 번호 파싱 실패: "${bonusText}"`);
+    const numbers: number[] = [];
+    for (const numStr of allNumbers) {
+      const num = parseInt(numStr);
+      if (num >= 1 && num <= 45 && numbers.length < 6) {
+        numbers.push(num);
+      }
+    }
+    
+    if (numbers.length !== 6) {
+      return null;
+    }
+    
+    // 4. 보너스 번호 추출 (세 번째 또는 네 번째 셀에서)
+    let bonusNumber = 0;
+    for (let i = 3; i < cells.length; i++) {
+      const bonusMatch = cells[i].match(/\d+/);
+      if (bonusMatch) {
+        const bonus = parseInt(bonusMatch[0]);
+        if (bonus >= 1 && bonus <= 45) {
+          bonusNumber = bonus;
+          break;
+        }
+      }
+    }
+    
+    if (bonusNumber === 0) {
       return null;
     }
     
@@ -321,7 +340,7 @@ function parseExactRow(rowHtml: string): LottoDrawResult | null {
       numbers,
       bonusNumber,
       crawledAt: new Date().toISOString(),
-      source: "en.lottolyzer.com_summary",
+      source: "en.lottolyzer.com_enhanced",
     };
     
     // 🔧 1179회차 특별 검증
@@ -342,7 +361,7 @@ function parseExactRow(rowHtml: string): LottoDrawResult | null {
   }
 }
 
-// 📅 날짜 파싱 함수
+// 📅 개선된 날짜 파싱 함수
 function parseDate(dateText: string): string | null {
   try {
     // 여러 날짜 형식 처리
@@ -350,6 +369,7 @@ function parseDate(dateText: string): string | null {
     // 2. YYYY.MM.DD
     // 3. DD/MM/YYYY
     // 4. MM/DD/YYYY
+    // 5. DD-MM-YYYY
     
     // YYYY-MM-DD 또는 YYYY.MM.DD
     const ymdPattern = /(\d{4})[-.](\d{1,2})[-.](\d{1,2})/;
@@ -363,8 +383,8 @@ function parseDate(dateText: string): string | null {
       }
     }
     
-    // DD/MM/YYYY
-    const dmyPattern = /(\d{1,2})\/(\d{1,2})\/(\d{4})/;
+    // DD/MM/YYYY 또는 DD-MM-YYYY
+    const dmyPattern = /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/;
     const dmyMatch = dateText.match(dmyPattern);
     
     if (dmyMatch) {
@@ -387,8 +407,7 @@ function parseDate(dateText: string): string | null {
   }
 }
 
-// 📄 폴백 데이터 생성 (전체 회차)
-// 🔥 폴백 데이터 생성 (전체 회차)
+// 🔥 개선된 폴백 데이터 생성 (전체 회차)
 function generateReliableFallbackData(count: number): LottoDrawResult[] {
   const results: LottoDrawResult[] = [];
   const currentDate = new Date();
@@ -468,7 +487,7 @@ function generateConsistentNumbers(seed: number): number[] {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log("🕷️ 로또 크롤러 API 호출 (전체 데이터 버전)...");
+  console.log("🕷️ 로또 크롤러 API 호출 (개선된 전체 데이터 버전)...");
 
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
@@ -484,7 +503,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const roundsParam = req.query.rounds as string;
-    const requestedRounds = roundsParam ? parseInt(roundsParam, 10) : 1200; // 기본값 1200
+    const requestedRounds = roundsParam ? parseInt(roundsParam, 10) : 1500; // 기본값 1500으로 증가
     
     console.log(`📊 ${requestedRounds}회차 크롤링 요청 처리 중...`);
 
@@ -494,7 +513,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       // 🔥 방법 1: 단일 대용량 요청 시도
       console.log("🔥 방법 1: 단일 대용량 요청 시도...");
-      const maxRequest = Math.max(requestedRounds, 1500); // 최소 1500개 요청
+      const maxRequest = Math.max(requestedRounds, 2000); // 최소 2000개 요청
       lottoData = await crawlLottoDataSingleRequest(maxRequest);
       dataSource = "single_large_request";
       
@@ -548,7 +567,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         dataRange: `${latestRound}~${oldestRound}회차`,
         dataQuality: dataSource === "single_large_request" || dataSource === "pagination_crawling" ? "high" : "medium",
         lastValidated: crawledAt,
-        apiVersion: "3.0.0", // 버전 업그레이드
+        apiVersion: "3.1.0", // 버전 업그레이드
         crawlingMethod: dataSource,
         isFullData: lottoData.length >= 1179, // 전체 데이터 여부
       }
@@ -557,7 +576,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error) {
     console.error("❌ 전체 크롤링 프로세스 실패:", error);
 
-    const emergencyData = generateReliableFallbackData(100);
+    const emergencyData = generateReliableFallbackData(Math.min(1000, 1179));
     const responseTime = Date.now() - startTime;
 
     res.status(200).json({
@@ -571,7 +590,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       metadata: {
         responseTime: responseTime,
         dataQuality: "low",
-        apiVersion: "3.0.0",
+        apiVersion: "3.1.0",
         errorInfo: "크롤링 서비스에 일시적인 문제가 발생했습니다.",
         crawlingMethod: "emergency_fallback",
         isFullData: false,
