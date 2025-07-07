@@ -1,5 +1,5 @@
 // src/services/lottoRecommendService.ts
-// 🔥 전체 회차(1~1179+) 빅데이터 고도화 추천 시스템 - 강화된 버전
+// 🔥 전체 회차(1~1179) 빅데이터 고도화 추천 시스템 - 수정된 버전
 
 import { LottoDrawResult } from "../types/lotto";
 import { lottoDataManager } from "./lottoDataManager";
@@ -36,6 +36,7 @@ class LottoRecommendService {
   private allData: LottoDrawResult[] = [];
   private isDataLoaded: boolean = false;
   private frequencyCache: Map<string, any> = new Map();
+  private readonly MAX_ROUND = 1179; // 🔧 추가: 최대 회차 상수
   private actualDataRange: {
     latestRound: number;
     oldestRound: number;
@@ -48,11 +49,11 @@ class LottoRecommendService {
   private isLoading: boolean = false;
 
   constructor() {
-    console.log("🧠 로또 전체 회차(1~1179+) 빅데이터 분석 엔진 시작...");
+    console.log(`🧠 로또 전체 회차(1~${this.MAX_ROUND}) 빅데이터 분석 엔진 시작...`);
     this.loadAllData();
   }
 
-  // 📊 전체 실제 데이터 로드 (1회차~현재까지) - 강화된 버전
+  // 📊 전체 실제 데이터 로드 (1회차~1179회차) - 수정된 버전
   private async loadAllData(): Promise<void> {
     if (this.isLoading) {
       console.log("⏳ 이미 데이터 로딩 중...");
@@ -61,7 +62,7 @@ class LottoRecommendService {
 
     try {
       this.isLoading = true;
-      console.log("🔄 전체 로또 데이터 로딩 (1~1179+ 회차)...");
+      console.log(`🔄 전체 로또 데이터 로딩 (1~${this.MAX_ROUND} 회차)...`);
       
       // 기존 데이터와 캐시 클리어
       this.allData = [];
@@ -75,16 +76,17 @@ class LottoRecommendService {
         try {
           console.log(`📡 데이터 로드 시도 ${retryCount + 1}/${maxRetries}...`);
           
-          // 🔧 수정: 더 많은 데이터 요청 (2500개)
-          const response = await lottoDataManager.getHistory(2500);
+          // 🔧 수정: 최대 1179개만 요청
+          const response = await lottoDataManager.getHistory(this.MAX_ROUND);
           
           if (response.success && response.data && response.data.length > 0) {
-            this.allData = response.data;
+            // 🔧 수정: 1179회차를 초과하는 데이터 필터링
+            this.allData = response.data.filter(draw => draw.round <= this.MAX_ROUND);
             this.isDataLoaded = true;
 
             // ✅ 실제 데이터 범위 계산
             this.actualDataRange = {
-              latestRound: this.allData[0].round,
+              latestRound: Math.min(this.allData[0].round, this.MAX_ROUND),
               oldestRound: this.allData[this.allData.length - 1].round,
               totalCount: this.allData.length,
             };
@@ -135,15 +137,9 @@ class LottoRecommendService {
     }
   }
 
-  // 🔧 수정: 전체 회차 fallback 데이터 생성 (1~1179+ 회차 완전 생성)
+  // 🔧 수정: 전체 회차 fallback 데이터 생성 (1~1179 회차)
   private generateFallbackData(): void {
-    console.log("🔄 전체 회차 fallback 데이터 생성 시작...");
-    
-    // 현재 추정 회차 계산
-    const currentDate = new Date();
-    const referenceDate = new Date('2025-07-05'); // 1179회차 기준일
-    const weeksSince = Math.floor((currentDate.getTime() - referenceDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-    const currentRound = Math.max(1179, 1179 + weeksSince);
+    console.log(`🔄 전체 회차 fallback 데이터 생성 시작 (1~${this.MAX_ROUND})...`);
     
     const fallbackData: LottoDrawResult[] = [];
     const startDate = new Date('2002-12-07');
@@ -157,8 +153,8 @@ class LottoRecommendService {
       1175: { numbers: [6, 12, 16, 28, 35, 43], bonus: 9, date: '2025-06-07' },
     };
 
-    // 최신 회차부터 1회차까지 생성
-    for (let round = currentRound; round >= 1; round--) {
+    // 🔧 수정: 1179회차부터 1회차까지 생성
+    for (let round = this.MAX_ROUND; round >= 1; round--) {
       if (knownResults[round]) {
         // 알려진 정확한 데이터 사용
         const known = knownResults[round];
@@ -167,8 +163,6 @@ class LottoRecommendService {
           date: known.date,
           numbers: known.numbers.sort((a, b) => a - b),
           bonusNumber: known.bonus,
-          jackpotWinners: Math.floor(Math.random() * 10) + 1,
-          jackpotPrize: Math.floor(Math.random() * 2000000000) + 1000000000,
           crawledAt: new Date().toISOString(),
           source: "verified_fallback",
         });
@@ -186,8 +180,6 @@ class LottoRecommendService {
           date: date.toISOString().split('T')[0],
           numbers: numbers.sort((a, b) => a - b),
           bonusNumber,
-          jackpotWinners: Math.floor((seed % 15)) + 1,
-          jackpotPrize: Math.floor((seed % 2000000000)) + 1000000000,
           crawledAt: new Date().toISOString(),
           source: "fallback_analysis",
         });
@@ -196,13 +188,13 @@ class LottoRecommendService {
 
     this.allData = fallbackData.sort((a, b) => b.round - a.round);
     this.actualDataRange = {
-      latestRound: currentRound,
+      latestRound: this.MAX_ROUND,
       oldestRound: 1,
-      totalCount: currentRound,
+      totalCount: this.MAX_ROUND,
     };
     this.isDataLoaded = true;
 
-    console.log(`📊 전체 회차 fallback 분석 데이터 생성 완료: 1~${currentRound}회차 (${currentRound}개)`);
+    console.log(`📊 전체 회차 fallback 분석 데이터 생성 완료: 1~${this.MAX_ROUND}회차 (${this.MAX_ROUND}개)`);
     
     this.precomputeAnalysis();
   }
@@ -612,7 +604,7 @@ class LottoRecommendService {
         coldNumbers: [],
         recentTrend: "분석 중...",
         actualRounds: {
-          latest: 1179,
+          latest: this.MAX_ROUND,
           oldest: 1,
         },
       };
