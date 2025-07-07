@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, FC } from "react";
 import Dashboard from "./components/pages/Dashboard";
 import Recommend from "./components/pages/Recommend";
 import Stats from "./components/pages/Stats";
@@ -61,7 +61,22 @@ const LottoApp = () => {
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const colors = {
+  const colors: Record<"light" | "dark", {
+    background: string;
+    surface: string;
+    primary: string;
+    text: string;
+    textSecondary: string;
+    border: string;
+    accent: string;
+    realtime?: string;
+    realtimeBorder?: string;
+    realtimeText?: string;
+    success?: string;
+    successBorder?: string;
+    successText?: string;
+    gray?: string;
+  }> = {
     light: {
       background: "#f9fafb",
       surface: "#ffffff",
@@ -70,6 +85,13 @@ const LottoApp = () => {
       textSecondary: "#6b7280",
       border: "#e5e7eb",
       accent: "#059669",
+      realtime: "#ecfdf5",
+      realtimeBorder: "#d1fae5",
+      realtimeText: "#065f46",
+      success: "#ecfdf5",
+      successBorder: "#d1fae5",
+      successText: "#065f46",
+      gray: "#e5e7eb",
     },
     dark: {
       background: "#0f172a",
@@ -79,10 +101,18 @@ const LottoApp = () => {
       textSecondary: "#94a3b8",
       border: "#334155",
       accent: "#10b981",
+      realtime: "#014737",
+      realtimeBorder: "#065f46",
+      realtimeText: "#a7f3d0",
+      success: "#064e3b",
+      successBorder: "#065f46",
+      successText: "#bbf7d0",
+      gray: "#475569",
     },
   };
 
-  const currentColors = colors[theme];
+  // 명시적 단언으로 색상 테마 선택 (TS 인덱싱 오류 방지)
+  const currentColors = colors[theme as "light" | "dark"];
 
   const menuItems = [
     { id: "dashboard", name: "🏠 홈" },
@@ -385,22 +415,26 @@ const LottoApp = () => {
     }
   };
 
-  const getMostFrequentNumbers = () => {
+  const getMostFrequentNumbers = (): number[] => {
     if (pastWinningNumbers.length === 0) {
       return [7, 27, 38, 3, 6, 9, 14, 21, 28, 35, 42, 45, 1, 5, 13];
     }
 
-    const frequency: { [key: number]: number } = {};
-    pastWinningNumbers.forEach((numbers) => {
-      numbers.slice(0, 6).forEach((num) => {
+    const frequency: Record<number, number> = {};
+
+    pastWinningNumbers.forEach((numbersArr: number[]): void => {
+      numbersArr.slice(0, 6).forEach((num: number): void => {
         frequency[num] = (frequency[num] || 0) + 1;
       });
     });
 
-    return Object.entries(frequency)
-      .sort(([, a], [, b]) => b - a)
+    const sorted = Object.keys(frequency)
+      .map((numStr) => ({ num: parseInt(numStr, 10), count: frequency[parseInt(numStr, 10)] }))
+      .sort((a, b) => b.count - a.count)
       .slice(0, 15)
-      .map(([num]) => parseInt(num));
+      .map((entry) => entry.num);
+
+    return sorted;
   };
 
   const generate1stGradeNumbers = () => {
@@ -433,7 +467,7 @@ const LottoApp = () => {
       checked: false,
       status: "saved",
     };
-    setPurchaseHistory((prev) => [newPurchase, ...prev]);
+    setPurchaseHistory((prev: PurchaseItem[]) => [newPurchase, ...prev]);
 
     if (autoSave) {
       console.log("✅ 자동저장 활성화: 번호가 자동으로 저장되었습니다.");
@@ -441,11 +475,11 @@ const LottoApp = () => {
   };
 
   const deletePurchaseItem = (id: number) => {
-    setPurchaseHistory((prev) => prev.filter((item) => item.id !== id));
+    setPurchaseHistory((prev: PurchaseItem[]) => prev.filter((item) => item.id !== id));
   };
 
   const checkPurchaseItem = (id: number, numbers: number[]) => {
-    setPurchaseHistory((prev) =>
+    setPurchaseHistory((prev: PurchaseItem[]) =>
       prev.map((item) => (item.id === id ? { ...item, checked: true } : item))
     );
   };
