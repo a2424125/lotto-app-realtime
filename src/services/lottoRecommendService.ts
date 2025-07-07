@@ -115,62 +115,58 @@ private async loadAllData(): Promise<void> {
     }
   }
   // 🔧 수정: 전체 회차 fallback 데이터 생성 (1~1179회차 완전 생성)
-  private generateFallbackData(): void {
-    console.log("🔄 전체 회차 fallback 데이터 생성 시작...");
-    
-    const currentRound = 1179;
-    
-    // 🔧 수정: 전체 1179회차 fallback 데이터 생성
-    const fallbackData: LottoDrawResult[] = [];
-    const startDate = new Date('2002-12-07'); // 1회차 날짜
-    
-    // 🔧 중요: 1179회차 정확한 데이터 먼저 추가
+private generateFallbackData(): void {
+  console.log("🔄 전체 회차 fallback 데이터 생성 시작...");
+  
+  const currentRound = 1179;
+  const fallbackData: LottoDrawResult[] = [];
+  const startDate = new Date('2002-12-07');
+  
+  // 🔧 1179회차 정확한 데이터
+  fallbackData.push({
+    round: 1179,
+    date: '2025-07-05',
+    numbers: [3, 16, 18, 24, 40, 44].sort((a, b) => a - b), // 정렬 추가
+    bonusNumber: 21,
+    jackpotWinners: 8,
+    jackpotPrize: 2850000000,
+    crawledAt: new Date().toISOString(),
+    source: "verified_fallback",
+  });
+
+  // 나머지 회차들 생성
+  for (let round = 1178; round >= 1; round--) {
+    const seed = round * 7919;
+    const numbers = this.generateConsistentNumbers(seed, 6);
+    const bonusNumber = ((seed * 13) % 45) + 1;
+
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + (round - 1) * 7);
+
     fallbackData.push({
-      round: 1179,
-      date: '2025-07-05',
-      numbers: [3, 16, 18, 24, 40, 44],
-      bonusNumber: 21,
-      jackpotWinners: 8,
-      jackpotPrize: 2850000000,
+      round,
+      date: date.toISOString().split('T')[0],
+      numbers: numbers.sort((a, b) => a - b),
+      bonusNumber,
+      jackpotWinners: Math.floor((seed % 15)) + 1,
+      jackpotPrize: Math.floor((seed % 2000000000)) + 1000000000,
       crawledAt: new Date().toISOString(),
-      source: "verified_fallback",
+      source: "fallback_analysis",
     });
-
-    // 나머지 회차들 생성 (1178회차부터 1회차까지)
-    for (let round = 1178; round >= 1; round--) {
-      const seed = round * 7919;
-      const numbers = this.generateConsistentNumbers(seed, 6);
-      const bonusNumber = ((seed * 13) % 45) + 1;
-
-      const date = new Date(startDate);
-      date.setDate(date.getDate() + (round - 1) * 7); // 회차별 날짜 계산
-
-      fallbackData.push({
-        round,
-        date: date.toISOString().split('T')[0],
-        numbers: numbers.sort((a, b) => a - b),
-        bonusNumber,
-        jackpotWinners: Math.floor((seed % 15)) + 1,
-        jackpotPrize: Math.floor((seed % 2000000000)) + 1000000000,
-        crawledAt: new Date().toISOString(),
-        source: "fallback_analysis",
-      });
-    }
-
-    // 최신순으로 정렬 (1179회차가 첫 번째)
-    this.allData = fallbackData.sort((a, b) => b.round - a.round);
-    this.actualDataRange = {
-      latestRound: currentRound,
-      oldestRound: 1,
-      totalCount: currentRound,
-    };
-    this.isDataLoaded = true;
-
-    console.log(`📊 전체 회차 fallback 분석 데이터 생성 완료: 1~${currentRound}회차 (${currentRound}개)`);
-    console.log(`✅ 1179회차 검증: [${this.allData[0].numbers.join(', ')}] + ${this.allData[0].bonusNumber}`);
-    
-    this.precomputeAnalysis();
   }
+
+  this.allData = fallbackData.sort((a, b) => b.round - a.round);
+  this.actualDataRange = {
+    latestRound: currentRound,
+    oldestRound: 1,
+    totalCount: currentRound,
+  };
+  this.isDataLoaded = true;
+
+  console.log(`📊 전체 회차 fallback 분석 데이터 생성 완료: 1~${currentRound}회차 (${currentRound}개)`);
+  
+  this.precomputeAnalysis();
+}
 
   private generateConsistentNumbers(seed: number, count: number): number[] {
     const numbers = new Set<number>();
