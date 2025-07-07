@@ -55,16 +55,6 @@ class LottoRecommendService {
 private async loadAllData(): Promise<void> {
     try {
       console.log("🔄 전체 로또 데이터 로딩 (1~1179회차 + 여유분)...");
-
-      // 타임아웃 설정
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('데이터 로딩 타임아웃')), 30000)
-      );
-
-      // 🔧 수정: 1200개 요청 (1179 + 여유분)으로 안정성 확보
-private async loadAllData(): Promise<void> {
-    try {
-      console.log("🔄 전체 로또 데이터 로딩 (1~1179회차 + 여유분)...");
       
       // 기존 데이터와 캐시 클리어
       this.allData = [];
@@ -122,7 +112,6 @@ private async loadAllData(): Promise<void> {
       this.generateFallbackData();
     }
   }
-
   // 🔧 수정: 전체 회차 fallback 데이터 생성 (1~1179회차 완전 생성)
   private generateFallbackData(): void {
     console.log("🔄 전체 회차 fallback 데이터 생성 시작...");
