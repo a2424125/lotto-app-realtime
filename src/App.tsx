@@ -139,61 +139,76 @@ const LottoApp = () => {
   }, [currentTime, roundRange]);
 
   // 🔧 수정: 더 많은 fallback 데이터 생성
-const generateFallbackData = (): number[][] => {
-  const currentDate = new Date();
-  const startDate = new Date('2002-12-07');
-  const weeksSinceStart = Math.floor((currentDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-  const estimatedRound = Math.max(1179, weeksSinceStart);
-  
-  const fallbackData: number[][] = [];
-  
-  // 🔧 전체 1179개 회차 생성 (50개가 아닌 전체)
-  for (let i = 0; i < estimatedRound; i++) {
-    const round = estimatedRound - i;
-    const seed = round * 7919;
-    const numbers = generateFallbackNumbers(seed);
-    const bonusNumber = ((seed * 13) % 45) + 1;
-    fallbackData.push([...numbers.sort((a, b) => a - b), bonusNumber]);
-  }
-  
-  return fallbackData;
-};
+  const generateFallbackData = (): number[][] => {
+    const currentDate = new Date();
+    const startDate = new Date('2002-12-07');
+    const weeksSinceStart = Math.floor((currentDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    const estimatedRound = Math.max(1179, weeksSinceStart);
+    
+    const fallbackData: number[][] = [];
+    
+    // 🔧 전체 1179개 회차 생성 (50개가 아닌 전체)
+    for (let i = 0; i < estimatedRound; i++) {
+      const round = estimatedRound - i;
+      const seed = round * 7919;
+      const numbers = generateFallbackNumbers(seed);
+      const bonusNumber = ((seed * 13) % 45) + 1;
+      fallbackData.push([...numbers.sort((a, b) => a - b), bonusNumber]);
+    }
+    
+    return fallbackData;
+  };
 
-// loadRealtimeLottoData 함수의 fallback 부분도 수정
-} catch (error) {
-  console.error("❌ 실시간 데이터 로드 실패:", error);
+  // 고정 시드를 사용해 일관된 6개의 번호를 생성하는 함수 (fallback 용)
+  const generateFallbackNumbers = (seed: number): number[] => {
+    const numbers = new Set<number>();
+    let currentSeed = seed;
+    while (numbers.size < 6) {
+      currentSeed = (currentSeed * 1103515245 + 12345) & 0x7fffffff;
+      const num = (currentSeed % 45) + 1;
+      numbers.add(num);
+    }
+    return Array.from(numbers);
+  };
 
-  // 🔧 수정: 전체 fallback 데이터 생성
-  const fallbackData = generateFallbackData();
-  const currentDate = new Date();
-  const startDate = new Date('2002-12-07');
-  const weeksSinceStart = Math.floor((currentDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-  const estimatedRound = Math.max(1179, weeksSinceStart);
-  
-  setPastWinningNumbers(fallbackData);
-  setRoundRange({
-    latestRound: estimatedRound,
-    oldestRound: 1, // 🔧 수정: 1회차부터
-  });
+  // 실시간 / 폴백 데이터 로더
+  const loadRealtimeLottoData = async () => {
+    try {
+      console.log("📡 과거 당첨 데이터 로딩...");
+      setIsDataLoading(true);
 
-  setDataStatus({
-    lastUpdate: new Date(),
-    isRealTime: false,
-    source: "fallback",
-    crawlerHealth: "error",
-  });
+      // 최대한 많은 회차를 요청하여 캐시에 저장 (1200회차 이상)
+      const historyResponse = await lottoDataManager.getHistory(1200);
 
-  console.warn(`⚠️ 폴백 모드: ${estimatedRound}회 ~ 1회 (${estimatedRound}회차)`);
-} finally {
-  setIsDataLoading(false);
-}
-        
-        // 🔧 1179회차 검증
+      if (historyResponse.success && historyResponse.data && historyResponse.data.length > 0) {
+        // LottoDrawResult[]  → number[][] (numbers + bonusNumber)
+        const numbersArray = historyResponse.data.map((d) => [
+          ...d.numbers,
+          d.bonusNumber,
+        ]);
+
+        setPastWinningNumbers(numbersArray);
+
+        setRoundRange({
+          latestRound: historyResponse.data[0].round,
+          oldestRound: historyResponse.data[historyResponse.data.length - 1].round,
+        });
+
+        setDataStatus({
+          lastUpdate: new Date(),
+          isRealTime: true,
+          source: "realtime_crawler",
+          crawlerHealth: "ok",
+        });
+
+        // 1179회차 검증
         const round1179 = historyResponse.data.find((d: LottoDrawResult) => d.round === 1179);
         if (round1179) {
           console.log(`✅ 1179회차 확인: [${round1179.numbers.join(', ')}] + ${round1179.bonusNumber}`);
           const expected = [3, 16, 18, 24, 40, 44];
-          const isCorrect = JSON.stringify(round1179.numbers) === JSON.stringify(expected) && round1179.bonusNumber === 21;
+          const isCorrect =
+            JSON.stringify(round1179.numbers) === JSON.stringify(expected) &&
+            round1179.bonusNumber === 21;
           console.log(`   예상값과 일치: ${isCorrect ? '✅ 성공' : '❌ 실패'}`);
         }
       } else {
@@ -202,17 +217,18 @@ const generateFallbackData = (): number[][] => {
     } catch (error) {
       console.error("❌ 실시간 데이터 로드 실패:", error);
 
-      // 🔧 수정: 더 많은 fallback 데이터 생성
+      // 전체 fallback 데이터 생성
       const fallbackData = generateFallbackData();
       const currentDate = new Date();
       const startDate = new Date('2002-12-07');
-      const weeksSinceStart = Math.floor((currentDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+      const weeksSinceStart =
+        Math.floor((currentDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
       const estimatedRound = Math.max(1179, weeksSinceStart);
-      
+
       setPastWinningNumbers(fallbackData);
       setRoundRange({
         latestRound: estimatedRound,
-        oldestRound: estimatedRound - 49, // 50개 회차
+        oldestRound: 1,
       });
 
       setDataStatus({
@@ -222,7 +238,7 @@ const generateFallbackData = (): number[][] => {
         crawlerHealth: "error",
       });
 
-      console.warn(`⚠️ 폴백 모드: ${estimatedRound}회 ~ ${estimatedRound - 49}회 (50회차)`);
+      console.warn(`⚠️ 폴백 모드: ${estimatedRound}회 ~ 1회 (${estimatedRound}회차)`);
     } finally {
       setIsDataLoading(false);
     }
