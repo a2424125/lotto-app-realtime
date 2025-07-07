@@ -199,8 +199,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             date: new Date().toISOString().split('T')[0],
             numbers: latestNumbers.slice(0, 6),
             bonusNumber: latestNumbers[6],
-            jackpotWinners: 8,
-            jackpotPrize: 2850000000,
+            // 🔧 수정: jackpotWinners와 jackpotPrize 제거
             crawledAt: new Date().toISOString(),
             source: "pastWinningNumbers_primary",
           };
@@ -242,8 +241,6 @@ const Dashboard: React.FC<DashboardProps> = ({
           date: new Date().toISOString().split('T')[0],
           numbers: pastWinningNumbers.length > 0 ? pastWinningNumbers[0].slice(0, 6) : [3, 16, 18, 24, 40, 44],
           bonusNumber: pastWinningNumbers.length > 0 ? pastWinningNumbers[0][6] : 21,
-          jackpotWinners: 8,
-          jackpotPrize: 2850000000,
           crawledAt: new Date().toISOString(),
           source: "dashboard_fallback",
         };
@@ -263,8 +260,6 @@ const Dashboard: React.FC<DashboardProps> = ({
           date: new Date().toISOString().split('T')[0],
           numbers: pastWinningNumbers[0].slice(0, 6),
           bonusNumber: pastWinningNumbers[0][6],
-          jackpotWinners: 8,
-          jackpotPrize: 2850000000,
           crawledAt: new Date().toISOString(),
           source: "emergency_fallback",
         };
@@ -741,35 +736,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           </p>
         </div>
 
-        {/* 당첨 통계 정보 */}
-        {latestResult && latestResult.jackpotWinners && (
-          <div
-            style={{
-              marginTop: "12px",
-              padding: "8px",
-              backgroundColor: currentColors.gray,
-              borderRadius: "6px",
-              textAlign: "center",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                gap: "16px",
-                fontSize: "11px",
-                color: currentColors.textSecondary,
-              }}
-            >
-              <span>🏆 1등 {latestResult.jackpotWinners}명</span>
-              {latestResult.jackpotPrize && (
-                <span>
-                  💰 {Math.round(latestResult.jackpotPrize / 100000000)}억원
-                </span>
-              )}
-            </div>
-          </div>
-        )}
+        {/* 🔧 수정: 당첨 통계 정보 섹션 완전 제거 */}
       </div>
 
       {/* AI 추천 미리보기 */}
