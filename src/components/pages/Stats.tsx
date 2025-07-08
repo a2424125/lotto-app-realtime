@@ -691,14 +691,14 @@ const Stats: React.FC<StatsProps> = ({
     return {
       estimatedStats: {
         totalRounds: totalRounds,
-        typicalJackpot: "15억 ~ 40억원",
+        typicalJackpot: "15억 ~ 30억원",
         explanation: "1등 당첨금은 해당 회차 판매액과 당첨자 수에 따라 결정됩니다. 판매액의 약 43.7%가 당첨금으로 배분되며, 이 중 50%가 1등 당첨금입니다.",
       },
       winnerPatterns: {
-        singleWinnerProbability: 23.5, // 통계적 추정값
-        multipleWinnerProbability: 76.5,
-        averageWinners: 2.8, // 평균 1등 당첨자 수
-        explanation: "과거 통계를 보면 1등 당첨자가 1명인 경우는 약 23.5%이며, 평균적으로 회차당 2.8명의 1등 당첨자가 나옵니다.",
+        singleWinnerProbability: 20.0, // 대략적 추정값
+        multipleWinnerProbability: 80.0,
+        averageWinners: 3.2, // 평균 1등 당첨자 수
+        explanation: "통계적으로 1등 당첨자가 1명인 경우는 약 20% 정도이며, 평균적으로 회차당 3-4명의 1등 당첨자가 나옵니다.",
       },
       prizeCalculation: {
         salesPercentage: 21.85, // 판매액의 21.85%가 1등 당첨금
@@ -711,9 +711,9 @@ const Stats: React.FC<StatsProps> = ({
         ],
       },
       historicalContext: {
-        recordJackpot: "역대 최고 당첨금: 907회차 40억 7천만원 (당첨자 1명)",
-        recentTrends: `최근 ${Math.min(20, totalRounds)}회차 평균 당첨금은 약 20억원 수준을 유지하고 있습니다.`,
-        seasonalPatterns: "연말연시와 대형 이벤트 시기에 판매액이 증가하여 당첨금도 상승하는 경향이 있습니다.",
+        recordJackpot: "당첨금은 매주 변동되며, 공식 홈페이지에서 확인 가능합니다.",
+        recentTrends: "일반적으로 연말연시와 특별 이벤트 시기에 판매액이 증가하는 경향이 있습니다.",
+        seasonalPatterns: "정확한 당첨금 정보는 동행복권 공식 홈페이지를 참조하세요.",
       },
     };
   };
@@ -2334,7 +2334,7 @@ const Stats: React.FC<StatsProps> = ({
                       </div>
                     </div>
 
-                    {/* 역사적 정보 */}
+                    {/* 일반 정보 */}
                     <div
                       style={{
                         padding: "16px",
@@ -2355,7 +2355,7 @@ const Stats: React.FC<StatsProps> = ({
                         }}
                       >
                         <IconWrapper size="sm">📚</IconWrapper>
-                        역사적 정보
+                        로또 6/45 정보
                       </h4>
                       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         <div
@@ -2365,9 +2365,10 @@ const Stats: React.FC<StatsProps> = ({
                             padding: "8px",
                             backgroundColor: "rgba(255,255,255,0.1)",
                             borderRadius: "6px",
+                            lineHeight: "1.4",
                           }}
                         >
-                          <strong>🏆 {prizeStats.historicalContext.recordJackpot}</strong>
+                          📊 {prizeStats.historicalContext.recordJackpot}
                         </div>
                         <div
                           style={{
@@ -2377,10 +2378,10 @@ const Stats: React.FC<StatsProps> = ({
                           }}
                         >
                           <div style={{ marginBottom: "4px" }}>
-                            📈 최근 동향: {prizeStats.historicalContext.recentTrends}
+                            📈 판매 동향: {prizeStats.historicalContext.recentTrends}
                           </div>
                           <div>
-                            📅 시즌별 패턴: {prizeStats.historicalContext.seasonalPatterns}
+                            🔗 정확한 정보: {prizeStats.historicalContext.seasonalPatterns}
                           </div>
                         </div>
                       </div>
