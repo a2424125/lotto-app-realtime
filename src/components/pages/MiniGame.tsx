@@ -30,51 +30,6 @@ interface GameStats {
   totalAdPoints?: number;
 }
 
-interface RouletteGameState {
-  isSpinning: boolean;
-  currentAngle: number;
-  targetAngle: number;
-  selectedNumber: number | null;
-  userBet: number | null;
-  betAmount: number;
-  cost: number;
-  multipliers: Array<{
-    range: [number, number];
-    multiplier: number;
-    color: string;
-    startAngle: number;
-    endAngle: number;
-  }>;
-  spinHistory: Array<{
-    bet: number;
-    result: number;
-    multiplier: number;
-    winnings: number;
-    timestamp: string;
-  }>;
-}
-
-interface DrawGameState {
-  isPlaying: boolean;
-  selectedSlot: number | null;
-  hoveredSlot: number | null;
-  slots: Array<{
-    id: number;
-    isRevealed: boolean;
-    prize: any;
-    isWinner: boolean;
-  }>;
-  result: any;
-  cost: number;
-  prizes: Array<{
-    name: string;
-    points: number;
-    probability: number;
-    emoji: string;
-    color: string;
-  }>;
-}
-
 interface GuessGameState {
   secretNumbers: number[];
   userGuess: number[];
@@ -87,28 +42,6 @@ interface GuessGameState {
   cost: number;
   isPlaying: boolean;
   currentRound: number;
-}
-
-interface SimulationState {
-  selectedNumbers: number[];
-  ticketPrice: number;
-  currentRound: number;
-  results: Array<{
-    round: number;
-    userNumbers: number[];
-    winningNumbers: number[];
-    bonusNumber: number;
-    matches: number;
-    grade: string;
-    prize: number;
-    spent: number;
-  }>;
-  isPlaying: boolean;
-  autoPlay: boolean;
-  speed: number;
-  totalSpent: number;
-  totalWon: number;
-  isSimulating: boolean;
 }
 
 interface AdWatchState {
@@ -126,7 +59,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
   roundRange,
   theme = "light",
 }) => {
-  console.log("🎮 MiniGame 컴포넌트 렌더링 시작", { theme, pastWinningNumbers: pastWinningNumbers?.length });
+  console.log("🎮 MiniGame 컴포넌트 렌더링 시작", { 
+    theme, 
+    pastWinningNumbers: pastWinningNumbers?.length 
+  });
 
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   
@@ -144,36 +80,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     totalAdPoints: 0,
   };
 
-  const [gameStats, setGameStats] = useState<GameStats>(() => {
-    try {
-      // localStorage 대신 메모리 저장소 사용
-      const saved = null; // localStorage.getItem("lotto-game-stats");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return {
-          gamesPlayed: typeof parsed.gamesPlayed === 'number' ? parsed.gamesPlayed : 0,
-          bestScore: typeof parsed.bestScore === 'number' ? parsed.bestScore : 0,
-          totalWins: typeof parsed.totalWins === 'number' ? parsed.totalWins : 0,
-          points: typeof parsed.points === 'number' ? parsed.points : 100000,
-          totalSpent: typeof parsed.totalSpent === 'number' ? parsed.totalSpent : 0,
-          totalWon: typeof parsed.totalWon === 'number' ? parsed.totalWon : 0,
-          dailyBonusDate: parsed.dailyBonusDate || null,
-          dailyChargeCount: parsed.dailyChargeCount || 0,
-          dailyChargeDate: parsed.dailyChargeDate || null,
-          dailyAdCount: parsed.dailyAdCount || 0,
-          dailyAdDate: parsed.dailyAdDate || null,
-          dailyAdWatchCount: parsed.dailyAdWatchCount || 0,
-          dailyAdWatchDate: parsed.dailyAdWatchDate || null,
-          totalAdsWatched: parsed.totalAdsWatched || 0,
-          totalAdPoints: parsed.totalAdPoints || 0,
-        };
-      }
-      return defaultGameStats;
-    } catch (error) {
-      console.error("게임 통계 로드 실패:", error);
-      return defaultGameStats;
-    }
-  });
+  const [gameStats, setGameStats] = useState<GameStats>(defaultGameStats);
 
   const [adWatchState, setAdWatchState] = useState<AdWatchState>({
     isWatching: false,
@@ -196,69 +103,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     isPlaying: false,
     currentRound: 1,
   });
-
-  const [simulation, setSimulation] = useState<SimulationState>({
-    selectedNumbers: [],
-    ticketPrice: 2000,
-    currentRound: 0,
-    results: [],
-    isPlaying: false,
-    autoPlay: false,
-    speed: 1,
-    totalSpent: 0,
-    totalWon: 0,
-    isSimulating: false,
-  });
-
-  const [drawGame, setDrawGame] = useState<DrawGameState>({
-    isPlaying: false,
-    selectedSlot: null,
-    hoveredSlot: null,
-    slots: Array.from({ length: 100 }, (_, i) => ({
-      id: i,
-      isRevealed: false,
-      prize: null,
-      isWinner: false,
-    })),
-    result: null,
-    cost: 1000,
-    prizes: [
-      { name: "1등 대박!", points: 5000, probability: 0.02, emoji: "🏆", color: "#FFD700" },
-      { name: "2등 잭팟!", points: 2000, probability: 0.05, emoji: "🥈", color: "#C0C0C0" },
-      { name: "3등 당첨!", points: 500, probability: 0.08, emoji: "🥉", color: "#CD7F32" },
-      { name: "4등 성공!", points: 200, probability: 0.15, emoji: "🎁", color: "#4CAF50" },
-      { name: "꽝", points: 0, probability: 0.7, emoji: "😅", color: "#9E9E9E" },
-    ],
-  });
-
-  const [rouletteGame, setRouletteGame] = useState<RouletteGameState>({
-    isSpinning: false,
-    currentAngle: 0,
-    targetAngle: 0,
-    selectedNumber: null,
-    userBet: null,
-    betAmount: 2000,
-    cost: 2000,
-    multipliers: [
-      { range: [1, 1], multiplier: 50, color: "#FFD700", startAngle: 0, endAngle: 30 },
-      { range: [2, 3], multiplier: 25, color: "#FF6B6B", startAngle: 30, endAngle: 60 },
-      { range: [4, 6], multiplier: 20, color: "#4ECDC4", startAngle: 60, endAngle: 90 },
-      { range: [7, 10], multiplier: 15, color: "#45B7D1", startAngle: 90, endAngle: 120 },
-      { range: [11, 15], multiplier: 12, color: "#96CEB4", startAngle: 120, endAngle: 150 },
-      { range: [16, 20], multiplier: 10, color: "#FFEAA7", startAngle: 150, endAngle: 180 },
-      { range: [21, 25], multiplier: 8, color: "#DDA0DD", startAngle: 180, endAngle: 210 },
-      { range: [26, 30], multiplier: 6, color: "#98D8C8", startAngle: 210, endAngle: 240 },
-      { range: [31, 35], multiplier: 5, color: "#F7DC6F", startAngle: 240, endAngle: 270 },
-      { range: [36, 39], multiplier: 4, color: "#BB8FCE", startAngle: 270, endAngle: 300 },
-      { range: [40, 42], multiplier: 3, color: "#85C1E9", startAngle: 300, endAngle: 330 },
-      { range: [43, 45], multiplier: 2, color: "#F8C471", startAngle: 330, endAngle: 360 },
-    ],
-    spinHistory: [],
-  });
-
-  const actualLatestRound = roundRange?.latestRound || 1178;
-  const actualOldestRound = roundRange?.oldestRound || 1178;
-  const totalRounds = pastWinningNumbers?.length || 0;
 
   const safeFormatNumber = (value: any): string => {
     if (typeof value !== 'number' || isNaN(value)) {
@@ -303,11 +147,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
       purple: "#f3e8ff",
       purpleBorder: "#c084fc",
       purpleText: "#7c3aed",
-      drawBg: "#f0f9ff",
-      drawBorder: "#0ea5e9",
-      slotDefault: "#e0f2fe",
-      slotHover: "#bae6fd",
-      slotSelected: "#0284c7",
       adBg: "#f0f9ff",
       adBorder: "#0ea5e9",
       adText: "#0c4a6e",
@@ -338,11 +177,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
       purple: "#581c87",
       purpleBorder: "#8b5cf6",
       purpleText: "#c4b5fd",
-      drawBg: "#1e3a8a",
-      drawBorder: "#3b82f6",
-      slotDefault: "#1e293b",
-      slotHover: "#334155",
-      slotSelected: "#0ea5e9",
       adBg: "#1e3a8a",
       adBorder: "#3b82f6",
       adText: "#93c5fd",
@@ -390,16 +224,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
       cost: 2000,
     },
   ];
-
-  useEffect(() => {
-    try {
-      console.log("🎮 MiniGame useEffect 실행");
-      // localStorage 대신 메모리에 저장 (실제 앱에서는 localStorage 사용 가능)
-      // localStorage.setItem("lotto-game-stats", JSON.stringify(gameStats));
-    } catch (error) {
-      console.error("게임 통계 저장 실패:", error);
-    }
-  }, [gameStats]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -518,7 +342,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     if (checkDailyAdLimit()) {
       const confirmMessage = `포인트가 ${safeFormatNumber(shortage)}P 부족합니다.\n\n광고를 시청하여 3,000P를 받으시겠습니까?\n(30초 광고 시청 후 ${gameName} 게임을 할 수 있습니다)`;
       
-      if (confirm(confirmMessage)) {
+      if (window.confirm(confirmMessage)) {
         startAdWatch();
         return true;
       }
@@ -675,34 +499,55 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
   if (isDataLoading) {
     return (
-      <div 
-        style={{ 
-          padding: "12px",
-          backgroundColor: currentColors.background,
-          minHeight: "100vh",
-          color: currentColors.text
-        }}
-      >
-        <div
-          style={{
-            backgroundColor: currentColors.surface,
-            padding: "32px 16px",
-            borderRadius: "12px",
-            border: `1px solid ${currentColors.border}`,
-            textAlign: "center",
-          }}
-        >
-          <div
-            style={{
-              width: "40px",
-              height: "40px",
-              border: `4px solid ${currentColors.border}`,
-              borderTop: `4px solid ${currentColors.primary}`,
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-              margin: "0 auto 16px",
-            }}
-          />
+      <div style={{ 
+        padding: "12px",
+        backgroundColor: currentColors.background,
+        minHeight: "100vh",
+        color: currentColors.text
+      }}>
+        <div style={{
+          backgroundColor: currentColors.surface,
+          padding: "32px 16px",
+          borderRadius: "12px",
+          border: `1px solid ${currentColors.border}`,
+          textAlign: "center",
+        }}>
+          <div style={{
+            width: "40px",
+            height: "40px",
+            border: `4px solid ${currentColors.border}`,
+            borderTop: `4px solid ${currentColors.primary}`,
+            borderRadius: "50%",
+            animation: "spin 1s linear infinite",
+            margin: "0 auto 16px",
+          }} />
+          <p style={{ color: currentColors.textSecondary, margin: "0", fontSize: "14px" }}>
+            🎮 미니게임 로딩 중...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!pastWinningNumbers || pastWinningNumbers.length === 0) {
+    return (
+      <div style={{ 
+        padding: "12px",
+        backgroundColor: currentColors.background,
+        minHeight: "100vh",
+        color: currentColors.text
+      }}>
+        <div style={{
+          backgroundColor: currentColors.surface,
+          padding: "32px 16px",
+          borderRadius: "12px",
+          border: `1px solid ${currentColors.border}`,
+          textAlign: "center",
+        }}>
+          <div style={{ fontSize: "48px", marginBottom: "16px" }}>😔</div>
+          <h3 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0 0 8px 0" }}>
+            데이터를 불러올 수 없습니다
+          </h3>
           <p style={{ color: currentColors.textSecondary, margin: "0", fontSize: "14px" }}>
             로또 데이터가 로드되지 않아 미니게임을 시작할 수 없습니다.
           </p>
@@ -712,115 +557,95 @@ const MiniGame: React.FC<MiniGameProps> = ({
   }
 
   return (
-    <div 
-      style={{ 
-        padding: "12px",
-        backgroundColor: currentColors.background,
-        minHeight: "100vh",
-        color: currentColors.text
-      }}
-    >
+    <div style={{ 
+      padding: "12px",
+      backgroundColor: currentColors.background,
+      minHeight: "100vh",
+      color: currentColors.text
+    }}>
       {/* 광고 시청 팝업 */}
       {adWatchState.isWatching && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.8)",
-            zIndex: 1000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: currentColors.surface,
-              borderRadius: "12px",
-              padding: "24px",
-              width: "90%",
-              maxWidth: "400px",
-              border: `2px solid ${currentColors.adBorder}`,
-              textAlign: "center",
-            }}
-          >
-            <div
-              style={{
-                backgroundColor: currentColors.adBg,
-                padding: "12px",
-                borderRadius: "8px",
-                marginBottom: "16px",
-                border: `1px solid ${currentColors.adBorder}`,
-              }}
-            >
-              <h3
-                style={{
-                  fontSize: "16px",
-                  fontWeight: "bold",
-                  color: currentColors.adText,
-                  margin: "0 0 8px 0",
-                }}
-              >
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0, 0, 0, 0.8)",
+          zIndex: 1000,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}>
+          <div style={{
+            backgroundColor: currentColors.surface,
+            borderRadius: "12px",
+            padding: "24px",
+            width: "90%",
+            maxWidth: "400px",
+            border: `2px solid ${currentColors.adBorder}`,
+            textAlign: "center",
+          }}>
+            <div style={{
+              backgroundColor: currentColors.adBg,
+              padding: "12px",
+              borderRadius: "8px",
+              marginBottom: "16px",
+              border: `1px solid ${currentColors.adBorder}`,
+            }}>
+              <h3 style={{
+                fontSize: "16px",
+                fontWeight: "bold",
+                color: currentColors.adText,
+                margin: "0 0 8px 0",
+              }}>
                 📺 광고 시청 중...
               </h3>
-              <p
-                style={{
-                  fontSize: "12px",
-                  color: currentColors.adText,
-                  margin: "0",
-                }}
-              >
+              <p style={{
+                fontSize: "12px",
+                color: currentColors.adText,
+                margin: "0",
+              }}>
                 시청 완료 시 3,000P 지급!
               </p>
             </div>
 
-            <div
-              style={{
-                fontSize: "14px",
-                fontWeight: "bold",
-                color: currentColors.text,
-                marginBottom: "16px",
-                minHeight: "40px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+            <div style={{
+              fontSize: "14px",
+              fontWeight: "bold",
+              color: currentColors.text,
+              marginBottom: "16px",
+              minHeight: "40px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}>
               {adWatchState.adTitle}
             </div>
 
-            <div
-              style={{
-                width: "100%",
-                height: "8px",
-                backgroundColor: currentColors.gray,
+            <div style={{
+              width: "100%",
+              height: "8px",
+              backgroundColor: currentColors.gray,
+              borderRadius: "4px",
+              marginBottom: "12px",
+              overflow: "hidden",
+            }}>
+              <div style={{
+                width: `${adWatchState.adProgress}%`,
+                height: "100%",
+                backgroundColor: currentColors.adButton,
                 borderRadius: "4px",
-                marginBottom: "12px",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  width: `${adWatchState.adProgress}%`,
-                  height: "100%",
-                  backgroundColor: currentColors.adButton,
-                  borderRadius: "4px",
-                  transition: "width 0.3s ease",
-                }}
-              />
+                transition: "width 0.3s ease",
+              }} />
             </div>
 
-            <div
-              style={{
-                fontSize: "18px",
-                fontWeight: "bold",
-                color: currentColors.primary,
-                marginBottom: "16px",
-              }}
-            >
+            <div style={{
+              fontSize: "18px",
+              fontWeight: "bold",
+              color: currentColors.primary,
+              marginBottom: "16px",
+            }}>
               {adWatchState.countdown}초
             </div>
 
@@ -843,13 +668,11 @@ const MiniGame: React.FC<MiniGameProps> = ({
             )}
 
             {!adWatchState.canSkip && (
-              <p
-                style={{
-                  fontSize: "10px",
-                  color: currentColors.textSecondary,
-                  margin: "0",
-                }}
-              >
+              <p style={{
+                fontSize: "10px",
+                color: currentColors.textSecondary,
+                margin: "0",
+              }}>
                 5초 후 건너뛸 수 있습니다
               </p>
             )}
@@ -858,50 +681,42 @@ const MiniGame: React.FC<MiniGameProps> = ({
       )}
 
       {/* 헤더 */}
-      <div
-        style={{
-          backgroundColor: currentColors.surface,
-          padding: "16px",
-          borderRadius: "12px",
-          border: `1px solid ${currentColors.border}`,
-          marginBottom: "12px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-        }}
-      >
-        <h2
-          style={{
-            fontSize: "20px",
-            fontWeight: "bold",
-            color: currentColors.text,
-            margin: "0 0 8px 0",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
+      <div style={{
+        backgroundColor: currentColors.surface,
+        padding: "16px",
+        borderRadius: "12px",
+        border: `1px solid ${currentColors.border}`,
+        marginBottom: "12px",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+      }}>
+        <h2 style={{
+          fontSize: "20px",
+          fontWeight: "bold",
+          color: currentColors.text,
+          margin: "0 0 8px 0",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+        }}>
           🎮 프리미엄 게임센터
         </h2>
-        <p
-          style={{
-            fontSize: "14px",
-            color: currentColors.textSecondary,
-            margin: "0 0 16px 0",
-          }}
-        >
+        <p style={{
+          fontSize: "14px",
+          color: currentColors.textSecondary,
+          margin: "0 0 16px 0",
+        }}>
           업그레이드된 인터랙티브 게임으로 포인트를 모아보세요!
         </p>
 
         {/* 포인트 정보 */}
-        <div
-          style={{
-            backgroundColor: currentColors.success,
-            padding: "16px",
-            borderRadius: "8px",
-            border: `1px solid ${currentColors.successBorder}`,
-            marginBottom: "12px",
-            textAlign: "center",
-          }}
-        >
+        <div style={{
+          backgroundColor: currentColors.success,
+          padding: "16px",
+          borderRadius: "8px",
+          border: `1px solid ${currentColors.successBorder}`,
+          marginBottom: "12px",
+          textAlign: "center",
+        }}>
           <div style={{ fontSize: "28px", fontWeight: "bold", color: currentColors.successText, marginBottom: "4px" }}>
             💎 {safeFormatNumber(gameStats?.points)}P
           </div>
@@ -955,7 +770,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 cursor: checkDailyAdLimit() ? "pointer" : "not-allowed",
                 fontWeight: "bold",
                 opacity: checkDailyAdLimit() ? 1 : 0.6,
-                animation: checkDailyAdLimit() ? "pulse 2s infinite" : "none",
               }}
             >
               📺 광고시청 3000P
@@ -972,21 +786,17 @@ const MiniGame: React.FC<MiniGameProps> = ({
           </div>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: "8px",
-          }}
-        >
-          <div
-            style={{
-              padding: "8px",
-              backgroundColor: currentColors.info,
-              borderRadius: "6px",
-              textAlign: "center",
-            }}
-          >
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: "8px",
+        }}>
+          <div style={{
+            padding: "8px",
+            backgroundColor: currentColors.info,
+            borderRadius: "6px",
+            textAlign: "center",
+          }}>
             <div style={{ fontSize: "16px", fontWeight: "bold", color: currentColors.infoText }}>
               {safeFormatNumber(gameStats?.gamesPlayed)}
             </div>
@@ -994,14 +804,12 @@ const MiniGame: React.FC<MiniGameProps> = ({
               총 게임 수
             </div>
           </div>
-          <div
-            style={{
-              padding: "8px",
-              backgroundColor: currentColors.warning,
-              borderRadius: "6px",
-              textAlign: "center",
-            }}
-          >
+          <div style={{
+            padding: "8px",
+            backgroundColor: currentColors.warning,
+            borderRadius: "6px",
+            textAlign: "center",
+          }}>
             <div style={{ fontSize: "16px", fontWeight: "bold", color: currentColors.warningText }}>
               {safeFormatNumber(gameStats?.totalWins)}
             </div>
@@ -1009,14 +817,12 @@ const MiniGame: React.FC<MiniGameProps> = ({
               총 당첨 수
             </div>
           </div>
-          <div
-            style={{
-              padding: "8px",
-              backgroundColor: currentColors.purple,
-              borderRadius: "6px",
-              textAlign: "center",
-            }}
-          >
+          <div style={{
+            padding: "8px",
+            backgroundColor: currentColors.purple,
+            borderRadius: "6px",
+            textAlign: "center",
+          }}>
             <div style={{ fontSize: "16px", fontWeight: "bold", color: currentColors.purpleText }}>
               {safeCalculatePercentage(gameStats?.totalWon, gameStats?.totalSpent)}%
             </div>
@@ -1024,15 +830,13 @@ const MiniGame: React.FC<MiniGameProps> = ({
               수익률
             </div>
           </div>
-          <div
-            style={{
-              padding: "8px",
-              backgroundColor: currentColors.adBg,
-              borderRadius: "6px",
-              textAlign: "center",
-              border: `1px solid ${currentColors.adBorder}`,
-            }}
-          >
+          <div style={{
+            padding: "8px",
+            backgroundColor: currentColors.adBg,
+            borderRadius: "6px",
+            textAlign: "center",
+            border: `1px solid ${currentColors.adBorder}`,
+          }}>
             <div style={{ fontSize: "16px", fontWeight: "bold", color: currentColors.adText }}>
               {safeFormatNumber(gameStats?.totalAdsWatched || 0)}
             </div>
@@ -1045,23 +849,19 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
       {/* 게임 선택 화면 */}
       {!selectedGame && (
-        <div
-          style={{
-            backgroundColor: currentColors.surface,
-            padding: "16px",
-            borderRadius: "12px",
-            border: `1px solid ${currentColors.border}`,
-            marginBottom: "12px",
-          }}
-        >
-          <h3
-            style={{
-              fontSize: "16px",
-              fontWeight: "bold",
-              color: currentColors.text,
-              margin: "0 0 12px 0",
-            }}
-          >
+        <div style={{
+          backgroundColor: currentColors.surface,
+          padding: "16px",
+          borderRadius: "12px",
+          border: `1px solid ${currentColors.border}`,
+          marginBottom: "12px",
+        }}>
+          <h3 style={{
+            fontSize: "16px",
+            fontWeight: "bold",
+            color: currentColors.text,
+            margin: "0 0 12px 0",
+          }}>
             🎯 게임 선택
           </h3>
 
@@ -1087,57 +887,47 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 }}
               >
                 <div style={{ fontSize: "32px", marginBottom: "8px" }}>{game.emoji}</div>
-                <h4
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                    color: currentColors.text,
-                    margin: "0 0 4px 0",
-                  }}
-                >
+                <h4 style={{
+                  fontSize: "14px",
+                  fontWeight: "bold",
+                  color: currentColors.text,
+                  margin: "0 0 4px 0",
+                }}>
                   {game.name}
                 </h4>
-                <p
-                  style={{
-                    fontSize: "11px",
-                    color: currentColors.textSecondary,
-                    margin: "0 0 6px 0",
-                    lineHeight: "1.3",
-                  }}
-                >
+                <p style={{
+                  fontSize: "11px",
+                  color: currentColors.textSecondary,
+                  margin: "0 0 6px 0",
+                  lineHeight: "1.3",
+                }}>
                   {game.desc}
                 </p>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}>
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      padding: "3px 8px",
-                      backgroundColor: game.color,
-                      color: "white",
-                      borderRadius: "4px",
-                      fontWeight: "bold",
-                    }}
-                  >
+                  <span style={{
+                    fontSize: "11px",
+                    padding: "3px 8px",
+                    backgroundColor: game.color,
+                    color: "white",
+                    borderRadius: "4px",
+                    fontWeight: "bold",
+                  }}>
                     {safeFormatNumber(game.cost)}P
                   </span>
-                  <span
-                    style={{
-                      fontSize: "9px",
-                      color: currentColors.textSecondary,
-                    }}
-                  >
+                  <span style={{
+                    fontSize: "9px",
+                    color: currentColors.textSecondary,
+                  }}>
                     {game.difficulty}
                   </span>
                 </div>
                 {(gameStats?.points || 0) < game.cost && (
-                  <div
-                    style={{
-                      fontSize: "9px",
-                      color: "#ef4444",
-                      marginTop: "4px",
-                      fontWeight: "bold",
-                    }}
-                  >
+                  <div style={{
+                    fontSize: "9px",
+                    color: "#ef4444",
+                    marginTop: "4px",
+                    fontWeight: "bold",
+                  }}>
                     📺 광고 시청으로 포인트 획득 가능
                   </div>
                 )}
@@ -1149,14 +939,12 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
       {/* 번호맞추기 게임 */}
       {selectedGame === "guess" && (
-        <div
-          style={{
-            backgroundColor: currentColors.surface,
-            borderRadius: "12px",
-            padding: "16px",
-            border: `1px solid ${currentColors.border}`,
-          }}
-        >
+        <div style={{
+          backgroundColor: currentColors.surface,
+          borderRadius: "12px",
+          padding: "16px",
+          border: `1px solid ${currentColors.border}`,
+        }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
             <h3 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0" }}>
               🎯 번호맞추기
@@ -1421,35 +1209,4 @@ const MiniGame: React.FC<MiniGameProps> = ({
   );
 };
 
-export default MiniGame; style={{ color: currentColors.textSecondary, margin: "0", fontSize: "14px" }}>
-            🎮 미니게임 로딩 중...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!pastWinningNumbers || pastWinningNumbers.length === 0) {
-    return (
-      <div 
-        style={{ 
-          padding: "12px",
-          backgroundColor: currentColors.background,
-          minHeight: "100vh",
-          color: currentColors.text
-        }}
-      >
-        <div
-          style={{
-            backgroundColor: currentColors.surface,
-            padding: "32px 16px",
-            borderRadius: "12px",
-            border: `1px solid ${currentColors.border}`,
-            textAlign: "center",
-          }}
-        >
-          <div style={{ fontSize: "48px", marginBottom: "16px" }}>😔</div>
-          <h3 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0 0 8px 0" }}>
-            데이터를 불러올 수 없습니다
-          </h3>
-          <p
+export default MiniGame;
