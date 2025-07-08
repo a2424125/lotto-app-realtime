@@ -674,7 +674,7 @@ const LottoApp = () => {
         transition: "all 0.3s ease",
       }}
     >
-      {/* 헤더 */}
+      {/* 깔끔한 헤더 - 불필요한 요소들 제거 */}
       <div
         style={{
           backgroundColor: currentColors.primary,
@@ -699,86 +699,14 @@ const LottoApp = () => {
         >
           ☰
         </button>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <h1 style={{ fontSize: "16px", fontWeight: "bold", margin: "0" }}>
-            로또 6/45
-          </h1>
-          <div
-            style={{
-              width: "8px",
-              height: "8px",
-              borderRadius: "50%",
-              backgroundColor: dataStatus.source === "emergency" ? "#10b981" : 
-                             dataStatus.isRealTime ? "#10b981" : "#f59e0b",
-              animation: isDataLoading ? "pulse 2s infinite" : "none",
-            }}
-            title={dataStatus.source === "emergency" ? "응급 안전 모드" : 
-                   dataStatus.isRealTime ? "실시간 연동" : "오프라인 모드"}
-          />
-          {nextDrawInfo && (
-            <span
-              style={{
-                fontSize: "10px",
-                padding: "2px 6px",
-                backgroundColor: nextDrawInfo.isToday ? "#ef4444" : 
-                  nextDrawInfo.daysUntilDraw <= 1 ? "#f59e0b" : "#10b981",
-                borderRadius: "4px",
-                fontWeight: "bold",
-                animation: nextDrawInfo.isToday || nextDrawInfo.daysUntilDraw <= 1 ? "pulse 2s infinite" : "none",
-              }}
-            >
-              {nextDrawInfo.isToday ? "오늘 추첨!" : 
-               nextDrawInfo.daysUntilDraw === 1 ? "내일 추첨!" :
-               nextDrawInfo.daysUntilDraw === 0 ? "오늘 추첨!" :
-               `${nextDrawInfo.daysUntilDraw}일 후`}
-            </span>
-          )}
-          {autoSave && (
-            <span
-              style={{
-                fontSize: "10px",
-                padding: "2px 6px",
-                backgroundColor: "#10b981",
-                borderRadius: "4px",
-                fontWeight: "bold",
-              }}
-            >
-              💾
-            </span>
-          )}
-          <span
-            style={{
-              fontSize: "9px",
-              padding: "1px 4px",
-              backgroundColor: pastWinningNumbers.length >= 1000 ? "#10b981" : 
-                             pastWinningNumbers.length >= 500 ? "#f59e0b" : "#ef4444",
-              color: "white",
-              borderRadius: "3px",
-              fontWeight: "bold",
-            }}
-            title={`로드된 데이터: ${pastWinningNumbers.length}개`}
-          >
-            {pastWinningNumbers.length}
-          </span>
-           </div>
-        <button
-          onClick={refreshData}
-          disabled={isDataLoading}
-          style={{
-            padding: "6px",
-            backgroundColor: "transparent",
-            border: "none",
-            color: "white",
-            cursor: isDataLoading ? "not-allowed" : "pointer",
-            borderRadius: "4px",
-            fontSize: "14px",
-            opacity: isDataLoading ? 0.6 : 1,
-            animation: isDataLoading ? "spin 2s linear infinite" : "none",
-          }}
-          title="데이터 새로고침"
-        >
-          🔄
-        </button>
+        
+        {/* 깔끔하게 로또 6/45만 표시 */}
+        <h1 style={{ fontSize: "16px", fontWeight: "bold", margin: "0" }}>
+          로또 6/45
+        </h1>
+        
+        {/* 빈 공간 (오른쪽 균형 맞추기용) */}
+        <div style={{ width: "32px" }}></div>
       </div>
 
       {/* 사이드바 */}
@@ -977,7 +905,7 @@ const LottoApp = () => {
               zIndex: 40,
             }}
           >
-            데이터 새로고침 중...
+            🛡️ 안전한 데이터 새로고침 중...
           </div>
         )}
         {renderContent()}
@@ -1002,7 +930,7 @@ const LottoApp = () => {
       >
         로또는 확률게임입니다. 과도한 구매는 가계에 부담이 됩니다.
         <span style={{ color: "#10b981", marginLeft: "8px" }}>
-          ({pastWinningNumbers.length}회차)
+          • 🛡️ 응급 안전 모드 - 서비스 정상 동작 ({pastWinningNumbers.length}회차)
         </span>
         {nextDrawInfo && (
           <div style={{ color: "#dc2626", marginLeft: "8px", fontWeight: "bold", textAlign: "center" }}>
