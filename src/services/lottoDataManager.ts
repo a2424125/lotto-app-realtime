@@ -244,7 +244,7 @@ class RealtimeLottoDataManager {
       }
     }
 
-    return allResults.sort((a, b) => b.round - a.round);
+    return allResults.sort((a: LottoDrawResult, b: LottoDrawResult) => b.round - a.round);
   }
 
   // 🎯 전략 3: 다중 소스 크롤링
@@ -284,7 +284,7 @@ class RealtimeLottoDataManager {
             const validData = result.data.filter((item: any) => this.isValidLottoResult(item));
             if (validData.length >= 500) {
               console.log(`✅ 다중 소스 성공: ${validData.length}회차`);
-              return validData.sort((a, b) => b.round - a.round);
+              return validData.sort((a: LottoDrawResult, b: LottoDrawResult) => b.round - a.round);
             }
           }
         }
@@ -352,7 +352,7 @@ class RealtimeLottoDataManager {
       }
     }
 
-    this.cachedData = fallbackData.sort((a, b) => b.round - a.round);
+    this.cachedData = fallbackData.sort((a: LottoDrawResult, b: LottoDrawResult) => b.round - a.round);
     this.lastUpdateTime = new Date();
     this.isDataLoaded = true;
 
