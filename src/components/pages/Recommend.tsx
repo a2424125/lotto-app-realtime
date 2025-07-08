@@ -296,9 +296,14 @@ const Recommend: React.FC<RecommendProps> = ({
   };
 
   // 🎯 아이콘 래퍼 컴포넌트 - 일정한 크기 보장
-  const IconWrapper: React.FC<{ children: React.ReactNode; size?: "sm" | "md" | "lg" }> = ({ 
+  const IconWrapper: React.FC<{ 
+    children: React.ReactNode; 
+    size?: "sm" | "md" | "lg";
+    style?: React.CSSProperties;
+  }> = ({ 
     children, 
-    size = "md" 
+    size = "md",
+    style = {}
   }) => {
     const sizeMap = {
       sm: "16px",
@@ -317,6 +322,7 @@ const Recommend: React.FC<RecommendProps> = ({
           fontSize: sizeMap[size],
           lineHeight: "1",
           textAlign: "center" as const,
+          ...style, // 추가 스타일 병합
         }}
       >
         {children}
