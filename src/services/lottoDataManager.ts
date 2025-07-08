@@ -1,5 +1,5 @@
 // 🔄 src/services/lottoDataManager.ts
-// 🔧 수정: 전체 데이터 확실히 로드하도록 강화
+// 🔥 완전한 전체 데이터 로드 시스템 - 모든 회차 가져오기
 
 import {
   LottoDrawResult,
@@ -7,7 +7,7 @@ import {
   LottoHistoryAPIResponse,
 } from "../types/lotto";
 
-class RealtimeLottoDataManager {
+class CompleteLottoDataManager {
   private cachedData: LottoDrawResult[] = [];
   private isDataLoaded: boolean = false;
   private lastUpdateTime: Date | null = null;
@@ -17,15 +17,14 @@ class RealtimeLottoDataManager {
   private readonly REFERENCE_DATE = '2025-07-05';
   private readonly REFERENCE_ROUND = 1179;
   
-  // 🔧 추가: 전체 데이터 로드를 위한 설정
+  // 🔥 전체 데이터 로드를 위한 설정
   private loadingPromise: Promise<void> | null = null;
-  private maxRetries: number = 5; // 재시도 횟수 증가
-  private retryDelay: number = 3000; // 재시도 지연시간
-  private forceFullLoad: boolean = true; // 전체 데이터 강제 로드
+  private maxRetries: number = 3;
+  private retryDelay: number = 3000;
 
   constructor() {
     this.apiBaseUrl = this.getApiBaseUrl();
-    console.log(`🚀 실시간 로또 데이터 매니저 초기화 - 전체 데이터 로드 모드`);
+    console.log(`🔥 완전한 로또 데이터 매니저 초기화 - 전체 데이터 로드 모드`);
   }
 
   // 🔧 수정: 현재 회차 동적 계산
@@ -53,7 +52,7 @@ class RealtimeLottoDataManager {
     return "/api";
   }
 
-  // 🔧 수정: 전체 데이터 로드 보장
+  // 🔥 전체 데이터 로드 (현재 회차까지 모든 데이터)
   private async initializeData(): Promise<void> {
     if (this.isLoading || this.loadingPromise) {
       console.log("⏳ 이미 데이터 로딩 중...");
@@ -77,34 +76,34 @@ class RealtimeLottoDataManager {
       console.log("📡 전체 데이터 초기화 시작...");
       
       const currentRound = this.calculateCurrentRound();
-      console.log(`🎯 목표: 전체 ${currentRound}회차 데이터 로드`);
+      console.log(`🎯 목표: 1회차부터 ${currentRound}회차까지 전체 데이터 로드`);
       
-      // 🔧 수정: 전체 데이터 로드 시도
-      await this.loadAllCrawledData(currentRound);
+      // 🔥 전체 데이터 로드 시도
+      await this.loadCompleteData(currentRound);
       this.isDataLoaded = true;
       console.log("✅ 전체 데이터 초기화 완료");
     } catch (error) {
       console.error("❌ 초기화 실패:", error);
       this.isDataLoaded = false;
-      // 실패시 대용량 fallback 데이터 생성
-      this.generateMassiveFallbackData();
+      // 실패시 전체 fallback 데이터 생성
+      this.generateCompleteFallbackData();
     } finally {
       this.isLoading = false;
     }
   }
 
-  // 🔧 수정: 전체 데이터 크롤링 (다중 전략)
-  private async loadAllCrawledData(targetRounds: number): Promise<void> {
-    console.log(`🔄 전체 ${targetRounds}회차 크롤링 시작...`);
+  // 🔥 완전한 데이터 크롤링 (전체 회차)
+  private async loadCompleteData(currentRound: number): Promise<void> {
+    console.log(`🔄 전체 ${currentRound}회차 크롤링 시작...`);
     
     let successfulData: LottoDrawResult[] = [];
     
-    // 🎯 전략 1: 대용량 단일 요청
+    // 🎯 전략 1: 전체 데이터 한번에 요청 (현재 회차만큼)
     try {
-      console.log("📡 전략 1: 대용량 단일 요청 시도...");
-      successfulData = await this.attemptMassiveSingleRequest(targetRounds);
+      console.log("📡 전략 1: 전체 데이터 한번에 요청...");
+      successfulData = await this.attemptCompleteRequest(currentRound);
       
-      if (successfulData.length >= targetRounds * 0.8) { // 80% 이상 수집되면 성공
+      if (successfulData.length >= currentRound * 0.9) { // 90% 이상 수집되면 성공
         console.log(`✅ 전략 1 성공: ${successfulData.length}회차 수집`);
         this.cachedData = successfulData;
         this.lastUpdateTime = new Date();
@@ -114,12 +113,12 @@ class RealtimeLottoDataManager {
       console.warn("⚠️ 전략 1 실패:", error);
     }
 
-    // 🎯 전략 2: 분할 대용량 크롤링
+    // 🎯 전략 2: 점진적 전체 크롤링 (페이지별)
     try {
-      console.log("📡 전략 2: 분할 대용량 크롤링 시도...");
-      successfulData = await this.attemptChunkedCrawling(targetRounds);
+      console.log("📡 전략 2: 점진적 전체 크롤링...");
+      successfulData = await this.attemptProgressiveCrawling(currentRound);
       
-      if (successfulData.length >= targetRounds * 0.7) { // 70% 이상 수집되면 성공
+      if (successfulData.length >= currentRound * 0.8) { // 80% 이상 수집되면 성공
         console.log(`✅ 전략 2 성공: ${successfulData.length}회차 수집`);
         this.cachedData = successfulData;
         this.lastUpdateTime = new Date();
@@ -129,12 +128,12 @@ class RealtimeLottoDataManager {
       console.warn("⚠️ 전략 2 실패:", error);
     }
 
-    // 🎯 전략 3: 다중 소스 크롤링
+    // 🎯 전략 3: 여러 소스 시도
     try {
-      console.log("📡 전략 3: 다중 소스 크롤링 시도...");
-      successfulData = await this.attemptMultiSourceCrawling(targetRounds);
+      console.log("📡 전략 3: 여러 소스 시도...");
+      successfulData = await this.attemptMultipleSourceCrawling(currentRound);
       
-      if (successfulData.length >= 500) { // 최소 500개 이상
+      if (successfulData.length >= Math.min(currentRound * 0.7, 800)) { // 최소 800개 또는 70%
         console.log(`✅ 전략 3 성공: ${successfulData.length}회차 수집`);
         this.cachedData = successfulData;
         this.lastUpdateTime = new Date();
@@ -144,28 +143,28 @@ class RealtimeLottoDataManager {
       console.warn("⚠️ 전략 3 실패:", error);
     }
 
-    // 🎯 최후 수단: 대용량 fallback
-    console.log("🔄 모든 크롤링 실패, 대용량 fallback 생성...");
-    this.generateMassiveFallbackData();
+    // 🎯 최후 수단: 전체 fallback
+    console.log("🔄 모든 크롤링 실패, 전체 fallback 생성...");
+    this.generateCompleteFallbackData();
   }
 
-  // 🎯 전략 1: 대용량 단일 요청
-  private async attemptMassiveSingleRequest(rounds: number): Promise<LottoDrawResult[]> {
-    console.log(`📡 대용량 단일 요청: ${rounds}회차`);
+  // 🎯 전략 1: 전체 데이터 한번에 요청
+  private async attemptCompleteRequest(totalRounds: number): Promise<LottoDrawResult[]> {
+    console.log(`📡 전체 데이터 요청: ${totalRounds}회차`);
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2분 타임아웃
+    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3분 타임아웃
 
     try {
       const response = await fetch(
-        `${this.apiBaseUrl}/lotto-crawler?rounds=${rounds}`,
+        `${this.apiBaseUrl}/lotto-crawler?rounds=${totalRounds}`,
         {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
             "Cache-Control": "no-cache",
             "Pragma": "no-cache",
-            "Accept": "application/json, text/plain, */*",
+            "Accept": "application/json",
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
           },
           signal: controller.signal,
@@ -181,11 +180,11 @@ class RealtimeLottoDataManager {
       const result = await response.json();
 
       if (!result.success || !result.data) {
-        throw new Error(result.error || "대용량 크롤링 데이터 없음");
+        throw new Error(result.error || "전체 크롤링 데이터 없음");
       }
 
       const validData = result.data.filter((item: any) => this.isValidLottoResult(item));
-      console.log(`✅ 대용량 단일 요청 성공: ${validData.length}회차`);
+      console.log(`✅ 전체 요청 성공: ${validData.length}회차`);
       
       return validData.sort((a: LottoDrawResult, b: LottoDrawResult) => b.round - a.round);
     } finally {
@@ -193,26 +192,24 @@ class RealtimeLottoDataManager {
     }
   }
 
-  // 🎯 전략 2: 분할 대용량 크롤링
-  private async attemptChunkedCrawling(totalRounds: number): Promise<LottoDrawResult[]> {
-    console.log(`📡 분할 크롤링 시작: ${totalRounds}회차를 청크로 분할`);
+  // 🎯 전략 2: 점진적 전체 크롤링 (무제한 페이지)
+  private async attemptProgressiveCrawling(targetRounds: number): Promise<LottoDrawResult[]> {
+    console.log(`📡 점진적 크롤링 시작: 목표 ${targetRounds}회차`);
     
     const allResults: LottoDrawResult[] = [];
-    const chunkSize = 500; // 500회차씩 분할
-    const chunks = Math.ceil(totalRounds / chunkSize);
+    let currentPage = 1;
+    let hasMoreData = true;
+    const perPage = 200; // 페이지당 200개씩
     
-    for (let i = 0; i < chunks && allResults.length < totalRounds; i++) {
-      const remainingRounds = totalRounds - allResults.length;
-      const currentChunkSize = Math.min(chunkSize, remainingRounds);
-      
-      console.log(`📦 청크 ${i + 1}/${chunks}: ${currentChunkSize}회차 요청`);
+    while (hasMoreData && allResults.length < targetRounds && currentPage <= 100) {
+      console.log(`📦 페이지 ${currentPage} 크롤링 중... (목표까지 ${targetRounds - allResults.length}개 남음)`);
       
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 60000);
 
         const response = await fetch(
-          `${this.apiBaseUrl}/lotto-crawler?rounds=${currentChunkSize}&offset=${allResults.length}`,
+          `${this.apiBaseUrl}/lotto-crawler?page=${currentPage}&perPage=${perPage}`,
           {
             method: "GET",
             headers: {
@@ -229,43 +226,77 @@ class RealtimeLottoDataManager {
           const result = await response.json();
           if (result.success && result.data) {
             const validData = result.data.filter((item: any) => this.isValidLottoResult(item));
-            allResults.push(...validData);
-            console.log(`✅ 청크 ${i + 1} 완료: +${validData.length}회차 (누적: ${allResults.length})`);
             
-            // 청크 간 딜레이
-            if (i < chunks - 1) {
-              await new Promise(resolve => setTimeout(resolve, 2000));
+            if (validData.length === 0) {
+              console.log(`📦 페이지 ${currentPage}: 더 이상 데이터 없음`);
+              hasMoreData = false;
+              break;
             }
+            
+            // 중복 제거하면서 추가
+            validData.forEach((item: LottoDrawResult) => {
+              const exists = allResults.find(existing => existing.round === item.round);
+              if (!exists) {
+                allResults.push(item);
+              }
+            });
+            
+            console.log(`✅ 페이지 ${currentPage} 완료: +${validData.length}회차 (누적: ${allResults.length})`);
+            
+            // 목표 달성시 종료
+            if (allResults.length >= targetRounds) {
+              console.log(`🎯 목표 달성: ${allResults.length}회차 수집 완료`);
+              break;
+            }
+            
+            currentPage++;
+            
+            // 페이지 간 딜레이
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          } else {
+            console.warn(`⚠️ 페이지 ${currentPage}: 응답 데이터 없음`);
+            break;
           }
+        } else {
+          console.warn(`⚠️ 페이지 ${currentPage}: HTTP ${response.status}`);
+          break;
         }
       } catch (error) {
-        console.warn(`❌ 청크 ${i + 1} 실패:`, error);
-        continue;
+        console.warn(`❌ 페이지 ${currentPage} 실패:`, error);
+        
+        // 처음 몇 페이지에서 실패하면 재시도
+        if (currentPage <= 3) {
+          console.log(`🔄 페이지 ${currentPage} 재시도...`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          continue;
+        }
+        break;
       }
     }
 
     return allResults.sort((a: LottoDrawResult, b: LottoDrawResult) => b.round - a.round);
   }
 
-  // 🎯 전략 3: 다중 소스 크롤링
-  private async attemptMultiSourceCrawling(rounds: number): Promise<LottoDrawResult[]> {
-    console.log(`📡 다중 소스 크롤링: ${rounds}회차`);
+  // 🎯 전략 3: 여러 소스 시도
+  private async attemptMultipleSourceCrawling(rounds: number): Promise<LottoDrawResult[]> {
+    console.log(`📡 여러 소스 크롤링: ${rounds}회차`);
     
     const sources = [
-      { endpoint: "/lotto-crawler", params: `rounds=${rounds}` },
-      { endpoint: "/lotto-crawler", params: `rounds=${Math.min(rounds, 1000)}&method=enhanced` },
-      { endpoint: "/lotto-crawler", params: `rounds=${Math.min(rounds, 800)}&source=backup` },
+      { params: `rounds=${rounds}&strategy=complete` },
+      { params: `rounds=${Math.min(rounds, 2000)}&method=enhanced` },
+      { params: `rounds=${Math.min(rounds, 1500)}&source=backup` },
+      { params: `rounds=${Math.min(rounds, 1000)}&mode=safe` },
     ];
 
     for (const source of sources) {
       try {
-        console.log(`📡 소스 시도: ${source.endpoint}?${source.params}`);
+        console.log(`📡 소스 시도: ${source.params}`);
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 45000);
+        const timeoutId = setTimeout(() => controller.abort(), 90000);
 
         const response = await fetch(
-          `${this.apiBaseUrl}${source.endpoint}?${source.params}`,
+          `${this.apiBaseUrl}/lotto-crawler?${source.params}`,
           {
             method: "GET",
             headers: {
@@ -282,8 +313,8 @@ class RealtimeLottoDataManager {
           const result = await response.json();
           if (result.success && result.data) {
             const validData = result.data.filter((item: any) => this.isValidLottoResult(item));
-            if (validData.length >= 500) {
-              console.log(`✅ 다중 소스 성공: ${validData.length}회차`);
+            if (validData.length >= 800) { // 최소 800개 이상
+              console.log(`✅ 여러 소스 성공: ${validData.length}회차`);
               return validData.sort((a: LottoDrawResult, b: LottoDrawResult) => b.round - a.round);
             }
           }
@@ -297,10 +328,10 @@ class RealtimeLottoDataManager {
     throw new Error("모든 소스 실패");
   }
 
-  // 🔧 수정: 대용량 fallback 데이터 생성
-  private generateMassiveFallbackData(): void {
+  // 🔧 수정: 완전한 fallback 데이터 생성 (전체 회차)
+  private generateCompleteFallbackData(): void {
     const currentRound = this.calculateCurrentRound();
-    console.log(`🔄 대용량 fallback 데이터 생성: 1~${currentRound}회차`);
+    console.log(`🔄 완전한 fallback 데이터 생성: 1~${currentRound}회차`);
     
     const fallbackData: LottoDrawResult[] = [];
     const startDate = new Date('2002-12-07');
@@ -319,8 +350,8 @@ class RealtimeLottoDataManager {
       1170: { numbers: [10, 17, 26, 33, 40, 1], bonus: 2, date: '2025-05-03' },
     };
 
-    // 전체 회차 생성 (1회차부터 현재 회차까지)
-    for (let round = currentRound; round >= 1; round--) {
+    // 전체 회차 생성 (1회차부터 현재 회차까지 모든 데이터)
+    for (let round = 1; round <= currentRound; round++) {
       if (knownResults[round]) {
         // 알려진 정확한 데이터 사용
         const known = knownResults[round];
@@ -330,7 +361,7 @@ class RealtimeLottoDataManager {
           numbers: known.numbers.sort((a, b) => a - b),
           bonusNumber: known.bonus,
           crawledAt: new Date().toISOString(),
-          source: "verified_massive_fallback",
+          source: "verified_complete_fallback",
         });
       } else {
         // 생성된 데이터
@@ -347,16 +378,17 @@ class RealtimeLottoDataManager {
           numbers: numbers.sort((a, b) => a - b),
           bonusNumber,
           crawledAt: new Date().toISOString(),
-          source: "generated_massive_fallback",
+          source: "generated_complete_fallback",
         });
       }
     }
 
+    // 최신순으로 정렬
     this.cachedData = fallbackData.sort((a: LottoDrawResult, b: LottoDrawResult) => b.round - a.round);
     this.lastUpdateTime = new Date();
     this.isDataLoaded = true;
 
-    console.log(`📊 대용량 fallback 데이터 생성 완료: ${this.cachedData.length}회차 (1~${currentRound})`);
+    console.log(`📊 완전한 fallback 데이터 생성 완료: ${this.cachedData.length}회차 (1~${currentRound})`);
     
     // 1179회차 검증
     const round1179 = this.cachedData.find(data => data.round === 1179);
@@ -505,7 +537,7 @@ class RealtimeLottoDataManager {
     try {
       const currentRound = this.calculateCurrentRound();
       const requestCount = Math.min(count, currentRound);
-      console.log(`📈 ${requestCount}회차 히스토리 요청 (현재 회차: ${currentRound})`);
+      console.log(`📈 ${requestCount}회차 히스토리 요청 처리 중 (현재 회차: ${currentRound})...`);
 
       // 초기화가 안 되어 있으면 먼저 초기화
       if (!this.isDataLoaded && !this.isLoading) {
@@ -517,7 +549,7 @@ class RealtimeLottoDataManager {
         console.log(`📡 데이터 부족 (${this.cachedData.length}/${requestCount}), 강제 재로드...`);
         
         try {
-          await this.loadAllCrawledData(currentRound);
+          await this.loadCompleteData(currentRound);
         } catch (loadError) {
           console.warn("⚠️ 강제 재로드 실패:", loadError);
         }
@@ -544,7 +576,7 @@ class RealtimeLottoDataManager {
 
       // 에러시에도 전체 fallback 데이터 제공
       if (this.cachedData.length === 0) {
-        this.generateMassiveFallbackData();
+        this.generateCompleteFallbackData();
       }
       
       const fallbackResults = this.cachedData.slice(0, Math.min(count, this.cachedData.length));
@@ -613,7 +645,7 @@ class RealtimeLottoDataManager {
       this.cachedData = [];
 
       const currentRound = this.calculateCurrentRound();
-      await this.loadAllCrawledData(currentRound);
+      await this.loadCompleteData(currentRound);
 
       if (this.cachedData.length > 0) {
         const latest = this.cachedData[0];
@@ -630,7 +662,7 @@ class RealtimeLottoDataManager {
       console.error("❌ 강제 업데이트 실패:", error);
       
       // 실패시에도 fallback 데이터 생성
-      this.generateMassiveFallbackData();
+      this.generateCompleteFallbackData();
       
       return {
         success: false,
@@ -670,7 +702,7 @@ class RealtimeLottoDataManager {
       lastUpdateTime: this.lastUpdateTime,
       isUpdating: this.isLoading,
       crawlerStatus: {
-        mode: "massive_realtime_crawler",
+        mode: "complete_realtime_crawler",
         totalRounds: dataRange.totalCount,
         isDataLoaded: this.isDataLoaded,
         latestRound: dataRange.latestRound,
@@ -680,7 +712,7 @@ class RealtimeLottoDataManager {
         source: "en.lottolyzer.com",
         currentRound: currentRound,
         coverage: `${Math.round((dataRange.totalCount / currentRound) * 100)}%`,
-        forceFullLoad: this.forceFullLoad,
+        completeDataMode: true,
       },
       nextUpdateIn: this.cacheTimeout - (Date.now() - (this.lastUpdateTime?.getTime() || 0)),
     };
@@ -692,7 +724,7 @@ class RealtimeLottoDataManager {
     this.lastUpdateTime = null;
     this.isLoading = false;
     this.loadingPromise = null;
-    console.log("🧹 실시간 데이터 매니저 정리 완료");
+    console.log("🧹 완전한 데이터 매니저 정리 완료");
   }
 
   private getDynamicFallbackData(): LottoDrawResult {
@@ -784,7 +816,7 @@ class RealtimeLottoDataManager {
 
     console.log(`🔄 누락 데이터 보완 시작: ${status.missingRounds.length}개 회차`);
 
-    for (const round of status.missingRounds.slice(0, 50)) { // 최대 50개씩 보완
+    for (const round of status.missingRounds.slice(0, 100)) { // 최대 100개씩 보완
       const fallbackResult: LottoDrawResult = {
         round,
         date: this.calculateDateForRound(round),
@@ -814,5 +846,5 @@ class RealtimeLottoDataManager {
   }
 }
 
-export const lottoDataManager = new RealtimeLottoDataManager();
-export default RealtimeLottoDataManager;
+export const lottoDataManager = new CompleteLottoDataManager();
+export default CompleteLottoDataManager;
