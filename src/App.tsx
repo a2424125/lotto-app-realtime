@@ -190,7 +190,7 @@ const LottoApp = () => {
         });
 
         const coverage = Math.round((historyData.length / currentRound) * 100);
-        console.log(`✅ 응급 안전 데이터 설정 완료: ${historyData[0].round}~${historyData[historyData.length - 1].round}회차`);
+        console.log(`✅ 데이터 설정 완료: ${historyData[0].round}~${historyData[historyData.length - 1].round}회차`);
         console.log(`📈 전체 회차 커버리지: ${coverage}% (${historyData.length}/${currentRound})`);
         
         // 🔧 1179회차 검증
@@ -311,7 +311,7 @@ const LottoApp = () => {
       }
     }
     
-    console.log(`🛡️ 로컬 응급 데이터 생성 완료: ${sortedData.length}개 회차 (1~${currentRound})`);
+    console.log(`🛡️ 로컬 데이터 생성 완료: ${sortedData.length}개 회차 (1~${currentRound})`);
     return sortedData;
   };
 
@@ -817,9 +817,7 @@ const LottoApp = () => {
                   border: theme === "dark" ? "1px solid #047857" : "1px solid #bbf7d0",
                 }}
               >
-                <div style={{ color: "#10b981", marginBottom: "4px", fontWeight: "600" }}>
-                  🛡️ 응급 안전 모드
-                </div>
+               
                 <div style={{ color: theme === "dark" ? "#6ee7b7" : "#166534", fontWeight: "500" }}>
                   ✅ 서비스 정상 동작
                 </div>
@@ -845,7 +843,7 @@ const LottoApp = () => {
                       fontSize: "11px",
                     }}
                   >
-                    📊 안전 데이터 {roundRange.latestRound}~{roundRange.oldestRound}회차 ({pastWinningNumbers.length.toLocaleString()}개)
+                    📊 데이터 {roundRange.latestRound}~{roundRange.oldestRound}회차 ({pastWinningNumbers.length.toLocaleString()}개)
                   </div>
                   <div style={{ color: theme === "dark" ? "#38bdf8" : "#0277bd", fontSize: "10px" }}>
                     커버리지: {Math.round((pastWinningNumbers.length / (roundRange.latestRound || 1179)) * 100)}%
