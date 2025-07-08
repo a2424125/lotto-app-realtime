@@ -167,13 +167,14 @@ class RealtimeLottoDataManager {
       console.log(`🔄 크롤링 API 호출: ${rounds}회차`);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 90000);
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 🔧 수정: 60초로 줄임
 
       let response: Response;
       let retryCount = 0;
-      const maxRetries = 5;
+      const maxRetries = 3; // 🔧 수정: 재시도 횟수 줄임
+      let success = false;
 
-      while (retryCount < maxRetries) {
+      while (retryCount < maxRetries && !success) {
         try {
           console.log(`📡 크롤링 시도 ${retryCount + 1}/${maxRetries} (${rounds}회차)`);
           
@@ -192,6 +193,7 @@ class RealtimeLottoDataManager {
           );
 
           if (response.ok) {
+            success = true;
             break;
           }
 
@@ -200,8 +202,8 @@ class RealtimeLottoDataManager {
           retryCount++;
           console.warn(`❌ 크롤링 API 호출 실패 (시도 ${retryCount}/${maxRetries}):`, fetchError);
           
-          if (retryCount < maxRetries) {
-            const delay = Math.pow(2, retryCount) * 2000;
+          if (retryCount < maxRetries && !controller.signal.aborted) {
+            const delay = Math.min(Math.pow(2, retryCount) * 1000, 5000); // 최대 5초
             console.log(`⏳ ${delay}ms 후 재시도...`);
             await new Promise(resolve => setTimeout(resolve, delay));
           } else {
@@ -211,6 +213,10 @@ class RealtimeLottoDataManager {
       }
 
       clearTimeout(timeoutId);
+
+      if (!success) {
+        throw new Error("모든 크롤링 시도 실패");
+      }
 
       const result = await response!.json();
 
