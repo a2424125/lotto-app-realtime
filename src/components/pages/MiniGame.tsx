@@ -24,7 +24,6 @@ interface GameStats {
   dailyChargeDate?: string;
   dailyAdCount?: number;
   dailyAdDate?: string;
-  // 🆕 광고 시청 관련 추가
   dailyAdWatchCount?: number;
   dailyAdWatchDate?: string;
   totalAdsWatched?: number;
@@ -112,7 +111,6 @@ interface SimulationState {
   isSimulating: boolean;
 }
 
-// 🆕 광고 시청 상태
 interface AdWatchState {
   isWatching: boolean;
   countdown: number;
@@ -122,7 +120,7 @@ interface AdWatchState {
 }
 
 const MiniGame: React.FC<MiniGameProps> = ({
-  pastWinningNumbers,
+  pastWinningNumbers = [],
   isDataLoading = false,
   dataStatus,
   roundRange,
@@ -141,7 +139,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     totalWon: 0,
     dailyChargeCount: 0,
     dailyAdCount: 0,
-    // 🆕 광고 시청 관련 초기값
     dailyAdWatchCount: 0,
     totalAdsWatched: 0,
     totalAdPoints: 0,
@@ -164,7 +161,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
           dailyChargeDate: parsed.dailyChargeDate || null,
           dailyAdCount: parsed.dailyAdCount || 0,
           dailyAdDate: parsed.dailyAdDate || null,
-          // 🆕 광고 시청 관련
           dailyAdWatchCount: parsed.dailyAdWatchCount || 0,
           dailyAdWatchDate: parsed.dailyAdWatchDate || null,
           totalAdsWatched: parsed.totalAdsWatched || 0,
@@ -178,16 +174,14 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }
   });
 
-  // 🆕 광고 시청 상태
   const [adWatchState, setAdWatchState] = useState<AdWatchState>({
     isWatching: false,
-    countdown: 30, // 30초 광고
+    countdown: 30,
     adTitle: "",
     adProgress: 0,
     canSkip: false,
   });
 
-  // 번호 맞추기 게임 상태
   const [guessGame, setGuessGame] = useState<GuessGameState>({
     secretNumbers: [],
     userGuess: [],
@@ -202,7 +196,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     currentRound: 1,
   });
 
-  // 가상 로또 시뮬레이션 상태
   const [simulation, setSimulation] = useState<SimulationState>({
     selectedNumbers: [],
     ticketPrice: 2000,
@@ -216,7 +209,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     isSimulating: false,
   });
 
-  // 뽑기게임 상태
   const [drawGame, setDrawGame] = useState<DrawGameState>({
     isPlaying: false,
     selectedSlot: null,
@@ -238,7 +230,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     ],
   });
 
-  // 🆕 12단계 스피드 룰렛 게임 상태 (완전히 수정됨)
   const [rouletteGame, setRouletteGame] = useState<RouletteGameState>({
     isSpinning: false,
     currentAngle: 0,
@@ -247,7 +238,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     userBet: null,
     betAmount: 2000,
     cost: 2000,
-    // 🔥 12단계 배율 시스템 (각 구간 30도씩)
     multipliers: [
       { range: [1, 1], multiplier: 50, color: "#FFD700", startAngle: 0, endAngle: 30 },
       { range: [2, 3], multiplier: 25, color: "#FF6B6B", startAngle: 30, endAngle: 60 },
@@ -265,12 +255,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
     spinHistory: [],
   });
 
-  // 실제 회차 범위 정보
   const actualLatestRound = roundRange?.latestRound || 1178;
   const actualOldestRound = roundRange?.oldestRound || 1178;
   const totalRounds = pastWinningNumbers?.length || 0;
 
-  // 안전한 숫자 포맷팅 함수
   const safeFormatNumber = (value: any): string => {
     if (typeof value !== 'number' || isNaN(value)) {
       return "0";
@@ -278,7 +266,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     return value.toLocaleString();
   };
 
-  // 안전한 계산 함수  
   const safeCalculatePercentage = (won: any, spent: any): string => {
     const safeWon = typeof won === 'number' ? won : 0;
     const safeSpent = typeof spent === 'number' ? spent : 0;
@@ -289,7 +276,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     return isNaN(percentage) ? "0" : percentage.toFixed(1);
   };
 
-  // 다크 모드 색상 테마
   const colors = {
     light: {
       background: "#f9fafb",
@@ -321,7 +307,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
       slotDefault: "#e0f2fe",
       slotHover: "#bae6fd",
       slotSelected: "#0284c7",
-      // 🆕 광고 관련 색상
       adBg: "#f0f9ff",
       adBorder: "#0ea5e9",
       adText: "#0c4a6e",
@@ -357,7 +342,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
       slotDefault: "#1e293b",
       slotHover: "#334155",
       slotSelected: "#0ea5e9",
-      // 🆕 광고 관련 색상 (다크모드)
       adBg: "#1e3a8a",
       adBorder: "#3b82f6",
       adText: "#93c5fd",
@@ -367,7 +351,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
   const currentColors = colors[theme] || colors.light;
 
-  // 게임 목록
   const games = [
     {
       id: "guess",
@@ -407,7 +390,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     },
   ];
 
-  // useEffect
   useEffect(() => {
     try {
       console.log("🎮 MiniGame useEffect 실행");
@@ -417,7 +399,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }
   }, [gameStats]);
 
-  // 🆕 광고 시청 타이머
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
@@ -431,13 +412,12 @@ const MiniGame: React.FC<MiniGameProps> = ({
             ...prev,
             countdown: newCountdown,
             adProgress: newProgress,
-            canSkip: newCountdown <= 5, // 마지막 5초부터 스킵 가능
+            canSkip: newCountdown <= 5,
           };
         });
       }, 1000);
     }
     
-    // 광고 시청 완료
     if (adWatchState.isWatching && adWatchState.countdown === 0) {
       completeAdWatch();
     }
@@ -447,14 +427,12 @@ const MiniGame: React.FC<MiniGameProps> = ({
     };
   }, [adWatchState.isWatching, adWatchState.countdown]);
 
-  // 🆕 일일 광고 시청 제한 확인
   const checkDailyAdLimit = (): boolean => {
     const today = new Date().toDateString();
-    const maxDailyAds = 10; // 하루 최대 10회
+    const maxDailyAds = 10;
     return gameStats.dailyAdWatchDate !== today || (gameStats.dailyAdWatchCount || 0) < maxDailyAds;
   };
 
-  // 일일 제한 확인 함수
   const checkDailyLimit = (type: 'charge' | 'ad'): boolean => {
     const today = new Date().toDateString();
     
@@ -467,7 +445,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }
   };
 
-  // 🆕 광고 시청 시작
   const startAdWatch = () => {
     if (!checkDailyAdLimit()) {
       alert("😅 오늘 광고 시청 횟수를 모두 사용했어요! 내일 다시 이용해주세요.");
@@ -496,9 +473,8 @@ const MiniGame: React.FC<MiniGameProps> = ({
     console.log("📺 광고 시청 시작");
   };
 
-  // 🆕 광고 시청 완료
   const completeAdWatch = () => {
-    const adPoints = 3000; // 3천 포인트 지급
+    const adPoints = 3000;
     const today = new Date().toDateString();
 
     setGameStats(prev => ({
@@ -522,7 +498,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     alert(`🎉 광고 시청 완료! ${safeFormatNumber(adPoints)}P 획득!\n오늘 ${remaining}번 더 시청 가능합니다.`);
   };
 
-  // 🆕 광고 스킵
   const skipAd = () => {
     setAdWatchState({
       isWatching: false,
@@ -534,7 +509,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     console.log("📺 광고 스킵됨");
   };
 
-  // 🆕 포인트 부족 시 광고 시청 제안
   const showAdOfferDialog = (requiredPoints: number, gameName: string) => {
     const currentPoints = gameStats?.points || 0;
     const shortage = requiredPoints - currentPoints;
@@ -552,7 +526,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     return false;
   };
 
-  // 일일 보너스 포인트 지급
   const claimDailyBonus = () => {
     const today = new Date().toDateString();
     if (gameStats.dailyBonusDate !== today) {
@@ -568,7 +541,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }
   };
 
-  // 포인트 충전 (일일 제한)
   const chargePoints = () => {
     if (!checkDailyLimit('charge')) {
       alert("😅 오늘 충전 횟수를 모두 사용했어요! 내일 다시 이용해주세요.");
@@ -589,7 +561,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     alert(`💎 ${safeFormatNumber(chargeAmount)}P 충전 완료! 오늘 ${remaining}번 더 충전 가능합니다.`);
   };
 
-  // 🎯 번호맞추기 게임 함수들 (랜덤 선택 기능 추가)
   const startGuessGame = () => {
     const currentPoints = gameStats?.points || 0;
     const cost = guessGame.cost;
@@ -599,14 +570,12 @@ const MiniGame: React.FC<MiniGameProps> = ({
       return;
     }
 
-    // 포인트 차감
     setGameStats(prev => ({
       ...prev,
       points: (prev?.points || 0) - cost,
       totalSpent: (prev?.totalSpent || 0) + cost,
     }));
 
-    // 비밀번호 생성 (과거 당첨번호 기반)
     const secretNumbers = generateSecretNumbers();
     
     setGuessGame(prev => ({
@@ -625,21 +594,20 @@ const MiniGame: React.FC<MiniGameProps> = ({
   };
 
   const generateSecretNumbers = (): number[] => {
-    if (pastWinningNumbers.length > 0) {
-      // 과거 당첨번호에서 랜덤 선택
+    if (pastWinningNumbers && pastWinningNumbers.length > 0) {
       const randomDraw = pastWinningNumbers[Math.floor(Math.random() * Math.min(10, pastWinningNumbers.length))];
-      return randomDraw.slice(0, 6).sort((a, b) => a - b);
-    } else {
-      // 폴백: 랜덤 생성
-      const numbers = new Set<number>();
-      while (numbers.size < 6) {
-        numbers.add(Math.floor(Math.random() * 45) + 1);
+      if (randomDraw && randomDraw.length >= 6) {
+        return randomDraw.slice(0, 6).sort((a, b) => a - b);
       }
-      return Array.from(numbers).sort((a, b) => a - b);
     }
+    
+    const numbers = new Set<number>();
+    while (numbers.size < 6) {
+      numbers.add(Math.floor(Math.random() * 45) + 1);
+    }
+    return Array.from(numbers).sort((a, b) => a - b);
   };
 
-  // 🆕 랜덤 번호 선택 함수 (번호 맞추기용)
   const selectRandomGuessNumbers = () => {
     const numbers = new Set<number>();
     while (numbers.size < 6) {
@@ -682,10 +650,9 @@ const MiniGame: React.FC<MiniGameProps> = ({
       won,
     }));
 
-    // 게임 완료 처리
     if (gameOver) {
       if (won) {
-        const prize = 10000; // 1만 포인트 상금
+        const prize = 10000;
         setGameStats(prev => ({
           ...prev,
           points: (prev?.points || 0) + prize,
@@ -704,339 +671,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }
   };
 
-  // 🎲 가상 로또 시뮬레이션 함수들 (새게임, 랜덤번호 기능 추가)
-  const startSimulation = () => {
-    if (simulation.selectedNumbers.length !== 6) {
-      alert("6개 번호를 선택해주세요!");
-      return;
-    }
-
-    const currentPoints = gameStats?.points || 0;
-    const cost = simulation.ticketPrice;
-    
-    if (currentPoints < cost) {
-      showAdOfferDialog(cost, "가상 로또 시뮬레이션");
-      return;
-    }
-
-    setSimulation(prev => ({
-      ...prev,
-      isPlaying: true,
-      isSimulating: true,
-      currentRound: prev.currentRound + 1,
-      totalSpent: prev.totalSpent + cost,
-    }));
-
-    // 포인트 차감
-    setGameStats(prev => ({
-      ...prev,
-      points: (prev?.points || 0) - cost,
-      totalSpent: (prev?.totalSpent || 0) + cost,
-    }));
-
-    // 시뮬레이션 실행
-    setTimeout(() => {
-      runLottoSimulation();
-    }, 1000);
-  };
-
-  // 🆕 새 게임 시작 함수 (시뮬레이션)
-  const startNewSimulation = () => {
-    setSimulation(prev => ({
-      ...prev,
-      selectedNumbers: [],
-      currentRound: 0,
-      results: [],
-      isPlaying: false,
-      autoPlay: false,
-      totalSpent: 0,
-      totalWon: 0,
-      isSimulating: false,
-    }));
-  };
-
-  // 🆕 랜덤 번호 선택 함수 (시뮬레이션용)
-  const selectRandomSimulationNumbers = () => {
-    const numbers = new Set<number>();
-    while (numbers.size < 6) {
-      numbers.add(Math.floor(Math.random() * 45) + 1);
-    }
-    const randomNumbers = Array.from(numbers).sort((a, b) => a - b);
-    setSimulation(prev => ({ ...prev, selectedNumbers: randomNumbers }));
-  };
-
-  const runLottoSimulation = () => {
-    // 가상 당첨번호 생성
-    const winningNumbers = new Set<number>();
-    while (winningNumbers.size < 6) {
-      winningNumbers.add(Math.floor(Math.random() * 45) + 1);
-    }
-    const winningArray = Array.from(winningNumbers).sort((a, b) => a - b);
-    const bonusNumber = Math.floor(Math.random() * 45) + 1;
-
-    // 매치 계산
-    const matches = simulation.selectedNumbers.filter(num => winningArray.includes(num)).length;
-    const bonusMatch = simulation.selectedNumbers.includes(bonusNumber);
-
-    // 등급 및 상금 계산
-    let grade = "낙첨";
-    let prize = 0;
-
-    if (matches === 6) {
-      grade = "1등";
-      prize = 2000000000; // 20억
-    } else if (matches === 5 && bonusMatch) {
-      grade = "2등";
-      prize = 60000000; // 6천만
-    } else if (matches === 5) {
-      grade = "3등";
-      prize = 1500000; // 150만
-    } else if (matches === 4) {
-      grade = "4등";
-      prize = 50000; // 5만
-    } else if (matches === 3) {
-      grade = "5등";
-      prize = 5000; // 5천
-    }
-
-    const newResult = {
-      round: simulation.currentRound,
-      userNumbers: [...simulation.selectedNumbers],
-      winningNumbers: winningArray,
-      bonusNumber,
-      matches,
-      grade,
-      prize,
-      spent: simulation.ticketPrice,
-    };
-
-    setSimulation(prev => ({
-      ...prev,
-      results: [newResult, ...prev.results],
-      totalWon: prev.totalWon + prize,
-      isSimulating: false,
-    }));
-
-    // 상금 지급
-    if (prize > 0) {
-      setGameStats(prev => ({
-        ...prev,
-        points: (prev?.points || 0) + prize,
-        totalWon: (prev?.totalWon || 0) + prize,
-        gamesPlayed: (prev?.gamesPlayed || 0) + 1,
-        totalWins: (prev?.totalWins || 0) + 1,
-      }));
-    } else {
-      setGameStats(prev => ({
-        ...prev,
-        gamesPlayed: (prev?.gamesPlayed || 0) + 1,
-      }));
-    }
-  };
-
-  const selectSimulationNumber = (num: number) => {
-    setSimulation(prev => {
-      if (prev.selectedNumbers.includes(num)) {
-        return {
-          ...prev,
-          selectedNumbers: prev.selectedNumbers.filter(n => n !== num),
-        };
-      } else if (prev.selectedNumbers.length < 6) {
-        return {
-          ...prev,
-          selectedNumbers: [...prev.selectedNumbers, num].sort((a, b) => a - b),
-        };
-      }
-      return prev;
-    });
-  };
-
-  // 뽑기게임 함수들 (기존과 동일)
-  const startRealisticDrawGame = () => {
-    try {
-      const currentPoints = gameStats?.points || 0;
-      const cost = drawGame.cost;
-      
-      if (currentPoints < cost) {
-        showAdOfferDialog(cost, "추억의 뽑기판");
-        return;
-      }
-
-      setGameStats(prev => ({
-        ...prev,
-        points: (prev?.points || 0) - cost,
-        totalSpent: (prev?.totalSpent || 0) + cost,
-      }));
-
-      setDrawGame(prev => ({ 
-        ...prev, 
-        isPlaying: true,
-        selectedSlot: null,
-        slots: Array.from({ length: 100 }, (_, i) => ({
-          id: i,
-          isRevealed: false,
-          prize: null,
-          isWinner: false,
-        })),
-        result: null
-      }));
-
-      console.log("🎪 10x10 뽑기판 게임 시작!");
-
-    } catch (error) {
-      console.error("뽑기 게임 실패:", error);
-      setDrawGame(prev => ({ 
-        ...prev, 
-        isPlaying: false,
-      }));
-    }
-  };
-
-  const selectDrawSlot = (slotId: number) => {
-    if (!drawGame.isPlaying || drawGame.selectedSlot !== null) return;
-
-    setDrawGame(prev => ({
-      ...prev,
-      selectedSlot: slotId
-    }));
-
-    const random = Math.random();
-    let cumulativeProbability = 0;
-    let selectedPrize = drawGame.prizes[drawGame.prizes.length - 1];
-
-    for (const prize of drawGame.prizes) {
-      cumulativeProbability += prize.probability;
-      if (random <= cumulativeProbability) {
-        selectedPrize = prize;
-        break;
-      }
-    }
-
-    setTimeout(() => {
-      setDrawGame(prev => ({
-        ...prev,
-        isPlaying: false,
-        slots: prev.slots.map(slot => 
-          slot.id === slotId 
-            ? { ...slot, isRevealed: true, prize: selectedPrize, isWinner: selectedPrize.points > 0 }
-            : slot
-        ),
-        result: selectedPrize,
-      }));
-
-      if (selectedPrize.points > 0) {
-        setGameStats(prev => ({
-          ...prev,
-          points: (prev?.points || 0) + selectedPrize.points,
-          totalWon: (prev?.totalWon || 0) + selectedPrize.points,
-          gamesPlayed: (prev?.gamesPlayed || 0) + 1,
-          totalWins: (prev?.totalWins || 0) + 1,
-        }));
-      } else {
-        setGameStats(prev => ({
-          ...prev,
-          gamesPlayed: (prev?.gamesPlayed || 0) + 1,
-        }));
-      }
-    }, 500);
-  };
-
-  // 🎡 완전히 수정된 12단계 스피드 룰렛 함수들
-  const startRouletteGame = () => {
-    const currentPoints = gameStats?.points || 0;
-    const cost = rouletteGame.cost;
-    
-    if (currentPoints < cost) {
-      showAdOfferDialog(cost, "스피드 룰렛");
-      return;
-    }
-
-    if (rouletteGame.userBet === null) {
-      alert("먼저 번호를 선택해주세요!");
-      return;
-    }
-
-    // 포인트 차감
-    setGameStats(prev => ({
-      ...prev,
-      points: (prev?.points || 0) - cost,
-      totalSpent: (prev?.totalSpent || 0) + cost,
-    }));
-
-    // 🎡 실제 룰렛 회전 시작
-    const result = Math.floor(Math.random() * 45) + 1;
-    const rotations = 5 + Math.random() * 5; // 5-10바퀴 회전
-    const finalAngle = rotations * 360 + (result - 1) * 8; // 각 번호는 8도씩 차지
-
-    setRouletteGame(prev => ({
-      ...prev,
-      isSpinning: true,
-      targetAngle: finalAngle,
-    }));
-
-    // 2.5초 후 결과 처리
-    setTimeout(() => {
-      // 배율 계산
-      let multiplier = 2; // 기본 배율
-      for (const mult of rouletteGame.multipliers) {
-        if (result >= mult.range[0] && result <= mult.range[1]) {
-          multiplier = mult.multiplier;
-          break;
-        }
-      }
-
-      // 당첨 확인
-      let winnings = 0;
-      if (result === rouletteGame.userBet) {
-        winnings = rouletteGame.betAmount * multiplier;
-      }
-
-      const newHistory = {
-        bet: rouletteGame.userBet!,
-        result,
-        multiplier,
-        winnings,
-        timestamp: new Date().toLocaleTimeString(),
-      };
-
-      setRouletteGame(prev => ({
-        ...prev,
-        isSpinning: false,
-        selectedNumber: result,
-        currentAngle: finalAngle,
-        spinHistory: [newHistory, ...prev.spinHistory.slice(0, 4)],
-      }));
-
-      // 상금 지급
-      if (winnings > 0) {
-        setGameStats(prev => ({
-          ...prev,
-          points: (prev?.points || 0) + winnings,
-          totalWon: (prev?.totalWon || 0) + winnings,
-          gamesPlayed: (prev?.gamesPlayed || 0) + 1,
-          totalWins: (prev?.totalWins || 0) + 1,
-        }));
-        setTimeout(() => alert(`🎉 당첨! ${safeFormatNumber(winnings)}P 획득! (${multiplier}배 적용)`), 500);
-      } else {
-        setGameStats(prev => ({
-          ...prev,
-          gamesPlayed: (prev?.gamesPlayed || 0) + 1,
-        }));
-      }
-    }, 2500);
-  };
-
-  // 🆕 12단계 배율에 따른 색상 및 각도 계산
-  const getMultiplierForNumber = (num: number): { multiplier: number; color: string } => {
-    for (const mult of rouletteGame.multipliers) {
-      if (num >= mult.range[0] && num <= mult.range[1]) {
-        return { multiplier: mult.multiplier, color: mult.color };
-      }
-    }
-    return { multiplier: 2, color: "#F8C471" };
-  };
-
-  // 로딩 상태 처리
   if (isDataLoading) {
     return (
       <div 
@@ -1115,7 +749,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
         color: currentColors.text
       }}
     >
-      {/* 🆕 광고 시청 팝업 */}
+      {/* 광고 시청 팝업 */}
       {adWatchState.isWatching && (
         <div
           style={{
@@ -1142,7 +776,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
               textAlign: "center",
             }}
           >
-            {/* 광고 헤더 */}
             <div
               style={{
                 backgroundColor: currentColors.adBg,
@@ -1173,7 +806,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
               </p>
             </div>
 
-            {/* 광고 제목 */}
             <div
               style={{
                 fontSize: "14px",
@@ -1189,7 +821,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
               {adWatchState.adTitle}
             </div>
 
-            {/* 진행 바 */}
             <div
               style={{
                 width: "100%",
@@ -1211,7 +842,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
               />
             </div>
 
-            {/* 카운트다운 */}
             <div
               style={{
                 fontSize: "18px",
@@ -1223,7 +853,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
               {adWatchState.countdown}초
             </div>
 
-            {/* 스킵 버튼 */}
             {adWatchState.canSkip && (
               <button
                 onClick={skipAd}
@@ -1309,7 +938,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
             보유 포인트
           </div>
           
-          {/* 🆕 광고 시청 버튼 추가 */}
           <div style={{ display: "flex", gap: "6px", justifyContent: "center", marginBottom: "8px", flexWrap: "wrap" }}>
             <button
               onClick={claimDailyBonus}
@@ -1343,7 +971,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
             >
               💰 포인트 충전 1000P
             </button>
-            {/* 🆕 광고 시청 버튼 */}
             <button
               onClick={startAdWatch}
               disabled={!checkDailyAdLimit()}
@@ -1364,7 +991,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
             </button>
           </div>
 
-          {/* 🆕 광고 시청 제한 표시 */}
           <div style={{ fontSize: "10px", color: currentColors.successText, marginTop: "8px", opacity: 0.8 }}>
             {(() => {
               const today = new Date().toDateString();
@@ -1375,7 +1001,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
           </div>
         </div>
 
-        {/* 🆕 광고 시청 통계 추가 */}
         <div
           style={{
             display: "grid",
@@ -1428,7 +1053,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
               수익률
             </div>
           </div>
-          {/* 🆕 광고 시청 통계 */}
           <div
             style={{
               padding: "8px",
@@ -1534,7 +1158,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
                     {game.difficulty}
                   </span>
                 </div>
-                {/* 🆕 포인트 부족 시 광고 안내 */}
                 {(gameStats?.points || 0) < game.cost && (
                   <div
                     style={{
@@ -1553,8 +1176,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
         </div>
       )}
 
-      {/* 나머지 게임 컴포넌트들은 기존과 동일하게 유지 */}
-      {/* 🎯 번호맞추기 게임 */}
+      {/* 번호맞추기 게임 */}
       {selectedGame === "guess" && (
         <div
           style={{
@@ -1609,7 +1231,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
               >
                 🎯 게임 시작! ({safeFormatNumber(guessGame.cost)}P)
               </button>
-              {/* 🆕 포인트 부족 시 광고 시청 안내 */}
               {(gameStats?.points || 0) < guessGame.cost && (
                 <div style={{ marginTop: "12px", fontSize: "12px", color: "#ef4444" }}>
                   포인트가 부족합니다. 광고를 시청하여 3,000P를 받으세요!
@@ -1618,20 +1239,17 @@ const MiniGame: React.FC<MiniGameProps> = ({
             </div>
           ) : (
             <div>
-              {/* 게임 정보 */}
               <div style={{ marginBottom: "16px", textAlign: "center" }}>
                 <div style={{ fontSize: "14px", color: currentColors.text, marginBottom: "8px" }}>
                   라운드 {guessGame.currentRound} | 시도: {guessGame.attempts}/{guessGame.maxAttempts}
                 </div>
               </div>
 
-              {/* 번호 선택 */}
               <div style={{ marginBottom: "16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                   <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0" }}>
                     번호 선택 (6개)
                   </h4>
-                  {/* 🆕 랜덤 선택 버튼 */}
                   <button
                     onClick={selectRandomGuessNumbers}
                     disabled={guessGame.gameOver}
@@ -1649,6 +1267,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                     🎲 랜덤선택
                   </button>
                 </div>
+                
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(9, 1fr)", gap: "4px", marginBottom: "12px" }}>
                   {Array.from({ length: 45 }, (_, i) => i + 1).map((num) => (
                     <button
@@ -1682,7 +1301,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   ))}
                 </div>
 
-                {/* 선택된 번호 표시 */}
                 <div style={{ display: "flex", gap: "4px", justifyContent: "center", marginBottom: "12px" }}>
                   {guessGame.userGuess.map((num, i) => (
                     <LottoNumberBall key={i} number={num} size="sm" theme={theme} />
@@ -1727,7 +1345,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 </button>
               </div>
 
-              {/* 힌트 히스토리 */}
               {guessGame.hints.length > 0 && (
                 <div style={{ marginBottom: "16px" }}>
                   <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
@@ -1753,7 +1370,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 </div>
               )}
 
-              {/* 게임 종료 */}
               {guessGame.gameOver && (
                 <div style={{ textAlign: "center" }}>
                   <div style={{ 
@@ -1803,9 +1419,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
         </div>
       )}
 
-      {/* 나머지 게임들도 동일하게 포인트 부족 시 광고 시청 제안하도록 수정됨 */}
-      {/* (기존 코드와 동일하므로 생략) */}
-
       {/* CSS 애니메이션 */}
       <style>
         {`
@@ -1835,6 +1448,3 @@ const MiniGame: React.FC<MiniGameProps> = ({
       </style>
     </div>
   );
-};
-
-export default MiniGame;
