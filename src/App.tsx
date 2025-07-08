@@ -1031,7 +1031,7 @@ const LottoApp = () => {
         로또는 확률게임입니다. 과도한 구매는 가계에 부담이 됩니다.
         {dataStatus.source === "realtime_crawler" && roundRange.latestRound > 0 && (
           <span style={{ color: currentColors.accent, marginLeft: "8px" }}>
-            • {roundRange.latestRound}~{roundRange.oldestRound}회차 실시간 연동 ({pastWinningNumbers.length.toLocaleString()}개)
+            • {roundRange.latestRound}~{roundRange.oldestRound}회차 실시간 연동
           </span>
         )}
         {nextDrawInfo && (
