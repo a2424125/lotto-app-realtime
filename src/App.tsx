@@ -756,25 +756,11 @@ const LottoApp = () => {
               borderRadius: "3px",
               fontWeight: "bold",
             }}
-            title={`로드된 데이터: ${pastWinningNumbers.length}개 (응급 안전 모드)`}
+            title={`로드된 데이터: ${pastWinningNumbers.length}개`}
           >
             {pastWinningNumbers.length}
           </span>
-          {/* 🛡️ 응급 모드 표시 */}
-          <span
-            style={{
-              fontSize: "9px",
-              padding: "1px 4px",
-              backgroundColor: "#10b981",
-              color: "white",
-              borderRadius: "3px",
-              fontWeight: "bold",
-            }}
-            title="응급 안전 모드 - 서비스 정상 동작"
-          >
-            🛡️
-          </span>
-        </div>
+           </div>
         <button
           onClick={refreshData}
           disabled={isDataLoading}
@@ -789,7 +775,7 @@ const LottoApp = () => {
             opacity: isDataLoading ? 0.6 : 1,
             animation: isDataLoading ? "spin 2s linear infinite" : "none",
           }}
-          title="안전한 데이터 새로고침"
+          title="데이터 새로고침"
         >
           🔄
         </button>
@@ -991,7 +977,7 @@ const LottoApp = () => {
               zIndex: 40,
             }}
           >
-            🛡️ 안전한 데이터 새로고침 중...
+            데이터 새로고침 중...
           </div>
         )}
         {renderContent()}
@@ -1016,7 +1002,7 @@ const LottoApp = () => {
       >
         로또는 확률게임입니다. 과도한 구매는 가계에 부담이 됩니다.
         <span style={{ color: "#10b981", marginLeft: "8px" }}>
-          • 🛡️ 응급 안전 모드 - 서비스 정상 동작 ({pastWinningNumbers.length}회차)
+          ({pastWinningNumbers.length}회차)
         </span>
         {nextDrawInfo && (
           <div style={{ color: "#dc2626", marginLeft: "8px", fontWeight: "bold", textAlign: "center" }}>
