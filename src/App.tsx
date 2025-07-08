@@ -930,7 +930,7 @@ const LottoApp = () => {
       >
         로또는 확률게임입니다. 과도한 구매는 가계에 부담이 됩니다.
         <span style={{ color: "#10b981", marginLeft: "8px" }}>
-          • 🛡️ 응급 안전 모드 - 서비스 정상 동작 ({pastWinningNumbers.length}회차)
+         ({pastWinningNumbers.length}회차)
         </span>
         {nextDrawInfo && (
           <div style={{ color: "#dc2626", marginLeft: "8px", fontWeight: "bold", textAlign: "center" }}>
