@@ -532,7 +532,7 @@ const LottoApp = () => {
     });
 
     return Object.entries(frequency)
-      .sort(([, a], [, b]) => b - a)
+      .sort(([, a], [, b]) => (b as number) - (a as number))
       .slice(0, 15)
       .map(([num]) => parseInt(num));
   };
@@ -555,7 +555,7 @@ const LottoApp = () => {
       }
     }
 
-    return Array.from(numbers).sort((a, b) => a - b);
+    return Array.from(numbers).sort((a: number, b: number) => a - b);
   };
 
   const addToPurchaseHistory = (numbers: number[], strategy: string) => {
