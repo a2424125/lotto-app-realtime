@@ -1,5 +1,5 @@
 // api/lotto-crawler.ts
-// 🕷️ 데이터 크롤링 - 최대 1179회차로 제한
+// 🕷️ 데이터 크롤링 - 동적 회차 처리
 
 import { VercelRequest, VercelResponse } from "@vercel/node";
 
@@ -14,18 +14,30 @@ interface LottoDrawResult {
   source?: string;
 }
 
-const MAX_ROUND = 1179; // 🔧 추가: 최대 회차 상수
+// 🔧 수정: 현재 회차 동적 계산
+function calculateCurrentRound(): number {
+  const referenceDate = new Date('2025-07-05');
+  const referenceRound = 1179;
+  const now = new Date();
+  
+  const timeDiff = now.getTime() - referenceDate.getTime();
+  const weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
+  
+  const currentRound = referenceRound + weeksPassed;
+  console.log(`📊 현재 회차: ${currentRound}회차 (기준: 2025-07-05 = 1179회차)`);
+  return currentRound;
+}
 
-// 🔥 데이터 크롤링 함수 (수정된 버전)
-async function crawlAllLottoData(targetCount: number = 1179): Promise<LottoDrawResult[]> {
-  // 🔧 수정: 최대 1179개로 제한
-  const limitedTargetCount = Math.min(targetCount, MAX_ROUND);
-  console.log(`🕷️ 로또 데이터 크롤링 시작: ${limitedTargetCount}개 목표 (최대 ${MAX_ROUND}회차)`);
+// 🔥 데이터 크롤링 함수 (동적 버전)
+async function crawlAllLottoData(targetCount: number): Promise<LottoDrawResult[]> {
+  const currentRound = calculateCurrentRound();
+  const limitedTargetCount = Math.min(targetCount, currentRound);
+  console.log(`🕷️ 로또 데이터 크롤링 시작: ${limitedTargetCount}개 목표 (현재 ${currentRound}회차)`);
   
   const allResults: LottoDrawResult[] = [];
   let currentPage = 1;
   let hasMoreData = true;
-  const maxPages = 50; // 최대 50페이지까지
+  const maxPages = 50;
   
   try {
     while (hasMoreData && currentPage <= maxPages && allResults.length < limitedTargetCount) {
@@ -82,17 +94,15 @@ async function crawlAllLottoData(targetCount: number = 1179): Promise<LottoDrawR
           console.log(`✅ 더 이상 데이터가 없습니다 (${currentPage}페이지)`);
           hasMoreData = false;
         } else {
-          // 🔧 수정: 1179회차를 초과하는 결과 필터링
+          // 중복 제거하면서 추가
           pageResults.forEach(result => {
-            if (result.round <= MAX_ROUND) {
-              const exists = allResults.find(existing => existing.round === result.round);
-              if (!exists) {
-                allResults.push(result);
-              }
+            const exists = allResults.find(existing => existing.round === result.round);
+            if (!exists) {
+              allResults.push(result);
             }
           });
           
-          console.log(`📊 ${currentPage}페이지: ${pageResults.length}개 수집, 유효: ${pageResults.filter(r => r.round <= MAX_ROUND).length}개, 누적: ${allResults.length}개`);
+          console.log(`📊 ${currentPage}페이지: ${pageResults.length}개 수집, 누적: ${allResults.length}개`);
           
           // 목표 달성 시 종료
           if (allResults.length >= limitedTargetCount) {
@@ -121,7 +131,7 @@ async function crawlAllLottoData(targetCount: number = 1179): Promise<LottoDrawR
     // 회차순으로 정렬 (최신순)
     const sortedResults = allResults.sort((a, b) => b.round - a.round);
     
-    console.log(`🎯 크롤링 완료: ${sortedResults.length}개 회차 데이터 수집 (최대 ${MAX_ROUND}회차)`);
+    console.log(`🎯 크롤링 완료: ${sortedResults.length}개 회차 데이터 수집 (현재 ${currentRound}회차)`);
     
     // 1179회차 검증
     const round1179 = sortedResults.find(r => r.round === 1179);
@@ -137,10 +147,11 @@ async function crawlAllLottoData(targetCount: number = 1179): Promise<LottoDrawR
   }
 }
 
-// 🔥 단일 대용량 요청 (백업용) - 수정된 버전
-async function crawlLottoDataSingleMassiveRequest(maxRounds: number = MAX_ROUND): Promise<LottoDrawResult[]> {
-  const limitedMaxRounds = Math.min(maxRounds, MAX_ROUND);
-  console.log(`🕷️ 단일 요청 시도: ${limitedMaxRounds}개 (최대 ${MAX_ROUND}회차)`);
+// 🔥 단일 대용량 요청 (백업용) - 동적 버전
+async function crawlLottoDataSingleMassiveRequest(maxRounds: number): Promise<LottoDrawResult[]> {
+  const currentRound = calculateCurrentRound();
+  const limitedMaxRounds = Math.min(maxRounds, currentRound);
+  console.log(`🕷️ 단일 요청 시도: ${limitedMaxRounds}개 (현재 ${currentRound}회차)`);
   
   try {
     const controller = new AbortController();
@@ -174,12 +185,9 @@ async function crawlLottoDataSingleMassiveRequest(maxRounds: number = MAX_ROUND)
 
     const results = parseEnhancedSummaryTable(html, limitedMaxRounds);
     
-    // 🔧 수정: 1179회차를 초과하는 결과 필터링
-    const filteredResults = results.filter(r => r.round <= MAX_ROUND);
+    console.log(`🎯 단일 요청 성공: ${results.length}회차 데이터 추출`);
     
-    console.log(`🎯 단일 요청 성공: ${filteredResults.length}회차 데이터 추출 (최대 ${MAX_ROUND}회차)`);
-    
-    return filteredResults;
+    return results;
 
   } catch (error) {
     console.error("❌ 단일 요청 실패:", error);
@@ -240,8 +248,7 @@ function parseEnhancedSummaryTable(html: string, maxRounds: number): LottoDrawRe
       if (validCount >= maxRounds) break;
       
       const result = parseEnhancedRow(row);
-      // 🔧 수정: 1179회차를 초과하는 결과 필터링
-      if (result && result.round <= MAX_ROUND) {
+      if (result) {
         results.push(result);
         validCount++;
         
@@ -257,7 +264,7 @@ function parseEnhancedSummaryTable(html: string, maxRounds: number): LottoDrawRe
     // 회차 순으로 정렬 (최신순)
     results.sort((a, b) => b.round - a.round);
 
-    console.log(`📊 강화된 파싱 완료: ${results.length}개 유효한 데이터 (최대 ${MAX_ROUND}회차)`);
+    console.log(`📊 강화된 파싱 완료: ${results.length}개 유효한 데이터`);
     
     return results;
 
@@ -306,8 +313,7 @@ function parseEnhancedRow(rowHtml: string): LottoDrawResult | null {
       const roundMatch = cell.match(/\b(\d{1,4})\b/);
       if (roundMatch) {
         const candidateRound = parseInt(roundMatch[1]);
-        // 🔧 수정: 최대 회차 검증
-        if (candidateRound >= 1 && candidateRound <= MAX_ROUND) {
+        if (candidateRound >= 1 && candidateRound <= 9999) {
           round = candidateRound;
           break;
         }
@@ -393,16 +399,13 @@ function parseFlexibleDate(dateText: string): string | null {
   }
 }
 
-// 🔥 강화된 폴백 데이터 생성 (수정된 버전)
+// 🔥 강화된 폴백 데이터 생성 (동적 버전)
 function generateComprehensiveFallbackData(count: number): LottoDrawResult[] {
   const results: LottoDrawResult[] = [];
   const currentDate = new Date();
   
-  // 🔧 수정: 최대 1179회차로 제한
-  const referenceDate = new Date('2025-07-05');
-  const referenceRound = 1179;
-  const weeksSince = Math.floor((currentDate.getTime() - referenceDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-  const estimatedCurrentRound = Math.min(Math.max(1179, referenceRound + weeksSince), MAX_ROUND);
+  // 🔧 수정: 동적으로 현재 회차 계산
+  const estimatedCurrentRound = calculateCurrentRound();
   
   const knownResults: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
     1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
@@ -412,13 +415,13 @@ function generateComprehensiveFallbackData(count: number): LottoDrawResult[] {
     1175: { numbers: [6, 12, 16, 28, 35, 43], bonus: 9, date: '2025-06-07' },
   };
   
-  console.log(`📊 폴백 데이터 생성: ${estimatedCurrentRound}회차부터 ${count}개 (최대 ${MAX_ROUND}회차)`);
+  console.log(`📊 폴백 데이터 생성: ${estimatedCurrentRound}회차부터 ${count}개`);
   
   const startDate = new Date('2002-12-07');
   
   for (let i = 0; i < count; i++) {
     const round = estimatedCurrentRound - i;
-    if (round <= 0 || round > MAX_ROUND) break;
+    if (round <= 0) break;
     
     if (knownResults[round]) {
       const known = knownResults[round];
@@ -482,11 +485,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const roundsParam = req.query.rounds as string;
-    const requestedRounds = roundsParam ? parseInt(roundsParam, 10) : MAX_ROUND;
-    // 🔧 수정: 최대 1179회차로 제한
-    const limitedRounds = Math.min(requestedRounds, MAX_ROUND);
+    const currentRound = calculateCurrentRound();
+    const requestedRounds = roundsParam ? parseInt(roundsParam, 10) : currentRound;
+    const limitedRounds = Math.min(requestedRounds, currentRound);
     
-    console.log(`📊 ${limitedRounds}회차 크롤링 요청 처리 중 (최대 ${MAX_ROUND}회차)...`);
+    console.log(`📊 ${limitedRounds}회차 크롤링 요청 처리 중 (현재 ${currentRound}회차)...`);
 
     let lottoData: LottoDrawResult[] = [];
     let dataSource = "unknown";
@@ -550,15 +553,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         apiVersion: "4.0.0",
         crawlingMethod: dataSource,
         isFullData: lottoData.length >= 1000,
-        coverage: `${Math.round((lottoData.length / MAX_ROUND) * 100)}%`,
-        maxRound: MAX_ROUND,
+        coverage: `${Math.round((lottoData.length / currentRound) * 100)}%`,
+        currentRound: currentRound,
       }
     });
 
   } catch (error) {
     console.error("❌ 크롤링 프로세스 전체 실패:", error);
 
-    const emergencyData = generateComprehensiveFallbackData(Math.min(1179, MAX_ROUND));
+    const currentRound = calculateCurrentRound();
+    const emergencyData = generateComprehensiveFallbackData(Math.min(currentRound, 2000));
     const responseTime = Date.now() - startTime;
 
     res.status(200).json({
@@ -576,8 +580,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         errorInfo: "크롤링 서비스에 일시적인 문제가 발생했습니다.",
         crawlingMethod: "emergency_comprehensive_fallback",
         isFullData: emergencyData.length >= 1000,
-        coverage: `${Math.round((emergencyData.length / MAX_ROUND) * 100)}%`,
-        maxRound: MAX_ROUND,
+        coverage: `${Math.round((emergencyData.length / currentRound) * 100)}%`,
+        currentRound: currentRound,
       }
     });
   }
