@@ -48,7 +48,6 @@ const Dashboard: React.FC<DashboardProps> = ({
   theme = "light",
   nextDrawInfo: propNextDrawInfo
 }) => {
-  // 🔧 수정: 정확한 회차 정보 (1179회차 기준)
   const totalRounds = pastWinningNumbers.length;
   const actualLatestRound = roundRange?.latestRound || 1179;
   const actualOldestRound = roundRange?.oldestRound || Math.max(1, actualLatestRound - totalRounds + 1);
@@ -57,6 +56,10 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [isLoadingNextDraw, setIsLoadingNextDraw] = useState(false);
   const [latestResult, setLatestResult] = useState<LottoDrawResult | null>(null);
   const [isLoadingLatest, setIsLoadingLatest] = useState(false);
+
+  // 🔧 추가: 데이터 로드 상태 추적
+  const [dataLoadAttempts, setDataLoadAttempts] = useState(0);
+  const [maxLoadAttempts] = useState(3);
 
   const [realtimeStatus, setRealtimeStatus] = useState<{
     isConnected: boolean;
@@ -69,8 +72,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     source: "unknown",
     dataCount: 0,
   });
-
-  const [currentTime, setCurrentTime] = useState(new Date());
 
   const colors = {
     light: {
@@ -138,7 +139,9 @@ const Dashboard: React.FC<DashboardProps> = ({
     }, 30 * 1000);
 
     const dataInterval = setInterval(() => {
-      loadLatestResult();
+      if (dataLoadAttempts < maxLoadAttempts) {
+        loadLatestResult();
+      }
     }, 60 * 60 * 1000);
 
     return () => {
@@ -178,19 +181,31 @@ const Dashboard: React.FC<DashboardProps> = ({
         source: isConnected ? "실시간 크롤링" : "오프라인 캐시",
         dataCount: pastWinningNumbers.length,
       });
-      console.log(`📡 실시간 상태 업데이트: ${isConnected ? "연결됨" : "오프라인"} (${pastWinningNumbers.length}개 데이터)`);
     }
   };
 
-  // 🔧 수정: 강화된 최신 결과 로딩
+  // 🔧 수정: 안전한 최신 결과 로딩 (무한 루프 방지)
   const loadLatestResult = async () => {
+    // 로딩 횟수 제한
+    if (dataLoadAttempts >= maxLoadAttempts) {
+      console.log("⚠️ 최대 로드 시도 횟수 초과, 스킵");
+      return;
+    }
+
+    // 이미 로딩 중이면 스킵
+    if (isLoadingLatest) {
+      console.log("⏳ 이미 로딩 중, 스킵");
+      return;
+    }
+
     try {
       setIsLoadingLatest(true);
-      console.log("📡 최신 당첨 결과 실시간 조회...");
+      setDataLoadAttempts(prev => prev + 1);
+      console.log(`📡 최신 당첨 결과 조회 (시도 ${dataLoadAttempts + 1}/${maxLoadAttempts})...`);
 
       let latestData: LottoDrawResult | null = null;
 
-      // 1순위: pastWinningNumbers에서 최신 데이터 사용 (가장 신뢰할 수 있음)
+      // 1순위: pastWinningNumbers에서 최신 데이터 사용
       if (pastWinningNumbers.length > 0 && actualLatestRound > 0) {
         const latestNumbers = pastWinningNumbers[0];
         if (latestNumbers && latestNumbers.length >= 7) {
@@ -199,7 +214,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             date: new Date().toISOString().split('T')[0],
             numbers: latestNumbers.slice(0, 6),
             bonusNumber: latestNumbers[6],
-            // 🔧 수정: jackpotWinners와 jackpotPrize 제거
             crawledAt: new Date().toISOString(),
             source: "pastWinningNumbers_primary",
           };
@@ -207,10 +221,19 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
       }
 
-      // 2순위: API에서 최신 결과 가져오기 (검증용)
-      if (!latestData) {
+      // 2순위: API에서 최신 결과 가져오기 (타임아웃 적용)
+      if (!latestData && dataLoadAttempts <= 2) {
         try {
-          const response = await lottoDataManager.getLatestResult();
+          console.log("📡 API에서 최신 결과 조회 시도...");
+          
+          // 타임아웃 적용
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('API 타임아웃')), 10000);
+          });
+
+          const apiPromise = lottoDataManager.getLatestResult();
+          const response = await Promise.race([apiPromise, timeoutPromise]) as any;
+          
           if (response.success && response.data) {
             latestData = response.data;
             console.log(`✅ API에서 최신 결과 로드: ${latestData.round}회차`);
@@ -220,20 +243,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
       }
 
-      // 3순위: 히스토리에서 최신 데이터 가져오기
-      if (!latestData) {
-        try {
-          const historyResponse = await lottoDataManager.getHistory(1);
-          if (historyResponse.success && historyResponse.data && historyResponse.data.length > 0) {
-            latestData = historyResponse.data[0];
-            console.log(`✅ 히스토리에서 최신 결과 사용: ${latestData.round}회차`);
-          }
-        } catch (historyError) {
-          console.warn("⚠️ 히스토리 조회 실패:", historyError);
-        }
-      }
-
-      // 4순위: fallback 데이터 생성
+      // 3순위: fallback 데이터 사용
       if (!latestData) {
         console.log("📊 fallback 최신 결과 생성...");
         latestData = {
@@ -249,11 +259,11 @@ const Dashboard: React.FC<DashboardProps> = ({
       setLatestResult(latestData);
       updateRealtimeStatus();
 
-      console.log(`📊 최신 당첨 결과 설정 완료: ${latestData.round}회차 [${latestData.numbers.join(', ')}] + ${latestData.bonusNumber}`);
+      console.log(`📊 최신 당첨 결과 설정: ${latestData.round}회차 [${latestData.numbers.join(', ')}] + ${latestData.bonusNumber}`);
     } catch (error) {
       console.error("❌ 최신 당첨 결과 로드 실패:", error);
 
-      // 최종 fallback
+      // 에러시 fallback 데이터 사용
       if (pastWinningNumbers.length > 0 && actualLatestRound > 0) {
         const fallbackResult: LottoDrawResult = {
           round: actualLatestRound,
@@ -271,24 +281,39 @@ const Dashboard: React.FC<DashboardProps> = ({
     }
   };
 
-  // 🔧 수정: 강화된 새로고침 기능
+  // 🔧 수정: 안전한 새로고침 기능 (무한 루프 방지)
   const handleRefresh = async () => {
+    // 이미 새로고침 중이면 스킵
+    if (isLoadingNextDraw || isLoadingLatest) {
+      console.log("⏳ 이미 새로고침 중입니다...");
+      return;
+    }
+
     setIsLoadingNextDraw(true);
     setIsLoadingLatest(true);
+    setDataLoadAttempts(0); // 로드 시도 횟수 리셋
 
     try {
-      console.log("🔄 Dashboard 실시간 새로고침 시작...");
+      console.log("🔄 Dashboard 새로고침 시작...");
 
-      // 상위 컴포넌트의 새로고침 함수 호출
+      // 상위 컴포넌트의 새로고침 함수 호출 (타임아웃 적용)
       if (onRefreshData) {
-        await onRefreshData();
+        const refreshTimeout = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('새로고침 타임아웃')), 30000);
+        });
+
+        try {
+          await Promise.race([onRefreshData(), refreshTimeout]);
+        } catch (refreshError) {
+          console.warn("⚠️ 상위 컴포넌트 새로고침 실패:", refreshError);
+        }
       }
 
       // 로컬 데이터 새로고침
       await loadLatestResult();
       updateRealtimeStatus();
 
-      console.log("✅ Dashboard 실시간 데이터 새로고침 완료");
+      console.log("✅ Dashboard 새로고침 완료");
 
       if (latestResult) {
         alert(`✅ 새로고침 완료!\n최신 당첨결과: ${latestResult.round}회차\n당첨번호: [${latestResult.numbers.join(', ')}] + ${latestResult.bonusNumber}\n데이터: ${realtimeStatus.dataCount}개 회차`);
@@ -339,48 +364,36 @@ const Dashboard: React.FC<DashboardProps> = ({
     }
   };
 
-  // 🔧 완전히 수정된 당첨번호 표시 로직 - 우선순위 명확화
+  // 🔧 수정: 안전한 당첨번호 표시 로직
   const getDisplayNumbers = (): { numbers: number[]; bonusNumber: number; round: number } => {
-    console.log("🔍 Dashboard getDisplayNumbers 호출");
-    console.log("🔍 pastWinningNumbers:", pastWinningNumbers);
-    console.log("🔍 latestResult:", latestResult);
-    console.log("🔍 actualLatestRound:", actualLatestRound);
-
     // 1순위: pastWinningNumbers (App.tsx에서 검증된 데이터)
     if (pastWinningNumbers.length > 0 && pastWinningNumbers[0].length >= 7) {
-      const result = {
+      return {
         numbers: pastWinningNumbers[0].slice(0, 6),
         bonusNumber: pastWinningNumbers[0][6],
         round: actualLatestRound
       };
-      console.log("✅ pastWinningNumbers 사용:", result);
-      return result;
     }
 
     // 2순위: latestResult (API에서 가져온 데이터)
     if (latestResult && latestResult.numbers && latestResult.bonusNumber) {
-      const result = {
+      return {
         numbers: latestResult.numbers,
         bonusNumber: latestResult.bonusNumber,
         round: latestResult.round
       };
-      console.log("✅ latestResult 사용:", result);
-      return result;
     }
 
     // 3순위: 알려진 정확한 데이터 (1179회차)
     if (actualLatestRound === 1179) {
-      const result = {
+      return {
         numbers: [3, 16, 18, 24, 40, 44],
         bonusNumber: 21,
         round: 1179
       };
-      console.log("✅ 1179회차 정확한 데이터 사용:", result);
-      return result;
     }
 
     // 4순위: fallback (로딩 중이거나 데이터 없음)
-    console.log("⚠️ fallback 데이터 사용");
     return {
       numbers: [],
       bonusNumber: 0,
@@ -430,6 +443,17 @@ const Dashboard: React.FC<DashboardProps> = ({
           >
             {realtimeStatus.isConnected ? "🟢 실시간 연동" : "🟡 오프라인 모드"}
           </span>
+          {dataLoadAttempts > 0 && (
+            <span
+              style={{
+                fontSize: "10px",
+                color: currentColors.realtimeText,
+                opacity: 0.7,
+              }}
+            >
+              (시도: {dataLoadAttempts}/{maxLoadAttempts})
+            </span>
+          )}
         </div>
         <div
           style={{
@@ -562,7 +586,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         )}
       </div>
 
-      {/* 🔧 수정된 최신 당첨결과 - 강화된 디버깅 및 표시 */}
+      {/* 최신 당첨결과 */}
       <div
         style={{
           backgroundColor: currentColors.surface,
@@ -599,7 +623,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             )}
             <button
               onClick={handleRefresh}
-              disabled={isLoadingLatest}
+              disabled={isLoadingLatest || isLoadingNextDraw}
               style={{
                 padding: "4px 8px",
                 backgroundColor: currentColors.primary,
@@ -607,8 +631,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                 border: "none",
                 borderRadius: "4px",
                 fontSize: "10px",
-                cursor: isLoadingLatest ? "not-allowed" : "pointer",
-                opacity: isLoadingLatest ? 0.6 : 1,
+                cursor: (isLoadingLatest || isLoadingNextDraw) ? "not-allowed" : "pointer",
+                opacity: (isLoadingLatest || isLoadingNextDraw) ? 0.6 : 1,
               }}
               title="최신 데이터 새로고침"
             >
@@ -626,7 +650,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           </p>
         </div>
 
-        {/* 🔧 수정된 당첨번호 + 보너스 번호 표시 */}
+        {/* 당첨번호 + 보너스 번호 표시 */}
         <div style={{ textAlign: "center" }}>
           <p
             style={{
@@ -646,7 +670,6 @@ const Dashboard: React.FC<DashboardProps> = ({
               flexWrap: "wrap",
             }}
           >
-            {/* 당첨번호 표시 */}
             {displayData.numbers.length > 0 ? (
               <>
                 {/* 당첨번호 6개 */}
@@ -735,8 +758,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             마지막 번호는 보너스 번호입니다
           </p>
         </div>
-
-        {/* 🔧 수정: 당첨 통계 정보 섹션 완전 제거 */}
       </div>
 
       {/* AI 추천 미리보기 */}
