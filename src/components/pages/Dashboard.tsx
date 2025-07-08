@@ -217,7 +217,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             crawledAt: new Date().toISOString(),
             source: "pastWinningNumbers_primary",
           };
-          console.log(`✅ pastWinningNumbers에서 최신 결과 사용: ${latestData.round}회차`);
+          console.log(`✅ pastWinningNumbers에서 최신 결과 사용: ${latestData?.round}회차`);
         }
       }
 
@@ -227,16 +227,16 @@ const Dashboard: React.FC<DashboardProps> = ({
           console.log("📡 API에서 최신 결과 조회 시도...");
           
           // 타임아웃 적용
-          const timeoutPromise = new Promise((_, reject) => {
+          const timeoutPromise = new Promise<never>((_, reject) => {
             setTimeout(() => reject(new Error('API 타임아웃')), 10000);
           });
 
           const apiPromise = lottoDataManager.getLatestResult();
-          const response = await Promise.race([apiPromise, timeoutPromise]) as any;
+          const response = await Promise.race([apiPromise, timeoutPromise]);
           
           if (response.success && response.data) {
             latestData = response.data;
-            console.log(`✅ API에서 최신 결과 로드: ${latestData.round}회차`);
+            console.log(`✅ API에서 최신 결과 로드: ${latestData?.round}회차`);
           }
         } catch (apiError) {
           console.warn("⚠️ API 최신 결과 조회 실패:", apiError);
@@ -256,10 +256,11 @@ const Dashboard: React.FC<DashboardProps> = ({
         };
       }
 
-      setLatestResult(latestData);
-      updateRealtimeStatus();
-
-      console.log(`📊 최신 당첨 결과 설정: ${latestData.round}회차 [${latestData.numbers.join(', ')}] + ${latestData.bonusNumber}`);
+      if (latestData) {
+        setLatestResult(latestData);
+        updateRealtimeStatus();
+        console.log(`📊 최신 당첨 결과 설정: ${latestData.round}회차 [${latestData.numbers.join(', ')}] + ${latestData.bonusNumber}`);
+      }
     } catch (error) {
       console.error("❌ 최신 당첨 결과 로드 실패:", error);
 
@@ -298,7 +299,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       // 상위 컴포넌트의 새로고침 함수 호출 (타임아웃 적용)
       if (onRefreshData) {
-        const refreshTimeout = new Promise((_, reject) => {
+        const refreshTimeout = new Promise<never>((_, reject) => {
           setTimeout(() => reject(new Error('새로고침 타임아웃')), 30000);
         });
 
