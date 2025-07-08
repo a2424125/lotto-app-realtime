@@ -399,24 +399,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 ⏳
               </span>
             )}
-            <button
-              onClick={handleRefreshSafe}
-              disabled={isLoadingLatest}
-              style={{
-                padding: "4px 8px",
-                backgroundColor: currentColors.primary,
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                fontSize: "10px",
-                cursor: isLoadingLatest ? "not-allowed" : "pointer",
-                opacity: isLoadingLatest ? 0.6 : 1,
-              }}
-              title="최신 데이터 새로고침"
-            >
-              🔄
-            </button>
-          </h2>
+           </h2>
         </div>
 
         {/* 당첨번호 표시 */}
