@@ -760,20 +760,7 @@ const LottoApp = () => {
           >
             {pastWinningNumbers.length}
           </span>
-          {/* 🛡️ 응급 모드 표시 */}
-          <span
-            style={{
-              fontSize: "9px",
-              padding: "1px 4px",
-              backgroundColor: "#10b981",
-              color: "white",
-              borderRadius: "3px",
-              fontWeight: "bold",
-            }}
-            title="응급 안전 모드 - 서비스 정상 동작"
-          >
-            🛡️
-          </span>
+         
         </div>
         <button
           onClick={refreshData}
