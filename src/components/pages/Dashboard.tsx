@@ -495,114 +495,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                 fontWeight: "bold",
                 color: currentColors.successText,
                 margin: "0 0 4px 0",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-              }}
-            >
-              다음 추첨: {nextDrawInfo.round}회
-              {nextDrawInfo.isToday && (
-                <span
-                  style={{
-                    fontSize: "10px",
-                    padding: "2px 6px",
-                    backgroundColor: "#ef4444",
-                    color: "white",
-                    borderRadius: "4px",
-                    animation: "pulse 2s infinite",
-                  }}
-                >
-                  오늘!
-                </span>
-              )}
-              {!nextDrawInfo.isToday && nextDrawInfo.daysUntilDraw === 1 && (
-                <span
-                  style={{
-                    fontSize: "10px",
-                    padding: "2px 6px",
-                    backgroundColor: "#f59e0b",
-                    color: "white",
-                    borderRadius: "4px",
-                    animation: "pulse 2s infinite",
-                  }}
-                >
-                  내일!
-                </span>
-              )}
-            </h3>
-            <p
-              style={{
-                color: currentColors.successText,
-                margin: "2px 0",
-                fontSize: "14px",
-              }}
-            >
-              {nextDrawInfo.formattedDate}
-            </p>
-            <p
-              style={{
-                fontSize: "12px",
-                color: currentColors.successText,
-                margin: "2px 0",
-              }}
-            >
-              예상 1등 당첨금: {formatPrize(nextDrawInfo.estimatedJackpot)}
-            </p>
-            <p
-              style={{
-                fontSize: "11px",
-                color: currentColors.successText,
-                margin: "4px 0 0 0",
-                fontWeight: "bold",
-              }}
-            >
-              ⏰ {nextDrawInfo.timeUntilDraw}
-            </p>
-          </>
-        ) : (
-          <div style={{ padding: "16px" }}>
-            <div
-              style={{
-                width: "24px",
-                height: "24px",
-                border: `2px solid ${currentColors.successBorder}`,
-                borderTop: `2px solid ${currentColors.successText}`,
-                borderRadius: "50%",
-                animation: "spin 1s linear infinite",
-                margin: "0 auto 8px",
-              }}
-            />
-            <p
-              style={{
-                color: currentColors.successText,
-                margin: "0",
-                fontSize: "12px",
-              }}
-            >
-              다음 추첨 정보 로딩 중...
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* 최신 당첨결과 */}
-      <div
-        style={{
-          backgroundColor: currentColors.surface,
-          padding: "16px",
-          borderRadius: "8px",
-          border: `1px solid ${currentColors.border}`,
-          marginBottom: "12px",
-        }}
-      >
-        <div style={{ textAlign: "center", marginBottom: "12px" }}>
-          <h2
-            style={{
-              fontSize: "18px",
-              fontWeight: "bold",
-              color: currentColors.text,
-              margin: "0 0 4px 0",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1049,4 +941,112 @@ const Dashboard: React.FC<DashboardProps> = ({
   );
 };
 
-export default Dashboard;
+export default Dashboard;: "0 0 4px 0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+              }}
+            >
+              다음 추첨: {nextDrawInfo.round}회
+              {nextDrawInfo.isToday && (
+                <span
+                  style={{
+                    fontSize: "10px",
+                    padding: "2px 6px",
+                    backgroundColor: "#ef4444",
+                    color: "white",
+                    borderRadius: "4px",
+                    animation: "pulse 2s infinite",
+                  }}
+                >
+                  오늘!
+                </span>
+              )}
+              {!nextDrawInfo.isToday && nextDrawInfo.daysUntilDraw === 1 && (
+                <span
+                  style={{
+                    fontSize: "10px",
+                    padding: "2px 6px",
+                    backgroundColor: "#f59e0b",
+                    color: "white",
+                    borderRadius: "4px",
+                    animation: "pulse 2s infinite",
+                  }}
+                >
+                  내일!
+                </span>
+              )}
+            </h3>
+            <p
+              style={{
+                color: currentColors.successText,
+                margin: "2px 0",
+                fontSize: "14px",
+              }}
+            >
+              {nextDrawInfo.formattedDate}
+            </p>
+            <p
+              style={{
+                fontSize: "12px",
+                color: currentColors.successText,
+                margin: "2px 0",
+              }}
+            >
+              예상 1등 당첨금: {formatPrize(nextDrawInfo.estimatedJackpot)}
+            </p>
+            <p
+              style={{
+                fontSize: "11px",
+                color: currentColors.successText,
+                margin: "4px 0 0 0",
+                fontWeight: "bold",
+              }}
+            >
+              ⏰ {nextDrawInfo.timeUntilDraw}
+            </p>
+          </>
+        ) : (
+          <div style={{ padding: "16px" }}>
+            <div
+              style={{
+                width: "24px",
+                height: "24px",
+                border: `2px solid ${currentColors.successBorder}`,
+                borderTop: `2px solid ${currentColors.successText}`,
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite",
+                margin: "0 auto 8px",
+              }}
+            />
+            <p
+              style={{
+                color: currentColors.successText,
+                margin: "0",
+                fontSize: "12px",
+              }}
+            >
+              다음 추첨 정보 로딩 중...
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* 최신 당첨결과 */}
+      <div
+        style={{
+          backgroundColor: currentColors.surface,
+          padding: "16px",
+          borderRadius: "8px",
+          border: `1px solid ${currentColors.border}`,
+          marginBottom: "12px",
+        }}
+      >
+        <div style={{ textAlign: "center", marginBottom: "12px" }}>
+          <h2
+            style={{
+              fontSize: "18px",
+              fontWeight: "bold",
+              color: currentColors.text,
+              margin
