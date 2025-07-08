@@ -449,7 +449,7 @@ class SafeLottoRecommendService {
     while (numbers.size < 6) {
       numbers.add(Math.floor(Math.random() * 45) + 1);
     }
-    return Array.from(numbers).sort((a, b) => a - b);
+    return Array.from(numbers).sort((a: number, b: number) => a - b);
   }
 
   // 🎯 안전한 빈도 기반 번호 생성
@@ -458,9 +458,9 @@ class SafeLottoRecommendService {
     mode: "ultimate" | "trend" | "balanced"
   ): number[] {
     const sorted = Object.entries(frequencies)
-      .sort(([, a], [, b]) => b - a)
+      .sort(([, a], [, b]) => (b as number) - (a as number))
       .map(([num]) => parseInt(num))
-      .filter(num => num >= 1 && num <= 45);
+      .filter((num: number) => num >= 1 && num <= 45);
 
     if (sorted.length === 0) {
       return this.generateRandomNumbersSafe();
@@ -527,7 +527,7 @@ class SafeLottoRecommendService {
       });
 
       const jackpotTop = Object.entries(jackpotFreq)
-        .sort(([, a], [, b]) => b - a)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
         .slice(0, 20)
         .map(([num]) => parseInt(num));
 
@@ -540,7 +540,7 @@ class SafeLottoRecommendService {
         }
       }
 
-      return Array.from(numbers).sort((a, b) => a - b);
+      return Array.from(numbers).sort((a: number, b: number) => a - b);
     } catch (error) {
       console.error("❌ 대박 패턴 생성 실패:", error);
       return this.generateRandomNumbersSafe();
@@ -599,7 +599,7 @@ class SafeLottoRecommendService {
 
       // AI 가중치 적용한 최종 선택
       const aiTop = Object.entries(scores)
-        .sort(([, a], [, b]) => b - a)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
         .slice(0, 20)
         .map(([num]) => parseInt(num));
 
@@ -614,7 +614,7 @@ class SafeLottoRecommendService {
       }
 
       console.log(`🤖 안전한 AI 분석 완료!`);
-      return Array.from(numbers).sort((a, b) => a - b);
+      return Array.from(numbers).sort((a: number, b: number) => a - b);
     } catch (error) {
       console.error("❌ AI 번호 생성 실패:", error);
       return this.generateRandomNumbersSafe();
@@ -644,12 +644,12 @@ class SafeLottoRecommendService {
       const recentFreq = this.getFrequencyAnalysisSafe(Math.min(100, this.allData.length), "recent-100").frequencies;
 
       const hotNumbers = Object.entries(recentFreq)
-        .sort(([, a], [, b]) => b - a)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
         .slice(0, 6)
         .map(([num]) => parseInt(num));
 
       const coldNumbers = Object.entries(allFreq)
-        .sort(([, a], [, b]) => a - b)
+        .sort(([, a], [, b]) => (a as number) - (b as number))
         .slice(0, 6)
         .map(([num]) => parseInt(num));
 
