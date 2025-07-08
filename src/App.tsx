@@ -129,7 +129,7 @@ const LottoApp = () => {
       console.log("🔄 자동 데이터 새로고침...");
       loadRealtimeLottoData();
       loadNextDrawInfo();
-    }, 5 * 60 * 1000);
+    }, 30 * 60 * 1000); // 🔧 수정: 30분마다 새로고침 (5분 -> 30분)
 
     return () => clearInterval(interval);
   }, []);
@@ -144,9 +144,10 @@ const LottoApp = () => {
       setIsDataLoading(true);
       console.log("📡 실시간 로또 데이터 로딩 시작...");
 
-      let maxRetries = 5;
+      let maxRetries = 3; // 🔧 수정: 재시도 횟수 줄임
       let retryCount = 0;
       let historyResponse = null;
+      let success = false;
       
       // 🔧 수정: 현재 날짜 기준으로 최신 회차 계산
       const referenceDate = new Date('2025-07-05');
@@ -156,7 +157,7 @@ const LottoApp = () => {
       const currentRound = referenceRound + weeksSince;
       const targetDataCount = currentRound; // 동적으로 계산된 현재 회차
 
-      while (retryCount < maxRetries) {
+      while (retryCount < maxRetries && !success) {
         try {
           console.log(`📊 데이터 로드 시도 ${retryCount + 1}/${maxRetries} (목표: ${targetDataCount}개)...`);
           
@@ -164,6 +165,7 @@ const LottoApp = () => {
           
           if (historyResponse.success && historyResponse.data && historyResponse.data.length > 0) {
             console.log(`✅ 실시간 데이터 로드 성공: ${historyResponse.data.length}개 회차`);
+            success = true;
             
             if (historyResponse.data.length < 100) {
               console.warn(`⚠️ 데이터가 부족합니다 (${historyResponse.data.length}개). 목표: ${targetDataCount}개`);
@@ -178,14 +180,14 @@ const LottoApp = () => {
           console.warn(`⚠️ 데이터 로드 실패 (시도 ${retryCount}/${maxRetries}):`, error);
           
           if (retryCount < maxRetries) {
-            const delay = Math.pow(2, retryCount) * 2000;
+            const delay = Math.min(Math.pow(2, retryCount) * 1000, 5000); // 최대 5초
             console.log(`⏳ ${delay}ms 후 재시도...`);
             await new Promise(resolve => setTimeout(resolve, delay));
           }
         }
       }
 
-      if (historyResponse && historyResponse.success && historyResponse.data && historyResponse.data.length > 0) {
+      if (success && historyResponse && historyResponse.success && historyResponse.data && historyResponse.data.length > 0) {
         const historyData = historyResponse.data;
         
         const numbersArray = historyData.map((draw: LottoDrawResult) => [
@@ -223,7 +225,30 @@ const LottoApp = () => {
           console.warn(`⚠️ 데이터가 예상보다 적습니다: ${historyData.length}개 (목표: ${targetDataCount}개)`);
         }
       } else {
-        throw new Error("모든 재시도 실패");
+        console.warn("⚠️ 모든 재시도 실패, fallback 데이터 사용");
+        const fallbackData = generateMassiveFallbackData();
+        
+        // 🔧 수정: 동적으로 계산된 현재 회차 사용
+        const referenceDate = new Date('2025-07-05');
+        const referenceRound = 1179;
+        const now = new Date();
+        const weeksSince = Math.floor((now.getTime() - referenceDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+        const estimatedRound = referenceRound + weeksSince;
+        
+        setPastWinningNumbers(fallbackData);
+        setRoundRange({
+          latestRound: estimatedRound,
+          oldestRound: Math.max(1, estimatedRound - fallbackData.length + 1),
+        });
+
+        setDataStatus({
+          lastUpdate: new Date(),
+          isRealTime: false,
+          source: "fallback",
+          crawlerHealth: "error",
+        });
+
+        console.warn(`⚠️ 폴백 모드: ${estimatedRound}회 ~ ${Math.max(1, estimatedRound - fallbackData.length + 1)}회 (${fallbackData.length}회차)`);
       }
     } catch (error) {
       console.error("❌ 실시간 데이터 로드 실패:", error);
