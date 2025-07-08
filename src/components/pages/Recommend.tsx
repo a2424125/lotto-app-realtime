@@ -15,7 +15,7 @@ interface RecommendProps {
     oldestRound: number;
   };
   theme?: "light" | "dark";
-  autoSave?: boolean; // 자동저장 옵션 추가
+  autoSave?: boolean;
 }
 
 const Recommend: React.FC<RecommendProps> = ({
@@ -25,7 +25,7 @@ const Recommend: React.FC<RecommendProps> = ({
   dataStatus,
   roundRange,
   theme = "light",
-  autoSave = false, // 자동저장 기본값 false
+  autoSave = false,
 }) => {
   const [activeGrade, setActiveGrade] = useState("1");
   const [recommendedStrategies, setRecommendedStrategies] = useState<
@@ -34,14 +34,14 @@ const Recommend: React.FC<RecommendProps> = ({
   const [loading, setLoading] = useState(false);
   const [analysisStats, setAnalysisStats] = useState<any>(null);
   const [showAnalysisDetail, setShowAnalysisDetail] = useState(false);
-  const [hasGenerated, setHasGenerated] = useState(false); // 생성 여부 추적
+  const [hasGenerated, setHasGenerated] = useState(false);
 
-  // ✅ 동적 회차 계산 - 실제 데이터 기반
+  // 동적 회차 계산 - 실제 데이터 기반
   const totalRounds = pastWinningNumbers.length;
   const actualLatestRound = roundRange?.latestRound || 1178;
   const actualOldestRound = roundRange?.oldestRound || 1178;
 
-  // ✅ 완전한 다크 모드 색상 테마 - 모든 속성 포함 (통일된 버전)
+  // 완전한 다크 모드 색상 테마 - 모든 속성 포함 (통일된 버전)
   const colors = {
     light: {
       background: "#f9fafb",
@@ -149,9 +149,6 @@ const Recommend: React.FC<RecommendProps> = ({
   // 컴포넌트 마운트 시 분석 통계만 로드 (자동 추천 제거)
   useEffect(() => {
     loadAnalysisStats();
-
-    // ✅ 문제 2 해결: 자동 추천 제거
-    // 더 이상 자동으로 1등 추천을 실행하지 않음
     console.log("🎯 번호추천 페이지 로드 완료 - 수동 추천 대기 중");
   }, [totalRounds, roundRange]);
 
@@ -164,10 +161,10 @@ const Recommend: React.FC<RecommendProps> = ({
     );
   };
 
-  // 🎯 1등급 고도화 추천번호 생성
+  // 1등급 고도화 추천번호 생성
   const generate1stGradeRecommendations = async () => {
     setLoading(true);
-    setHasGenerated(true); // 생성 시작 플래그
+    setHasGenerated(true);
 
     try {
       console.log(
@@ -183,7 +180,7 @@ const Recommend: React.FC<RecommendProps> = ({
 
       console.log(`✅ ${strategies.length}개 AI 전략 생성 완료!`);
 
-      // ✅ 문제 1 해결: 자동저장 기능 구현
+      // 자동저장 기능 구현
       if (autoSave && strategies.length > 0) {
         // 가장 신뢰도 높은 전략 자동 저장
         const bestStrategy = strategies.reduce((best, current) =>
@@ -215,13 +212,13 @@ const Recommend: React.FC<RecommendProps> = ({
   // 기존 방식 폴백 (2-5등급용)
   const generateBasicRecommendations = (grade: string) => {
     setLoading(true);
-    setHasGenerated(true); // 생성 시작 플래그
+    setHasGenerated(true);
 
     setTimeout(() => {
       const strategies = generateFallbackStrategies(grade);
       setRecommendedStrategies(strategies);
 
-      // ✅ 문제 1 해결: 자동저장 기능 구현 (2-5등급도 적용)
+      // 자동저장 기능 구현 (2-5등급도 적용)
       if (autoSave && strategies.length > 0) {
         const bestStrategy = strategies[0]; // 첫 번째 전략 저장
         onAddToPurchaseHistory(bestStrategy.numbers, bestStrategy.name);
@@ -298,9 +295,38 @@ const Recommend: React.FC<RecommendProps> = ({
     return { color: currentColors.textSecondary, emoji: "📊", text: "기본" };
   };
 
+  // 🎯 아이콘 래퍼 컴포넌트 - 일정한 크기 보장
+  const IconWrapper: React.FC<{ children: React.ReactNode; size?: "sm" | "md" | "lg" }> = ({ 
+    children, 
+    size = "md" 
+  }) => {
+    const sizeMap = {
+      sm: "16px",
+      md: "20px", 
+      lg: "24px"
+    };
+
+    return (
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: sizeMap[size],
+          height: sizeMap[size],
+          fontSize: sizeMap[size],
+          lineHeight: "1",
+          textAlign: "center" as const,
+        }}
+      >
+        {children}
+      </span>
+    );
+  };
+
   return (
     <div style={{ padding: "12px" }}>
-      {/* 🔥 빅데이터 분석 시스템 헤더 - 실제 회차 범위 표시 */}
+      {/* 빅데이터 분석 시스템 헤더 - 실제 회차 범위 표시 */}
       {analysisStats && (
         <div
           style={{
@@ -334,6 +360,8 @@ const Recommend: React.FC<RecommendProps> = ({
                 alignItems: "center",
                 justifyContent: "space-between",
                 marginBottom: "8px",
+                flexWrap: "wrap",
+                gap: "8px",
               }}
             >
               <h3
@@ -344,15 +372,19 @@ const Recommend: React.FC<RecommendProps> = ({
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
+                  lineHeight: "1.2",
                 }}
               >
-                🧠 AI 빅데이터 분석 시스템
+                <IconWrapper>🧠</IconWrapper>
+                <span>AI 빅데이터 분석 시스템</span>
                 <span
                   style={{
                     fontSize: "10px",
                     padding: "2px 6px",
                     backgroundColor: "rgba(255,255,255,0.2)",
                     borderRadius: "4px",
+                    fontWeight: "600",
+                    lineHeight: "1",
                   }}
                 >
                   v2.0
@@ -369,34 +401,39 @@ const Recommend: React.FC<RecommendProps> = ({
                   borderRadius: "4px",
                   fontSize: "12px",
                   cursor: "pointer",
+                  fontWeight: "500",
+                  lineHeight: "1",
+                  minWidth: "48px",
+                  textAlign: "center" as const,
                 }}
               >
                 {showAnalysisDetail ? "간단히" : "자세히"}
               </button>
             </div>
 
-            <div style={{ fontSize: "14px", opacity: 0.9 }}>
+            <div style={{ fontSize: "14px", opacity: 0.9, lineHeight: "1.4" }}>
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "16px",
+                  gap: "12px",
                   flexWrap: "wrap",
                 }}
               >
-                <span>
-                  📊{" "}
+                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <IconWrapper size="sm">📊</IconWrapper>
                   <strong>
                     {actualLatestRound}~{actualOldestRound}
                   </strong>
                   회차 분석
                 </span>
-                <span>
-                  🎯 <strong>{(totalRounds * 6).toLocaleString()}</strong>개
-                  패턴
+                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <IconWrapper size="sm">🎯</IconWrapper>
+                  <strong>{(totalRounds * 6).toLocaleString()}</strong>개 패턴
                 </span>
-                <span>
-                  🔥 상태:{" "}
+                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <IconWrapper size="sm">🔥</IconWrapper>
+                  상태:{" "}
                   <strong>
                     {analysisStats.analysisReady ? "준비완료" : "로딩중"}
                   </strong>
@@ -405,34 +442,60 @@ const Recommend: React.FC<RecommendProps> = ({
                   <span
                     style={{
                       fontSize: "11px",
-                      padding: "2px 6px",
+                      padding: "3px 6px",
                       backgroundColor: "rgba(255,255,255,0.3)",
                       borderRadius: "4px",
                       fontWeight: "bold",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "3px",
+                      lineHeight: "1",
                     }}
                   >
-                    💾 자동저장 활성
+                    <IconWrapper size="sm">💾</IconWrapper>
+                    자동저장 활성
                   </span>
                 )}
               </div>
 
               {showAnalysisDetail && (
                 <div
-                  style={{ marginTop: "12px", fontSize: "12px", opacity: 0.8 }}
+                  style={{ 
+                    marginTop: "12px", 
+                    fontSize: "12px", 
+                    opacity: 0.8,
+                    lineHeight: "1.5" 
+                  }}
                 >
-                  <div style={{ marginBottom: "4px" }}>
-                    📈 데이터 범위: {actualLatestRound}회차 ~{" "}
-                    {actualOldestRound}회차 (총 {totalRounds}개)
+                  <div style={{ 
+                    marginBottom: "4px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px"
+                  }}>
+                    <IconWrapper size="sm">📈</IconWrapper>
+                    데이터 범위: {actualLatestRound}회차 ~ {actualOldestRound}회차 (총 {totalRounds}개)
                   </div>
-                  <div style={{ marginBottom: "4px" }}>
-                    🔥 핫넘버:{" "}
-                    {analysisStats.hotNumbers?.join(", ") ||
-                      "7, 27, 38, 3, 6, 9"}{" "}
-                    | 🧊 콜드넘버:{" "}
-                    {analysisStats.coldNumbers?.join(", ") ||
-                      "25, 23, 32, 2, 5"}
+                  <div style={{ 
+                    marginBottom: "4px",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "4px"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                      <IconWrapper size="sm">🔥</IconWrapper>
+                      핫넘버: {analysisStats.hotNumbers?.join(", ") || "7, 27, 38, 3, 6, 9"}
+                    </div>
+                    <span style={{ margin: "0 4px" }}>|</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                      <IconWrapper size="sm">🧊</IconWrapper>
+                      콜드넘버: {analysisStats.coldNumbers?.join(", ") || "25, 23, 32, 2, 5"}
+                    </div>
                   </div>
-                  <div>📊 분석 기준: 최근 50회차 분석 기준</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                    <IconWrapper size="sm">📊</IconWrapper>
+                    분석 기준: 최근 50회차 분석 기준
+                  </div>
                 </div>
               )}
             </div>
@@ -460,9 +523,11 @@ const Recommend: React.FC<RecommendProps> = ({
             display: "flex",
             alignItems: "center",
             gap: "8px",
+            lineHeight: "1.2",
           }}
         >
-          🎯 당첨 등급별 AI 추천
+          <IconWrapper>🎯</IconWrapper>
+          <span>당첨 등급별 AI 추천</span>
         </h2>
 
         <p
@@ -470,6 +535,7 @@ const Recommend: React.FC<RecommendProps> = ({
             fontSize: "14px",
             color: currentColors.textSecondary,
             margin: "0 0 16px 0",
+            lineHeight: "1.4",
           }}
         >
           {activeGrade === "1"
@@ -499,7 +565,7 @@ const Recommend: React.FC<RecommendProps> = ({
                 width: "100%",
                 padding: "16px",
                 borderRadius: "8px",
-                textAlign: "left",
+                textAlign: "left" as const,
                 border:
                   activeGrade === grade
                     ? `2px solid ${info.color}`
@@ -522,18 +588,26 @@ const Recommend: React.FC<RecommendProps> = ({
                   alignItems: "center",
                   justifyContent: "space-between",
                   marginBottom: "6px",
+                  flexWrap: "wrap",
+                  gap: "8px",
                 }}
               >
                 <div
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                  style={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: "8px",
+                    flexWrap: "wrap" 
+                  }}
                 >
-                  <span style={{ fontSize: "20px" }}>{info.emoji}</span>
+                  <IconWrapper>{info.emoji}</IconWrapper>
                   <span
                     style={{
                       fontSize: "18px",
                       fontWeight: "bold",
                       color:
                         activeGrade === grade ? info.color : currentColors.text,
+                      lineHeight: "1",
                     }}
                   >
                     {info.name}
@@ -541,7 +615,7 @@ const Recommend: React.FC<RecommendProps> = ({
                   <span
                     style={{
                       fontSize: "12px",
-                      padding: "2px 8px",
+                      padding: "3px 8px",
                       borderRadius: "4px",
                       backgroundColor:
                         activeGrade === grade ? info.color : currentColors.gray,
@@ -550,6 +624,7 @@ const Recommend: React.FC<RecommendProps> = ({
                           ? "white"
                           : currentColors.textSecondary,
                       fontWeight: "bold",
+                      lineHeight: "1",
                     }}
                   >
                     {info.desc}
@@ -566,9 +641,14 @@ const Recommend: React.FC<RecommendProps> = ({
                       color: "white",
                       fontWeight: "bold",
                       boxShadow: "0 2px 4px rgba(245, 158, 11, 0.3)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      lineHeight: "1",
                     }}
                   >
-                    🧠 AI 분석
+                    <IconWrapper size="sm">🧠</IconWrapper>
+                    AI 분석
                   </span>
                 )}
               </div>
@@ -578,23 +658,40 @@ const Recommend: React.FC<RecommendProps> = ({
                   fontSize: "13px",
                   color: currentColors.textSecondary,
                   marginBottom: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                  lineHeight: "1.3",
                 }}
               >
-                🎲 확률: <strong>{info.probability}</strong> | 💰 상금:{" "}
-                <strong>{info.prize}</strong>
+                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <IconWrapper size="sm">🎲</IconWrapper>
+                  확률: <strong>{info.probability}</strong>
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <IconWrapper size="sm">💰</IconWrapper>
+                  상금: <strong>{info.prize}</strong>
+                </span>
               </div>
 
-              <div
-                style={{ fontSize: "12px", color: currentColors.textSecondary }}
-              >
-                📊 {info.strategy}
+              <div style={{ 
+                fontSize: "12px", 
+                color: currentColors.textSecondary,
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                lineHeight: "1.3"
+              }}>
+                <IconWrapper size="sm">📊</IconWrapper>
+                {info.strategy}
               </div>
             </button>
           ))}
         </div>
 
         {/* 추천 버튼 - 항상 표시 */}
-        <div style={{ textAlign: "center" }}>
+        <div style={{ textAlign: "center" as const }}>
           <button
             onClick={() => generateRecommendations(activeGrade)}
             disabled={loading}
@@ -616,12 +713,16 @@ const Recommend: React.FC<RecommendProps> = ({
                 : `0 4px 12px ${gradeInfo[activeGrade].color}40`,
               transform: loading ? "none" : "translateY(-1px)",
               transition: "all 0.2s",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              margin: "0 auto",
+              lineHeight: "1",
             }}
           >
             {loading ? (
-              <span
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
-              >
+              <>
                 <div
                   style={{
                     width: "16px",
@@ -632,30 +733,34 @@ const Recommend: React.FC<RecommendProps> = ({
                     animation: "spin 1s linear infinite",
                   }}
                 />
-                {activeGrade === "1"
-                  ? "🧠 AI 빅데이터 분석중..."
-                  : `${gradeInfo[activeGrade].name} 분석중...`}
-              </span>
+                <span>
+                  {activeGrade === "1"
+                    ? "🧠 AI 빅데이터 분석중..."
+                    : `${gradeInfo[activeGrade].name} 분석중...`}
+                </span>
+              </>
             ) : (
               <>
-                {gradeInfo[activeGrade].emoji}{" "}
-                {activeGrade === "1"
-                  ? "AI 빅데이터 분석 시작!"
-                  : `${gradeInfo[activeGrade].name} 추천 받기`}
+                <IconWrapper>{gradeInfo[activeGrade].emoji}</IconWrapper>
+                <span>
+                  {activeGrade === "1"
+                    ? "AI 빅데이터 분석 시작!"
+                    : `${gradeInfo[activeGrade].name} 추천 받기`}
+                </span>
               </>
             )}
           </button>
         </div>
       </div>
 
-      {/* 🔥 추천 결과 영역 */}
+      {/* 추천 결과 영역 */}
       {loading ? (
         <div
           style={{
             backgroundColor: currentColors.surface,
             borderRadius: "12px",
             padding: "32px 16px",
-            textAlign: "center",
+            textAlign: "center" as const,
             border: `1px solid ${currentColors.border}`,
           }}
         >
@@ -676,6 +781,7 @@ const Recommend: React.FC<RecommendProps> = ({
               color: currentColors.text,
               margin: "0 0 8px 0",
               fontSize: "18px",
+              lineHeight: "1.2",
             }}
           >
             {activeGrade === "1"
@@ -689,6 +795,7 @@ const Recommend: React.FC<RecommendProps> = ({
                 fontSize: "14px",
                 color: currentColors.accent,
                 marginTop: "12px",
+                lineHeight: "1.4",
               }}
             >
               <div
@@ -792,27 +899,35 @@ const Recommend: React.FC<RecommendProps> = ({
                       fontWeight: "bold",
                       clipPath:
                         "polygon(0 0, 100% 0, 100% 70%, 85% 100%, 0 100%)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "2px",
+                      lineHeight: "1",
                     }}
                   >
-                    {confStyle.emoji} {confStyle.text}
+                    <IconWrapper size="sm">{confStyle.emoji}</IconWrapper>
+                    {confStyle.text}
                   </div>
                 )}
 
                 <div
                   style={{
                     display: "flex",
-                    alignItems: "center",
+                    alignItems: "flex-start",
                     justifyContent: "space-between",
                     marginBottom: "12px",
+                    gap: "12px",
+                    flexWrap: "wrap",
                   }}
                 >
-                  <div style={{ flex: 1, paddingRight: "12px" }}>
+                  <div style={{ flex: 1, minWidth: "200px" }}>
                     <div
                       style={{
                         display: "flex",
                         alignItems: "center",
                         gap: "8px",
                         marginBottom: "6px",
+                        flexWrap: "wrap",
                       }}
                     >
                       <h3
@@ -821,6 +936,7 @@ const Recommend: React.FC<RecommendProps> = ({
                           color: currentColors.text,
                           margin: "0",
                           fontSize: "16px",
+                          lineHeight: "1.2",
                         }}
                       >
                         {strategy.name}
@@ -829,7 +945,7 @@ const Recommend: React.FC<RecommendProps> = ({
                       <span
                         style={{
                           fontSize: "12px",
-                          padding: "2px 8px",
+                          padding: "3px 8px",
                           borderRadius: "6px",
                           backgroundColor: confStyle.color,
                           color: "white",
@@ -837,9 +953,11 @@ const Recommend: React.FC<RecommendProps> = ({
                           display: "flex",
                           alignItems: "center",
                           gap: "4px",
+                          lineHeight: "1",
                         }}
                       >
-                        {confStyle.emoji} {strategy.confidence}%
+                        <IconWrapper size="sm">{confStyle.emoji}</IconWrapper>
+                        {strategy.confidence}%
                       </span>
                     </div>
 
@@ -860,10 +978,18 @@ const Recommend: React.FC<RecommendProps> = ({
                         color: currentColors.textSecondary,
                         display: "flex",
                         gap: "12px",
+                        flexWrap: "wrap",
+                        lineHeight: "1.3",
                       }}
                     >
-                      <span>📊 {strategy.analysisData.dataRange}</span>
-                      <span>🔍 {strategy.analysisData.method}</span>
+                      <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                        <IconWrapper size="sm">📊</IconWrapper>
+                        {strategy.analysisData.dataRange}
+                      </span>
+                      <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                        <IconWrapper size="sm">🔍</IconWrapper>
+                        {strategy.analysisData.method}
+                      </span>
                     </div>
                   </div>
 
@@ -883,9 +1009,16 @@ const Recommend: React.FC<RecommendProps> = ({
                       fontWeight: "bold",
                       boxShadow: "0 2px 8px rgba(37, 99, 235, 0.3)",
                       transition: "all 0.2s",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      lineHeight: "1",
+                      minWidth: "120px",
+                      justifyContent: "center",
                     }}
                   >
-                    🗂️ 내번호함에 추가
+                    <IconWrapper size="sm">🗂️</IconWrapper>
+                    내번호함에 추가
                   </button>
                 </div>
 
@@ -920,6 +1053,7 @@ const Recommend: React.FC<RecommendProps> = ({
                     gap: "6px",
                     flexWrap: "wrap",
                     alignItems: "center",
+                    lineHeight: "1.3",
                   }}
                 >
                   <span
@@ -927,20 +1061,25 @@ const Recommend: React.FC<RecommendProps> = ({
                       fontSize: "11px",
                       color: currentColors.textSecondary,
                       fontWeight: "500",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
                     }}
                   >
-                    🏷️ 분석 패턴:
+                    <IconWrapper size="sm">🏷️</IconWrapper>
+                    분석 패턴:
                   </span>
                   {strategy.analysisData.patterns.map((pattern, i) => (
                     <span
                       key={i}
                       style={{
                         fontSize: "10px",
-                        padding: "2px 8px",
+                        padding: "3px 8px",
                         borderRadius: "4px",
                         backgroundColor: currentColors.gray,
                         color: currentColors.textSecondary,
                         border: `1px solid ${currentColors.grayBorder}`,
+                        lineHeight: "1",
                       }}
                     >
                       {pattern}
@@ -958,9 +1097,11 @@ const Recommend: React.FC<RecommendProps> = ({
                       display: "flex",
                       alignItems: "center",
                       gap: "4px",
+                      lineHeight: "1.3",
                     }}
                   >
-                    ✨ {strategy.analysisData.specialInfo}
+                    <IconWrapper size="sm">✨</IconWrapper>
+                    {strategy.analysisData.specialInfo}
                   </div>
                 )}
               </div>
@@ -971,15 +1112,24 @@ const Recommend: React.FC<RecommendProps> = ({
           {recommendedStrategies.length === 0 && !hasGenerated && (
             <div
               style={{
-                textAlign: "center",
+                textAlign: "center" as const,
                 padding: "48px 16px",
                 backgroundColor: currentColors.surface,
                 borderRadius: "12px",
                 border: `1px solid ${currentColors.border}`,
               }}
             >
-              <div style={{ fontSize: "64px", marginBottom: "16px" }}>
-                {gradeInfo[activeGrade].emoji}
+              <div style={{ 
+                fontSize: "64px", 
+                marginBottom: "16px",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "80px",
+              }}>
+                <IconWrapper size="lg" style={{ fontSize: "64px" }}>
+                  {gradeInfo[activeGrade].emoji}
+                </IconWrapper>
               </div>
               <h3
                 style={{
@@ -987,6 +1137,7 @@ const Recommend: React.FC<RecommendProps> = ({
                   fontWeight: "bold",
                   color: currentColors.text,
                   margin: "0 0 8px 0",
+                  lineHeight: "1.2",
                 }}
               >
                 {gradeInfo[activeGrade].name} 추천번호
@@ -996,6 +1147,7 @@ const Recommend: React.FC<RecommendProps> = ({
                   color: currentColors.textSecondary,
                   margin: "0 0 6px 0",
                   fontSize: "14px",
+                  lineHeight: "1.4",
                 }}
               >
                 확률: {gradeInfo[activeGrade].probability}
@@ -1005,6 +1157,7 @@ const Recommend: React.FC<RecommendProps> = ({
                   color: currentColors.textSecondary,
                   margin: "0 0 24px 0",
                   fontSize: "14px",
+                  lineHeight: "1.4",
                 }}
               >
                 예상상금: {gradeInfo[activeGrade].prize}
@@ -1015,6 +1168,7 @@ const Recommend: React.FC<RecommendProps> = ({
                   margin: "0 0 24px 0",
                   fontSize: "13px",
                   fontStyle: "italic",
+                  lineHeight: "1.4",
                 }}
               >
                 위의 버튼을 클릭하여 AI 분석을 시작하세요!
