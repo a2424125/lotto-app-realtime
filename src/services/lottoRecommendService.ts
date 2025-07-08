@@ -131,12 +131,12 @@ class LottoRecommendService {
           console.log(`📡 데이터 로드 시도 ${retryCount + 1}/${this.maxRetries}...`);
           
           // 타임아웃 적용
-          const timeoutPromise = new Promise((_, reject) => {
+          const timeoutPromise = new Promise<never>((_, reject) => {
             setTimeout(() => reject(new Error('데이터 로드 타임아웃')), this.loadTimeout);
           });
 
           const dataPromise = lottoDataManager.getHistory(targetCount);
-          const response = await Promise.race([dataPromise, timeoutPromise]) as any;
+          const response = await Promise.race([dataPromise, timeoutPromise]);
           
           if (response.success && response.data && response.data.length > 0) {
             this.allData = response.data;
