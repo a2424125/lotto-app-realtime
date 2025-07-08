@@ -605,4 +605,192 @@ class LottoRecommendService {
       score += ((allFreq[num] || 0) / maxAllFreq) * 40;
       score += ((longTermFreq[num] || 0) / maxLongTermFreq) * 25;
       score += ((midFreq[num] || 0) / maxMidFreq) * 20;
-      score +=
+      score += ((recentFreq[num] || 0) / maxRecentFreq) * 15;
+
+      // 구간 밸런스 보너스
+      if (num >= 1 && num <= 10) score += 3;
+      if (num >= 11 && num <= 20) score += 5;
+      if (num >= 21 && num <= 30) score += 5;
+      if (num >= 31 && num <= 40) score += 4;
+      if (num >= 41 && num <= 45) score += 2;
+
+      // 특별 패턴 보너스
+      const primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43];
+      if (primes.includes(num)) score += 4;
+
+      if (num % 7 === 0) score += 3; // 7의 배수
+
+      scores[num] = score;
+    }
+
+    // AI 가중치 적용한 최종 선택
+    const aiTop = Object.entries(scores)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 20)
+      .map(([num]) => parseInt(num));
+
+    const numbers = new Set<number>();
+
+    // 상위 스코어에서 확률적 선택
+    while (numbers.size < 6) {
+      const weightedIndex = Math.floor(
+        Math.pow(Math.random(), 0.6) * aiTop.length
+      );
+      numbers.add(aiTop[weightedIndex]);
+    }
+
+    console.log(`🤖 전체 ${this.actualDataRange.totalCount}회차 AI 분석 완료!`);
+    return Array.from(numbers).sort((a, b) => a - b);
+  }
+
+  // 📊 전체 통계 정보
+  getAnalysisStats(): AnalysisStats {
+    if (!this.isDataLoaded) {
+      return {
+        totalRounds: 0,
+        dataRange: "로딩 중...",
+        analysisReady: false,
+        uniquePatterns: 0,
+        hotNumbers: [],
+        coldNumbers: [],
+        recentTrend: "분석 중...",
+        actualRounds: {
+          latest: this.calculateCurrentRound(),
+          oldest: 1,
+        },
+      };
+    }
+
+    const allFreq = this.getFrequencyAnalysis(this.allData.length, "all-time").frequencies;
+    const recentFreq = this.getFrequencyAnalysis(Math.min(100, this.allData.length), "recent-100").frequencies;
+
+    // 핫넘버 (최근 고빈도)
+    const hotNumbers = Object.entries(recentFreq)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 6)
+      .map(([num]) => parseInt(num));
+
+    // 콜드넘버 (전체 저빈도)
+    const coldNumbers = Object.entries(allFreq)
+      .sort(([, a], [, b]) => a - b)
+      .slice(0, 6)
+      .map(([num]) => parseInt(num));
+
+    return {
+      totalRounds: this.actualDataRange.totalCount,
+      dataRange: `전체 1~${this.actualDataRange.latestRound}회 (${this.actualDataRange.totalCount}개)`,
+      analysisReady: this.isDataLoaded,
+      uniquePatterns: this.actualDataRange.totalCount * 6,
+      hotNumbers,
+      coldNumbers,
+      recentTrend: `전체 ${this.actualDataRange.totalCount}회차 분석 기준`,
+      actualRounds: {
+        latest: this.actualDataRange.latestRound,
+        oldest: this.actualDataRange.oldestRound,
+      },
+    };
+  }
+
+  // 🔄 캐시 클리어
+  clearCache(): void {
+    this.frequencyCache.clear();
+    this.isDataLoaded = false;
+    this.allData = [];
+    this.isLoading = false;
+    this.loadingPromise = null;
+    this._currentRoundCache = null;
+    console.log("🧹 분석 캐시 완전 초기화 완료");
+  }
+
+  // 🔧 추가: 강제 데이터 재로드
+  async forceReload(): Promise<void> {
+    if (this.isLoading) {
+      console.log("⏳ 이미 로딩 중입니다...");
+      return;
+    }
+
+    console.log("🔄 강제 데이터 재로드 시작...");
+    this.clearCache();
+    await this.loadAllData();
+    console.log("✅ 강제 데이터 재로드 완료");
+  }
+
+  // 🔍 특정 번호의 상세 분석
+  getNumberAnalysis(number: number): {
+    allTimeRank: number;
+    recentRank: number;
+    frequency: number;
+    lastAppeared: string;
+    trend: "rising" | "falling" | "stable";
+  } {
+    const allFreq = this.getFrequencyAnalysis(this.allData.length, "all-time").frequencies;
+    const recentFreq = this.getFrequencyAnalysis(Math.min(100, this.allData.length), "recent-100").frequencies;
+
+    const allSorted = Object.entries(allFreq)
+      .sort(([, a], [, b]) => b - a)
+      .map(([num]) => parseInt(num));
+
+    const recentSorted = Object.entries(recentFreq)
+      .sort(([, a], [, b]) => b - a)
+      .map(([num]) => parseInt(num));
+
+    // 마지막 출현 찾기
+    let lastAppeared = "없음";
+    for (const draw of this.allData) {
+      if (draw.numbers.includes(number)) {
+        lastAppeared = `${draw.round}회차 (${draw.date})`;
+        break;
+      }
+    }
+
+    // 트렌드 분석
+    const allRank = allSorted.indexOf(number) + 1;
+    const recentRank = recentSorted.indexOf(number) + 1;
+    let trend: "rising" | "falling" | "stable" = "stable";
+
+    if (recentRank > 0 && allRank > 0) {
+      if (recentRank < allRank) trend = "rising";
+      else if (recentRank > allRank) trend = "falling";
+    }
+
+    return {
+      allTimeRank: allRank || 46,
+      recentRank: recentRank || 46,
+      frequency: allFreq[number] || 0,
+      lastAppeared,
+      trend,
+    };
+  }
+
+  // ✅ 전체 데이터 범위 정보 제공
+  getActualDataRange(): {
+    latestRound: number;
+    oldestRound: number;
+    totalCount: number;
+  } {
+    return this.actualDataRange;
+  }
+
+  // 🔧 추가: 데이터 로드 상태 확인
+  getLoadStatus(): {
+    isLoaded: boolean;
+    dataCount: number;
+    latestRound: number;
+    oldestRound: number;
+    hasValidData: boolean;
+    isLoading: boolean;
+  } {
+    return {
+      isLoaded: this.isDataLoaded,
+      dataCount: this.allData.length,
+      latestRound: this.actualDataRange.latestRound,
+      oldestRound: this.actualDataRange.oldestRound,
+      hasValidData: this.allData.length >= 100, // 최소 100개 이상이어야 유효
+      isLoading: this.isLoading,
+    };
+  }
+}
+
+// 🎯 싱글톤 인스턴스
+export const lottoRecommendService = new LottoRecommendService();
+export default LottoRecommendService;
