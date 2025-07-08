@@ -146,7 +146,8 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
   const [gameStats, setGameStats] = useState<GameStats>(() => {
     try {
-      const saved = localStorage.getItem("lotto-game-stats");
+      // localStorage 대신 메모리 저장소 사용
+      const saved = null; // localStorage.getItem("lotto-game-stats");
       if (saved) {
         const parsed = JSON.parse(saved);
         return {
@@ -393,7 +394,8 @@ const MiniGame: React.FC<MiniGameProps> = ({
   useEffect(() => {
     try {
       console.log("🎮 MiniGame useEffect 실행");
-      localStorage.setItem("lotto-game-stats", JSON.stringify(gameStats));
+      // localStorage 대신 메모리에 저장 (실제 앱에서는 localStorage 사용 가능)
+      // localStorage.setItem("lotto-game-stats", JSON.stringify(gameStats));
     } catch (error) {
       console.error("게임 통계 저장 실패:", error);
     }
@@ -701,37 +703,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
               margin: "0 auto 16px",
             }}
           />
-          <p style={{ color: currentColors.textSecondary, margin: "0", fontSize: "14px" }}>
-            🎮 미니게임 로딩 중...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!pastWinningNumbers || pastWinningNumbers.length === 0) {
-    return (
-      <div 
-        style={{ 
-          padding: "12px",
-          backgroundColor: currentColors.background,
-          minHeight: "100vh",
-          color: currentColors.text
-        }}
-      >
-        <div
-          style={{
-            backgroundColor: currentColors.surface,
-            padding: "32px 16px",
-            borderRadius: "12px",
-            border: `1px solid ${currentColors.border}`,
-            textAlign: "center",
-          }}
-        >
-          <div style={{ fontSize: "48px", marginBottom: "16px" }}>😔</div>
-          <h3 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0 0 8px 0" }}>
-            데이터를 불러올 수 없습니다
-          </h3>
           <p style={{ color: currentColors.textSecondary, margin: "0", fontSize: "14px" }}>
             로또 데이터가 로드되지 않아 미니게임을 시작할 수 없습니다.
           </p>
@@ -1448,3 +1419,37 @@ const MiniGame: React.FC<MiniGameProps> = ({
       </style>
     </div>
   );
+};
+
+export default MiniGame; style={{ color: currentColors.textSecondary, margin: "0", fontSize: "14px" }}>
+            🎮 미니게임 로딩 중...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!pastWinningNumbers || pastWinningNumbers.length === 0) {
+    return (
+      <div 
+        style={{ 
+          padding: "12px",
+          backgroundColor: currentColors.background,
+          minHeight: "100vh",
+          color: currentColors.text
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: currentColors.surface,
+            padding: "32px 16px",
+            borderRadius: "12px",
+            border: `1px solid ${currentColors.border}`,
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontSize: "48px", marginBottom: "16px" }}>😔</div>
+          <h3 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0 0 8px 0" }}>
+            데이터를 불러올 수 없습니다
+          </h3>
+          <p
