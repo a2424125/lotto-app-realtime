@@ -44,73 +44,6 @@ interface GuessGameState {
   currentRound: number;
 }
 
-interface SimulationState {
-  selectedNumbers: number[];
-  ticketPrice: number;
-  currentRound: number;
-  results: Array<{
-    round: number;
-    userNumbers: number[];
-    winningNumbers: number[];
-    bonusNumber: number;
-    matches: number;
-    grade: string;
-    prize: number;
-    spent: number;
-  }>;
-  isPlaying: boolean;
-  autoPlay: boolean;
-  speed: number;
-  totalSpent: number;
-  totalWon: number;
-  isSimulating: boolean;
-}
-
-interface DrawGameState {
-  isPlaying: boolean;
-  selectedSlot: number | null;
-  hoveredSlot: number | null;
-  slots: Array<{
-    id: number;
-    isRevealed: boolean;
-    prize: any;
-    isWinner: boolean;
-  }>;
-  result: any;
-  cost: number;
-  prizes: Array<{
-    name: string;
-    points: number;
-    probability: number;
-    emoji: string;
-    color: string;
-  }>;
-}
-
-interface RouletteGameState {
-  isSpinning: boolean;
-  currentAngle: number;
-  targetAngle: number;
-  selectedNumber: number | null;
-  userBet: number | null;
-  betAmount: number;
-  cost: number;
-  multipliers: Array<{
-    range: [number, number];
-    multiplier: number;
-    color: string;
-    startAngle: number;
-    endAngle: number;
-  }>;
-  spinHistory: Array<{
-    bet: number;
-    result: number;
-    multiplier: number;
-    winnings: number;
-    timestamp: string;
-  }>;
-}
-
 interface AdWatchState {
   isWatching: boolean;
   countdown: number;
@@ -143,7 +76,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
   };
 
   const [gameStats, setGameStats] = useState<GameStats>(defaultGameStats);
-
   const [adWatchState, setAdWatchState] = useState<AdWatchState>({
     isWatching: false,
     countdown: 30,
@@ -151,7 +83,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     adProgress: 0,
     canSkip: false,
   });
-
   const [guessGame, setGuessGame] = useState<GuessGameState>({
     secretNumbers: [],
     userGuess: [],
@@ -164,327 +95,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     cost: 2000,
     isPlaying: false,
     currentRound: 1,
-  });
-
-  const [simulation, setSimulation] = useState<SimulationState>({
-    selectedNumbers: [],
-    ticketPrice: 2000,
-    currentRound: 0,
-    results: [],
-    isPlaying: false,
-    autoPlay: false,
-    speed: 1,
-    totalSpent: 0,
-    totalWon: 0,
-    isSimulating: false,
-  });
-
-  const [drawGame, setDrawGame] = useState<DrawGameState>({
-    isPlaying: false,
-    selectedSlot: null,
-    hoveredSlot: null,
-    slots: Array.from({ length: 100 }, (_, i) => ({
-      id: i,
-      isRevealed: false,
-      prize: null,
-      isWinner: false,
-    }
-  };
-
-  const startSimulation = () => {
-    const currentPoints = gameStats?.points || 0;
-    const cost = simulation.ticketPrice;
-    
-    if (currentPoints < cost) {
-      showAdOfferDialog(cost, "가상 로또 시뮬레이션");
-      return;
-    }
-
-    if (simulation.selectedNumbers.length !== 6) {
-      alert("6개 번호를 먼저 선택해주세요!");
-      return;
-    }
-
-    setGameStats(prev => ({
-      ...prev,
-      points: (prev?.points || 0) - cost,
-      totalSpent: (prev?.totalSpent || 0) + cost,
-    }));
-
-    const winningNumbers = generateWinningNumbers();
-    const bonusNumber = generateBonusNumber(winningNumbers);
-    const matches = simulation.selectedNumbers.filter(num => winningNumbers.includes(num)).length;
-    const gradeResult = calculatePrize(matches);
-
-    const newResult = {
-      round: simulation.currentRound + 1,
-      userNumbers: [...simulation.selectedNumbers],
-      winningNumbers,
-      bonusNumber,
-      matches,
-      grade: gradeResult.grade,
-      prize: gradeResult.prize,
-      spent: cost,
-    };
-
-    setSimulation(prev => ({
-      ...prev,
-      currentRound: prev.currentRound + 1,
-      results: [newResult, ...prev.results].slice(0, 10),
-      totalSpent: prev.totalSpent + cost,
-      totalWon: prev.totalWon + gradeResult.prize,
-    }));
-
-    if (gradeResult.prize > 0) {
-      setGameStats(prev => ({
-        ...prev,
-        points: (prev?.points || 0) + gradeResult.prize,
-        totalWon: (prev?.totalWon || 0) + gradeResult.prize,
-        gamesPlayed: (prev?.gamesPlayed || 0) + 1,
-        totalWins: (prev?.totalWins || 0) + 1,
-      }));
-      setTimeout(() => alert(`🎉 ${gradeResult.grade} 당첨! ${safeFormatNumber(gradeResult.prize)}P 획득!`), 500);
-    } else {
-      setGameStats(prev => ({
-        ...prev,
-        gamesPlayed: (prev?.gamesPlayed || 0) + 1,
-      }));
-    }
-  };
-
-  const generateWinningNumbers = (): number[] => {
-    if (pastWinningNumbers && pastWinningNumbers.length > 0) {
-      const randomDraw = pastWinningNumbers[Math.floor(Math.random() * pastWinningNumbers.length)];
-      if (randomDraw && randomDraw.length >= 6) {
-        return randomDraw.slice(0, 6).sort((a, b) => a - b);
-      }
-    }
-    
-    const numbers = new Set<number>();
-    while (numbers.size < 6) {
-      numbers.add(Math.floor(Math.random() * 45) + 1);
-    }
-    return Array.from(numbers).sort((a, b) => a - b);
-  };
-
-  const generateBonusNumber = (winningNumbers: number[]): number => {
-    let bonus;
-    do {
-      bonus = Math.floor(Math.random() * 45) + 1;
-    } while (winningNumbers.includes(bonus));
-    return bonus;
-  };
-
-  const calculatePrize = (matches: number): { grade: string; prize: number } => {
-    switch (matches) {
-      case 6: return { grade: "1등", prize: 50000 };
-      case 5: return { grade: "2등", prize: 10000 };
-      case 4: return { grade: "3등", prize: 3000 };
-      case 3: return { grade: "4등", prize: 1000 };
-      case 2: return { grade: "5등", prize: 500 };
-      default: return { grade: "꽝", prize: 0 };
-    }
-  };
-
-  const selectRandomSimNumbers = () => {
-    const numbers = new Set<number>();
-    while (numbers.size < 6) {
-      numbers.add(Math.floor(Math.random() * 45) + 1);
-    }
-    const randomNumbers = Array.from(numbers).sort((a, b) => a - b);
-    setSimulation(prev => ({ ...prev, selectedNumbers: randomNumbers }));
-  };
-
-  const startDrawGame = () => {
-    const currentPoints = gameStats?.points || 0;
-    const cost = drawGame.cost;
-    
-    if (currentPoints < cost) {
-      showAdOfferDialog(cost, "추억의 뽑기판");
-      return;
-    }
-
-    setGameStats(prev => ({
-      ...prev,
-      points: (prev?.points || 0) - cost,
-      totalSpent: (prev?.totalSpent || 0) + cost,
-    }));
-
-    setDrawGame(prev => ({ ...prev, isPlaying: true }));
-  };
-
-  const selectDrawSlot = (slotId: number) => {
-    if (drawGame.selectedSlot !== null) return;
-
-    const randomValue = Math.random();
-    let selectedPrize = drawGame.prizes[drawGame.prizes.length - 1];
-    
-    let cumulativeProbability = 0;
-    for (const prize of drawGame.prizes) {
-      cumulativeProbability += prize.probability;
-      if (randomValue <= cumulativeProbability) {
-        selectedPrize = prize;
-        break;
-      }
-    }
-
-    const newSlots = drawGame.slots.map(slot => 
-      slot.id === slotId 
-        ? { ...slot, isRevealed: true, prize: selectedPrize, isWinner: selectedPrize.points > 0 }
-        : slot
-    );
-
-    setDrawGame(prev => ({
-      ...prev,
-      selectedSlot: slotId,
-      slots: newSlots,
-      result: selectedPrize,
-    }));
-
-    if (selectedPrize.points > 0) {
-      setGameStats(prev => ({
-        ...prev,
-        points: (prev?.points || 0) + selectedPrize.points,
-        totalWon: (prev?.totalWon || 0) + selectedPrize.points,
-        gamesPlayed: (prev?.gamesPlayed || 0) + 1,
-        totalWins: (prev?.totalWins || 0) + 1,
-      }));
-      setTimeout(() => alert(`🎉 ${selectedPrize.name} ${safeFormatNumber(selectedPrize.points)}P 획득!`), 500);
-    } else {
-      setGameStats(prev => ({
-        ...prev,
-        gamesPlayed: (prev?.gamesPlayed || 0) + 1,
-      }));
-      setTimeout(() => alert(`😅 ${selectedPrize.name}! 다음에 도전해보세요!`), 500);
-    }
-  };
-
-  const resetDrawGame = () => {
-    setDrawGame(prev => ({
-      ...prev,
-      isPlaying: false,
-      selectedSlot: null,
-      hoveredSlot: null,
-      result: null,
-      slots: Array.from({ length: 100 }, (_, i) => ({
-        id: i,
-        isRevealed: false,
-        prize: null,
-        isWinner: false,
-      })),
-    }));
-  };
-
-  const startRouletteGame = () => {
-    const currentPoints = gameStats?.points || 0;
-    const cost = rouletteGame.cost;
-    
-    if (currentPoints < cost) {
-      showAdOfferDialog(cost, "스피드 룰렛");
-      return;
-    }
-
-    if (rouletteGame.userBet === null) {
-      alert("베팅할 번호를 먼저 선택해주세요!");
-      return;
-    }
-
-    setGameStats(prev => ({
-      ...prev,
-      points: (prev?.points || 0) - cost,
-      totalSpent: (prev?.totalSpent || 0) + cost,
-    }));
-
-    const resultNumber = Math.floor(Math.random() * 45) + 1;
-    const targetAngle = rouletteGame.currentAngle + 360 * 3 + (resultNumber - 1) * (360 / 45);
-    
-    setRouletteGame(prev => ({
-      ...prev,
-      isSpinning: true,
-      targetAngle,
-      selectedNumber: resultNumber,
-    }));
-
-    setTimeout(() => {
-      const multiplier = getMultiplier(resultNumber);
-      const won = rouletteGame.userBet === resultNumber;
-      const winnings = won ? rouletteGame.betAmount * multiplier : 0;
-
-      const newHistory = {
-        bet: rouletteGame.userBet!,
-        result: resultNumber,
-        multiplier,
-        winnings,
-        timestamp: new Date().toLocaleTimeString(),
-      };
-
-      setRouletteGame(prev => ({
-        ...prev,
-        isSpinning: false,
-        currentAngle: targetAngle % 360,
-        spinHistory: [newHistory, ...prev.spinHistory].slice(0, 5),
-      }));
-
-      if (won) {
-        setGameStats(prev => ({
-          ...prev,
-          points: (prev?.points || 0) + winnings,
-          totalWon: (prev?.totalWon || 0) + winnings,
-          gamesPlayed: (prev?.gamesPlayed || 0) + 1,
-          totalWins: (prev?.totalWins || 0) + 1,
-        }));
-        setTimeout(() => alert(`🎉 대성공! ${multiplier}배 당첨! ${safeFormatNumber(winnings)}P 획득!`), 1000);
-      } else {
-        setGameStats(prev => ({
-          ...prev,
-          gamesPlayed: (prev?.gamesPlayed || 0) + 1,
-        }));
-        setTimeout(() => alert(`😢 아쉽게 실패! 결과: ${resultNumber}번`), 1000);
-      }
-    }, 2000);
-  };
-
-  const getMultiplier = (number: number): number => {
-    for (const mult of rouletteGame.multipliers) {
-      if (number >= mult.range[0] && number <= mult.range[1]) {
-        return mult.multiplier;
-      }
-    }
-    return 1;)),
-    result: null,
-    cost: 1000,
-    prizes: [
-      { name: "1등 대박!", points: 5000, probability: 0.02, emoji: "🏆", color: "#FFD700" },
-      { name: "2등 잭팟!", points: 2000, probability: 0.05, emoji: "🥈", color: "#C0C0C0" },
-      { name: "3등 당첨!", points: 500, probability: 0.08, emoji: "🥉", color: "#CD7F32" },
-      { name: "4등 성공!", points: 200, probability: 0.15, emoji: "🎁", color: "#4CAF50" },
-      { name: "꽝", points: 0, probability: 0.7, emoji: "😅", color: "#9E9E9E" },
-    ],
-  });
-
-  const [rouletteGame, setRouletteGame] = useState<RouletteGameState>({
-    isSpinning: false,
-    currentAngle: 0,
-    targetAngle: 0,
-    selectedNumber: null,
-    userBet: null,
-    betAmount: 2000,
-    cost: 2000,
-    multipliers: [
-      { range: [1, 1], multiplier: 50, color: "#FFD700", startAngle: 0, endAngle: 30 },
-      { range: [2, 3], multiplier: 25, color: "#FF6B6B", startAngle: 30, endAngle: 60 },
-      { range: [4, 6], multiplier: 20, color: "#4ECDC4", startAngle: 60, endAngle: 90 },
-      { range: [7, 10], multiplier: 15, color: "#45B7D1", startAngle: 90, endAngle: 120 },
-      { range: [11, 15], multiplier: 12, color: "#96CEB4", startAngle: 120, endAngle: 150 },
-      { range: [16, 20], multiplier: 10, color: "#FFEAA7", startAngle: 150, endAngle: 180 },
-      { range: [21, 25], multiplier: 8, color: "#DDA0DD", startAngle: 180, endAngle: 210 },
-      { range: [26, 30], multiplier: 6, color: "#98D8C8", startAngle: 210, endAngle: 240 },
-      { range: [31, 35], multiplier: 5, color: "#F7DC6F", startAngle: 240, endAngle: 270 },
-      { range: [36, 39], multiplier: 4, color: "#BB8FCE", startAngle: 270, endAngle: 300 },
-      { range: [40, 42], multiplier: 3, color: "#85C1E9", startAngle: 300, endAngle: 330 },
-      { range: [43, 45], multiplier: 2, color: "#F8C471", startAngle: 330, endAngle: 360 },
-    ],
-    spinHistory: [],
   });
 
   const safeFormatNumber = (value: any): string => {
@@ -1163,7 +773,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   </div>
                 )}
               </button>
-            ))}}
+            ))}
           </div>
         </div>
       )}
@@ -1400,6 +1010,39 @@ const MiniGame: React.FC<MiniGameProps> = ({
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {selectedGame && selectedGame !== "guess" && (
+        <div style={{
+          backgroundColor: currentColors.surface,
+          borderRadius: "12px",
+          padding: "16px",
+          border: `1px solid ${currentColors.border}`,
+          textAlign: "center",
+        }}>
+          <div style={{ fontSize: "64px", marginBottom: "16px" }}>🚧</div>
+          <h3 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0 0 8px 0" }}>
+            준비 중인 게임
+          </h3>
+          <p style={{ color: currentColors.textSecondary, margin: "0 0 16px 0", fontSize: "14px" }}>
+            이 게임은 곧 출시될 예정입니다!
+          </p>
+          <button
+            onClick={() => setSelectedGame(null)}
+            style={{
+              padding: "12px 24px",
+              backgroundColor: currentColors.primary,
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              fontSize: "14px",
+              cursor: "pointer",
+              fontWeight: "bold",
+            }}
+          >
+            게임 선택으로 돌아가기
+          </button>
         </div>
       )}
     </div>
