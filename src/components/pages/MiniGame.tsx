@@ -1,190 +1,4 @@
-      {selectedGame === "simulation" && (
-        <div style={{
-          backgroundColor: currentColors.surface,
-          borderRadius: "12px",
-          padding: "16px",
-          border: `1px solid ${currentColors.border}`,
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-            <h3 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0" }}>
-              🎲 가상 로또 시뮬레이션
-            </h3>
-            <button
-              onClick={() => setSelectedGame(null)}
-              style={{
-                padding: "6px 12px",
-                backgroundColor: currentColors.textSecondary,
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                fontSize: "12px",
-                cursor: "pointer",
-              }}
-            >
-              게임 선택으로
-            </button>
-          </div>
-
-          <div style={{ marginBottom: "16px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-              <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0" }}>
-                번호 선택 (6개)
-              </h4>
-              <button
-                onClick={selectRandomSimNumbers}
-                style={{
-                  padding: "6px 12px",
-                  backgroundColor: "#8b5cf6",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  fontSize: "12px",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-              >
-                🎲 랜덤선택
-              </button>
-            </div>
-            
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(9, 1fr)", gap: "4px", marginBottom: "12px" }}>
-              {Array.from({ length: 45 }, (_, i) => i + 1).map((num) => (
-                <button
-                  key={num}
-                  onClick={() => {
-                    const newSelection = [...simulation.selectedNumbers];
-                    if (newSelection.includes(num)) {
-                      const index = newSelection.indexOf(num);
-                      newSelection.splice(index, 1);
-                    } else if (newSelection.length < 6) {
-                      newSelection.push(num);
-                    }
-                    setSimulation(prev => ({ ...prev, selectedNumbers: newSelection.sort((a, b) => a - b) }));
-                  }}
-                  style={{
-                    width: "32px",
-                    height: "28px",
-                    borderRadius: "4px",
-                    border: simulation.selectedNumbers.includes(num) ? `2px solid ${currentColors.primary}` : `1px solid ${currentColors.border}`,
-                    backgroundColor: simulation.selectedNumbers.includes(num) ? currentColors.primary : currentColors.surface,
-                    color: simulation.selectedNumbers.includes(num) ? "white" : currentColors.text,
-                    fontSize: "11px",
-                    cursor: "pointer",
-                    fontWeight: simulation.selectedNumbers.includes(num) ? "bold" : "normal",
-                  }}
-                >
-                  {num}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: "flex", gap: "4px", justifyContent: "center", marginBottom: "12px" }}>
-              {simulation.selectedNumbers.map((num, i) => (
-                <LottoNumberBall key={i} number={num} size="sm" theme={theme} />
-              ))}
-              {Array.from({ length: 6 - simulation.selectedNumbers.length }).map((_, i) => (
-                <div
-                  key={`empty-${i}`}
-                  style={{
-                    width: "28px",
-                    height: "28px",
-                    borderRadius: "50%",
-                    backgroundColor: currentColors.gray,
-                    border: `2px dashed ${currentColors.grayBorder}`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "12px",
-                    color: currentColors.textSecondary,
-                  }}
-                >
-                  ?
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={startSimulation}
-              disabled={simulation.selectedNumbers.length !== 6 || (gameStats?.points || 0) < simulation.ticketPrice}
-              style={{
-                width: "100%",
-                padding: "12px",
-                backgroundColor: simulation.selectedNumbers.length === 6 && (gameStats?.points || 0) >= simulation.ticketPrice ? currentColors.accent : currentColors.textSecondary,
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                fontSize: "14px",
-                fontWeight: "bold",
-                cursor: simulation.selectedNumbers.length === 6 && (gameStats?.points || 0) >= simulation.ticketPrice ? "pointer" : "not-allowed",
-              }}
-            >
-              🎲 로또 구매! ({safeFormatNumber(simulation.ticketPrice)}P)
-            </button>
-          </div>
-
-          {simulation.results.length > 0 && (
-            <div>
-              <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
-                최근 결과 (최대 10회)
-              </h4>
-              <div style={{ maxHeight: "300px", overflowY: "auto" }}>
-                {simulation.results.map((result, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      padding: "12px",
-                      backgroundColor: result.prize > 0 ? currentColors.success : currentColors.gray,
-                      borderRadius: "6px",
-                      marginBottom: "8px",
-                      border: result.prize > 0 ? `1px solid ${currentColors.successBorder}` : `1px solid ${currentColors.grayBorder}`,
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                      <span style={{ fontSize: "12px", fontWeight: "bold", color: currentColors.text }}>
-                        {result.round}회차 - {result.grade}
-                      </span>
-                      <span style={{ 
-                        fontSize: "12px", 
-                        fontWeight: "bold", 
-                        color: result.prize > 0 ? currentColors.successText : currentColors.textSecondary 
-                      }}>
-                        {result.prize > 0 ? `+${safeFormatNumber(result.prize)}P` : "꽝"}
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", gap: "4px", marginBottom: "4px" }}>
-                      <span style={{ fontSize: "10px", color: currentColors.textSecondary }}>내 번호:</span>
-                      {result.userNumbers.map((num, i) => (
-                        <span key={i} style={{ 
-                          fontSize: "10px", 
-                          padding: "2px 4px", 
-                          backgroundColor: currentColors.primary, 
-                          color: "white", 
-                          borderRadius: "3px" 
-                        }}>
-                          {num}
-                        </span>
-                      ))}
-                    </div>
-                    <div style={{ display: "flex", gap: "4px" }}>
-                      <span style={{ fontSize: "10px", color: currentColors.textSecondary }}>당첨:</span>
-                      {result.winningNumbers.map((num, i) => (
-                        <span key={i} style={{ 
-                          fontSize: "10px", 
-                          padding: "2px 4px", 
-                          backgroundColor: result.userNumbers.includes(num) ? "#10b981" : currentColors.textSecondary, 
-                          color: "white", 
-                          borderRadius: "3px" 
-                        }}>
-                          {num}
-                        </span>
-                      ))}
-                      <span style={{ 
-                        fontSize: "10px", 
-                        padding: "2px 4px", 
-                        backgroundColor: "#f59e0b", 
-                        color: "white", 
-                        borderRadius: "3px" 
-                      }}>import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import LottoNumberBall from "../shared/LottoNumberBall";
 
 interface MiniGameProps {
@@ -372,8 +186,153 @@ const MiniGame: React.FC<MiniGameProps> = ({
       isRevealed: false,
       prize: null,
       isWinner: false,
+    })),
+    result: null,
+    cost: 1000,
+    prizes: [
+      { name: "1등 대박!", points: 5000, probability: 0.02, emoji: "🏆", color: "#FFD700" },
+      { name: "2등 잭팟!", points: 2000, probability: 0.05, emoji: "🥈", color: "#C0C0C0" },
+      { name: "3등 당첨!", points: 500, probability: 0.08, emoji: "🥉", color: "#CD7F32" },
+      { name: "4등 성공!", points: 200, probability: 0.15, emoji: "🎁", color: "#4CAF50" },
+      { name: "꽝", points: 0, probability: 0.7, emoji: "😅", color: "#9E9E9E" },
+    ],
+  });
+
+  const [rouletteGame, setRouletteGame] = useState<RouletteGameState>({
+    isSpinning: false,
+    currentAngle: 0,
+    targetAngle: 0,
+    selectedNumber: null,
+    userBet: null,
+    betAmount: 2000,
+    cost: 2000,
+    multipliers: [
+      { range: [1, 1], multiplier: 50, color: "#FFD700", startAngle: 0, endAngle: 8 },
+      { range: [2, 3], multiplier: 25, color: "#FF6B6B", startAngle: 8, endAngle: 24 },
+      { range: [4, 6], multiplier: 20, color: "#4ECDC4", startAngle: 24, endAngle: 48 },
+      { range: [7, 10], multiplier: 15, color: "#45B7D1", startAngle: 48, endAngle: 80 },
+      { range: [11, 15], multiplier: 12, color: "#96CEB4", startAngle: 80, endAngle: 120 },
+      { range: [16, 20], multiplier: 10, color: "#FFEAA7", startAngle: 120, endAngle: 160 },
+      { range: [21, 25], multiplier: 8, color: "#DDA0DD", startAngle: 160, endAngle: 200 },
+      { range: [26, 30], multiplier: 6, color: "#98D8C8", startAngle: 200, endAngle: 240 },
+      { range: [31, 35], multiplier: 5, color: "#F7DC6F", startAngle: 240, endAngle: 280 },
+      { range: [36, 39], multiplier: 4, color: "#BB8FCE", startAngle: 280, endAngle: 312 },
+      { range: [40, 42], multiplier: 3, color: "#85C1E9", startAngle: 312, endAngle: 336 },
+      { range: [43, 45], multiplier: 2, color: "#F8C471", startAngle: 336, endAngle: 360 },
+    ],
+    spinHistory: [],
+  });
+
+  const safeFormatNumber = (value: any): string => {
+    if (typeof value !== 'number' || isNaN(value)) {
+      return "0";
     }
+    return value.toLocaleString();
   };
+
+  const colors = {
+    light: {
+      background: "#f9fafb",
+      surface: "#ffffff",
+      primary: "#2563eb",
+      text: "#1f2937",
+      textSecondary: "#6b7280",
+      border: "#e5e7eb",
+      accent: "#059669",
+      success: "#f0fdf4",
+      successBorder: "#bbf7d0",
+      successText: "#166534",
+      info: "#eff6ff",
+      infoBorder: "#bfdbfe",
+      infoText: "#1e40af",
+      warning: "#fefce8",
+      warningBorder: "#fef3c7",
+      warningText: "#92400e",
+      error: "#fef2f2",
+      errorBorder: "#fecaca",
+      errorText: "#dc2626",
+      gray: "#f8fafc",
+      grayBorder: "#e2e8f0",
+      purple: "#f3e8ff",
+      purpleBorder: "#c084fc",
+      purpleText: "#7c3aed",
+      adBg: "#f0f9ff",
+      adBorder: "#0ea5e9",
+      adText: "#0c4a6e",
+      adButton: "#0ea5e9",
+    },
+    dark: {
+      background: "#0f172a",
+      surface: "#1e293b",
+      primary: "#3b82f6",
+      text: "#f1f5f9",
+      textSecondary: "#94a3b8",
+      border: "#334155",
+      accent: "#10b981",
+      success: "#134e4a",
+      successBorder: "#047857",
+      successText: "#6ee7b7",
+      info: "#1e3a8a",
+      infoBorder: "#3b82f6",
+      infoText: "#93c5fd",
+      warning: "#451a03",
+      warningBorder: "#d97706",
+      warningText: "#fbbf24",
+      error: "#7f1d1d",
+      errorBorder: "#dc2626",
+      errorText: "#fca5a5",
+      gray: "#334155",
+      grayBorder: "#475569",
+      purple: "#581c87",
+      purpleBorder: "#8b5cf6",
+      purpleText: "#c4b5fd",
+      adBg: "#1e3a8a",
+      adBorder: "#3b82f6",
+      adText: "#93c5fd",
+      adButton: "#3b82f6",
+    },
+  };
+
+  const currentColors = colors[theme] || colors.light;
+
+  const games = [
+    {
+      id: "guess",
+      name: "번호맞추기",
+      desc: "AI 비밀번호를 힌트로 맞춰보세요!",
+      emoji: "🎯",
+      color: currentColors.primary,
+      difficulty: "중급",
+      cost: 2000,
+    },
+    {
+      id: "simulation",
+      name: "가상 로또 시뮬",
+      desc: "포인트로 로또를 사서 결과를 확인해보세요!",
+      emoji: "🎲",
+      color: "#8b5cf6",
+      difficulty: "초급",
+      cost: 2000,
+    },
+    {
+      id: "draw",
+      name: "추억의 뽑기판",
+      desc: "진짜 뽑기판처럼! 칸을 선택해서 상품을 뽑아보세요!",
+      emoji: "🎪",
+      color: "#f59e0b",
+      difficulty: "초급",
+      cost: 1000,
+    },
+    {
+      id: "roulette",
+      name: "스피드 룰렛",
+      desc: "12단계 배율! 룰렛을 돌려서 번호를 맞춰보세요!",
+      emoji: "🎡",
+      color: "#ef4444",
+      difficulty: "중급",
+      cost: 2000,
+    },
+  ];
 
   // 시뮬레이션 게임 함수들
   const startSimulation = () => {
@@ -637,154 +596,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
         return mult.multiplier;
       }
     }
-    return 1;)),
-    result: null,
-    cost: 1000,
-    prizes: [
-      { name: "1등 대박!", points: 5000, probability: 0.02, emoji: "🏆", color: "#FFD700" },
-      { name: "2등 잭팟!", points: 2000, probability: 0.05, emoji: "🥈", color: "#C0C0C0" },
-      { name: "3등 당첨!", points: 500, probability: 0.08, emoji: "🥉", color: "#CD7F32" },
-      { name: "4등 성공!", points: 200, probability: 0.15, emoji: "🎁", color: "#4CAF50" },
-      { name: "꽝", points: 0, probability: 0.7, emoji: "😅", color: "#9E9E9E" },
-    ],
-  });
-
-  const [rouletteGame, setRouletteGame] = useState<RouletteGameState>({
-    isSpinning: false,
-    currentAngle: 0,
-    targetAngle: 0,
-    selectedNumber: null,
-    userBet: null,
-    betAmount: 2000,
-    cost: 2000,
-    multipliers: [
-      { range: [1, 1], multiplier: 50, color: "#FFD700", startAngle: 0, endAngle: 8 },
-      { range: [2, 3], multiplier: 25, color: "#FF6B6B", startAngle: 8, endAngle: 24 },
-      { range: [4, 6], multiplier: 20, color: "#4ECDC4", startAngle: 24, endAngle: 48 },
-      { range: [7, 10], multiplier: 15, color: "#45B7D1", startAngle: 48, endAngle: 80 },
-      { range: [11, 15], multiplier: 12, color: "#96CEB4", startAngle: 80, endAngle: 120 },
-      { range: [16, 20], multiplier: 10, color: "#FFEAA7", startAngle: 120, endAngle: 160 },
-      { range: [21, 25], multiplier: 8, color: "#DDA0DD", startAngle: 160, endAngle: 200 },
-      { range: [26, 30], multiplier: 6, color: "#98D8C8", startAngle: 200, endAngle: 240 },
-      { range: [31, 35], multiplier: 5, color: "#F7DC6F", startAngle: 240, endAngle: 280 },
-      { range: [36, 39], multiplier: 4, color: "#BB8FCE", startAngle: 280, endAngle: 312 },
-      { range: [40, 42], multiplier: 3, color: "#85C1E9", startAngle: 312, endAngle: 336 },
-      { range: [43, 45], multiplier: 2, color: "#F8C471", startAngle: 336, endAngle: 360 },
-    ],
-    spinHistory: [],
-  });
-
-  const safeFormatNumber = (value: any): string => {
-    if (typeof value !== 'number' || isNaN(value)) {
-      return "0";
-    }
-    return value.toLocaleString();
+    return 1;
   };
 
-  const colors = {
-    light: {
-      background: "#f9fafb",
-      surface: "#ffffff",
-      primary: "#2563eb",
-      text: "#1f2937",
-      textSecondary: "#6b7280",
-      border: "#e5e7eb",
-      accent: "#059669",
-      success: "#f0fdf4",
-      successBorder: "#bbf7d0",
-      successText: "#166534",
-      info: "#eff6ff",
-      infoBorder: "#bfdbfe",
-      infoText: "#1e40af",
-      warning: "#fefce8",
-      warningBorder: "#fef3c7",
-      warningText: "#92400e",
-      error: "#fef2f2",
-      errorBorder: "#fecaca",
-      errorText: "#dc2626",
-      gray: "#f8fafc",
-      grayBorder: "#e2e8f0",
-      purple: "#f3e8ff",
-      purpleBorder: "#c084fc",
-      purpleText: "#7c3aed",
-      adBg: "#f0f9ff",
-      adBorder: "#0ea5e9",
-      adText: "#0c4a6e",
-      adButton: "#0ea5e9",
-    },
-    dark: {
-      background: "#0f172a",
-      surface: "#1e293b",
-      primary: "#3b82f6",
-      text: "#f1f5f9",
-      textSecondary: "#94a3b8",
-      border: "#334155",
-      accent: "#10b981",
-      success: "#134e4a",
-      successBorder: "#047857",
-      successText: "#6ee7b7",
-      info: "#1e3a8a",
-      infoBorder: "#3b82f6",
-      infoText: "#93c5fd",
-      warning: "#451a03",
-      warningBorder: "#d97706",
-      warningText: "#fbbf24",
-      error: "#7f1d1d",
-      errorBorder: "#dc2626",
-      errorText: "#fca5a5",
-      gray: "#334155",
-      grayBorder: "#475569",
-      purple: "#581c87",
-      purpleBorder: "#8b5cf6",
-      purpleText: "#c4b5fd",
-      adBg: "#1e3a8a",
-      adBorder: "#3b82f6",
-      adText: "#93c5fd",
-      adButton: "#3b82f6",
-    },
-  };
-
-  const currentColors = colors[theme] || colors.light;
-
-  const games = [
-    {
-      id: "guess",
-      name: "번호맞추기",
-      desc: "AI 비밀번호를 힌트로 맞춰보세요!",
-      emoji: "🎯",
-      color: currentColors.primary,
-      difficulty: "중급",
-      cost: 2000,
-    },
-    {
-      id: "simulation",
-      name: "가상 로또 시뮬",
-      desc: "포인트로 로또를 사서 결과를 확인해보세요!",
-      emoji: "🎲",
-      color: "#8b5cf6",
-      difficulty: "초급",
-      cost: 2000,
-    },
-    {
-      id: "draw",
-      name: "추억의 뽑기판",
-      desc: "진짜 뽑기판처럼! 칸을 선택해서 상품을 뽑아보세요!",
-      emoji: "🎪",
-      color: "#f59e0b",
-      difficulty: "초급",
-      cost: 1000,
-    },
-    {
-      id: "roulette",
-      name: "스피드 룰렛",
-      desc: "12단계 배율! 룰렛을 돌려서 번호를 맞춰보세요!",
-      emoji: "🎡",
-      color: "#ef4444",
-      difficulty: "중급",
-      cost: 2000,
-    },
-  ];
-
+  // 광고 및 포인트 관련 함수들
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
@@ -1355,6 +1170,204 @@ const MiniGame: React.FC<MiniGameProps> = ({
         </div>
       )}
 
+      {selectedGame === "simulation" && (
+        <div style={{
+          backgroundColor: currentColors.surface,
+          borderRadius: "12px",
+          padding: "16px",
+          border: `1px solid ${currentColors.border}`,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0" }}>
+              🎲 가상 로또 시뮬레이션
+            </h3>
+            <button
+              onClick={() => setSelectedGame(null)}
+              style={{
+                padding: "6px 12px",
+                backgroundColor: currentColors.textSecondary,
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "12px",
+                cursor: "pointer",
+              }}
+            >
+              게임 선택으로
+            </button>
+          </div>
+
+          <div style={{ marginBottom: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+              <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0" }}>
+                번호 선택 (6개)
+              </h4>
+              <button
+                onClick={selectRandomSimNumbers}
+                style={{
+                  padding: "6px 12px",
+                  backgroundColor: "#8b5cf6",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
+              >
+                🎲 랜덤선택
+              </button>
+            </div>
+            
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(9, 1fr)", gap: "4px", marginBottom: "12px" }}>
+              {Array.from({ length: 45 }, (_, i) => i + 1).map((num) => (
+                <button
+                  key={num}
+                  onClick={() => {
+                    const newSelection = [...simulation.selectedNumbers];
+                    if (newSelection.includes(num)) {
+                      const index = newSelection.indexOf(num);
+                      newSelection.splice(index, 1);
+                    } else if (newSelection.length < 6) {
+                      newSelection.push(num);
+                    }
+                    setSimulation(prev => ({ ...prev, selectedNumbers: newSelection.sort((a, b) => a - b) }));
+                  }}
+                  style={{
+                    width: "32px",
+                    height: "28px",
+                    borderRadius: "4px",
+                    border: simulation.selectedNumbers.includes(num) ? `2px solid ${currentColors.primary}` : `1px solid ${currentColors.border}`,
+                    backgroundColor: simulation.selectedNumbers.includes(num) ? currentColors.primary : currentColors.surface,
+                    color: simulation.selectedNumbers.includes(num) ? "white" : currentColors.text,
+                    fontSize: "11px",
+                    cursor: "pointer",
+                    fontWeight: simulation.selectedNumbers.includes(num) ? "bold" : "normal",
+                  }}
+                >
+                  {num}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: "4px", justifyContent: "center", marginBottom: "12px" }}>
+              {simulation.selectedNumbers.map((num, i) => (
+                <LottoNumberBall key={i} number={num} size="sm" theme={theme} />
+              ))}
+              {Array.from({ length: 6 - simulation.selectedNumbers.length }).map((_, i) => (
+                <div
+                  key={`empty-${i}`}
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "50%",
+                    backgroundColor: currentColors.gray,
+                    border: `2px dashed ${currentColors.grayBorder}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "12px",
+                    color: currentColors.textSecondary,
+                  }}
+                >
+                  ?
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={startSimulation}
+              disabled={simulation.selectedNumbers.length !== 6 || (gameStats?.points || 0) < simulation.ticketPrice}
+              style={{
+                width: "100%",
+                padding: "12px",
+                backgroundColor: simulation.selectedNumbers.length === 6 && (gameStats?.points || 0) >= simulation.ticketPrice ? currentColors.accent : currentColors.textSecondary,
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "14px",
+                fontWeight: "bold",
+                cursor: simulation.selectedNumbers.length === 6 && (gameStats?.points || 0) >= simulation.ticketPrice ? "pointer" : "not-allowed",
+              }}
+            >
+              🎲 로또 구매! ({safeFormatNumber(simulation.ticketPrice)}P)
+            </button>
+          </div>
+
+          {simulation.results.length > 0 && (
+            <div>
+              <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
+                최근 결과 (최대 10회)
+              </h4>
+              <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+                {simulation.results.map((result, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      padding: "12px",
+                      backgroundColor: result.prize > 0 ? currentColors.success : currentColors.gray,
+                      borderRadius: "6px",
+                      marginBottom: "8px",
+                      border: result.prize > 0 ? `1px solid ${currentColors.successBorder}` : `1px solid ${currentColors.grayBorder}`,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "12px", fontWeight: "bold", color: currentColors.text }}>
+                        {result.round}회차 - {result.grade}
+                      </span>
+                      <span style={{ 
+                        fontSize: "12px", 
+                        fontWeight: "bold", 
+                        color: result.prize > 0 ? currentColors.successText : currentColors.textSecondary 
+                      }}>
+                        {result.prize > 0 ? `+${safeFormatNumber(result.prize)}P` : "꽝"}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: "4px", marginBottom: "4px" }}>
+                      <span style={{ fontSize: "10px", color: currentColors.textSecondary }}>내 번호:</span>
+                      {result.userNumbers.map((num, i) => (
+                        <span key={i} style={{ 
+                          fontSize: "10px", 
+                          padding: "2px 4px", 
+                          backgroundColor: currentColors.primary, 
+                          color: "white", 
+                          borderRadius: "3px" 
+                        }}>
+                          {num}
+                        </span>
+                      ))}
+                    </div>
+                    <div style={{ display: "flex", gap: "4px" }}>
+                      <span style={{ fontSize: "10px", color: currentColors.textSecondary }}>당첨:</span>
+                      {result.winningNumbers.map((num, i) => (
+                        <span key={i} style={{ 
+                          fontSize: "10px", 
+                          padding: "2px 4px", 
+                          backgroundColor: result.userNumbers.includes(num) ? "#10b981" : currentColors.textSecondary, 
+                          color: "white", 
+                          borderRadius: "3px" 
+                        }}>
+                          {num}
+                        </span>
+                      ))}
+                      <span style={{ 
+                        fontSize: "10px", 
+                        padding: "2px 4px", 
+                        backgroundColor: "#f59e0b", 
+                        color: "white", 
+                        borderRadius: "3px" 
+                      }}>
+                        +{result.bonusNumber}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {selectedGame === "guess" && (
         <div style={{
           backgroundColor: currentColors.surface,
@@ -1585,24 +1598,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   </button>
                 </div>
               )}
-            </div>
-          )}
-        </div>
-      )}
-
-                      <span style={{ 
-                        fontSize: "10px", 
-                        padding: "2px 4px", 
-                        backgroundColor: "#f59e0b", 
-                        color: "white", 
-                        borderRadius: "3px" 
-                      }}>
-                        +{result.bonusNumber}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
         </div>
