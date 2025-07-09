@@ -68,7 +68,6 @@
 
     // 회전 시간 8초
     setTimeout(() => {
-      import React, { useState, useEffect } from "react";
 import LottoNumberBall from "../shared/LottoNumberBall";
 
 interface MiniGameProps {
