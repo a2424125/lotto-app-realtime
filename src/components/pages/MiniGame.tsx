@@ -204,11 +204,17 @@ const MiniGame: React.FC<MiniGameProps> = ({
     resultMultiplier: 0,
     betOptions: [2000, 3000, 5000, 7000, 10000],
     segments: [
-      { multiplier: 50, color: "#FFD700", startAngle: 0, endAngle: 18, probability: 0.05 },
-      { multiplier: 25, color: "#FF6B6B", startAngle: 18, endAngle: 45, probability: 0.075 },
-      { multiplier: 20, color: "#4ECDC4", startAngle: 45, endAngle: 81, probability: 0.10 },
-      { multiplier: 15, color: "#45B7D1", startAngle: 81, endAngle: 126, probability: 0.125 },
-      { multiplier: 10, color: "#96CEB4", startAngle: 126, endAngle: 180, probability: 0.15 },
+      { multiplier: 50, color: "#FFD700", startAngle: 0, endAngle: 12, probability: 0.015 },
+      { multiplier: 25, color: "#FF6B6B", startAngle: 12, endAngle: 24, probability: 0.02 },
+      { multiplier: 20, color: "#4ECDC4", startAngle: 24, endAngle: 40, probability: 0.03 },
+      { multiplier: 15, color: "#45B7D1", startAngle: 40, endAngle: 60, probability: 0.04 },
+      { multiplier: 10, color: "#96CEB4", startAngle: 60, endAngle: 85, probability: 0.05 },
+      { multiplier: 8, color: "#FFEAA7", startAngle: 85, endAngle: 115, probability: 0.06 },
+      { multiplier: 5, color: "#DDA0DD", startAngle: 115, endAngle: 150, probability: 0.07 },
+      { multiplier: 3, color: "#98D8C8", startAngle: 150, endAngle: 185, probability: 0.08 },
+      { multiplier: 2, color: "#F7DC6F", startAngle: 185, endAngle: 220, probability: 0.09 },
+      { multiplier: 0, color: "#95A5A6", startAngle: 220, endAngle: 360, probability: 0.555 },
+    ],CEB4", startAngle: 126, endAngle: 180, probability: 0.15 },
       { multiplier: 8, color: "#FFEAA7", startAngle: 180, endAngle: 234, probability: 0.15 },
       { multiplier: 5, color: "#DDA0DD", startAngle: 234, endAngle: 279, probability: 0.125 },
       { multiplier: 3, color: "#98D8C8", startAngle: 279, endAngle: 315, probability: 0.10 },
@@ -1858,7 +1864,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 {/* 배수 표시 */}
                 {rouletteGame.segments.map((segment, index) => {
                   const angle = (segment.startAngle + segment.endAngle) / 2;
-                  const radius = 85;
+                  const radius = 65; // 반지름을 줄여서 판 안쪽에 표시
                   const x = 50 + radius * Math.cos((angle - 90) * Math.PI / 180);
                   const y = 50 + radius * Math.sin((angle - 90) * Math.PI / 180);
                   
@@ -1870,15 +1876,16 @@ const MiniGame: React.FC<MiniGameProps> = ({
                         left: `${x}%`,
                         top: `${y}%`,
                         transform: "translate(-50%, -50%)",
-                        fontSize: segment.multiplier >= 20 ? "14px" : segment.multiplier >= 10 ? "12px" : "10px",
+                        fontSize: segment.multiplier >= 20 ? "12px" : segment.multiplier >= 10 ? "11px" : "10px",
                         fontWeight: "bold",
                         color: "white",
-                        textShadow: "2px 2px 4px rgba(0,0,0,0.8)",
-                        backgroundColor: "rgba(0,0,0,0.6)",
-                        padding: "2px 6px",
-                        borderRadius: "8px",
-                        minWidth: "20px",
+                        textShadow: "2px 2px 4px rgba(0,0,0,0.9)",
+                        backgroundColor: "rgba(0,0,0,0.7)",
+                        padding: "3px 6px",
+                        borderRadius: "6px",
+                        minWidth: "18px",
                         textAlign: "center",
+                        border: "1px solid rgba(255,255,255,0.3)",
                       }}
                     >
                       {segment.multiplier === 0 ? "꽝" : `×${segment.multiplier}`}
@@ -1996,6 +2003,9 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   {segment.multiplier === 0 ? "꽝" : `×${segment.multiplier}`}: {(segment.probability * 100).toFixed(1)}%
                 </div>
               ))}
+            </div>
+            <div style={{ fontSize: "11px", color: currentColors.textSecondary, marginTop: "8px", textAlign: "center" }}>
+              💡 꽝 확률이 높으니 신중하게 베팅하세요!
             </div>
           </div>
 
