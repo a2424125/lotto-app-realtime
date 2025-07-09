@@ -67,9 +67,9 @@
     }));
 
     // 회전 시간 8초
-    const import React, { useState, useEffect } from "react";
-import LottoNumberBall from "../shared/LottoNumberBall";
     setTimeout(() => {
+      constimport React, { useState, useEffect } from "react";
+import LottoNumberBall from "../shared/LottoNumberBall";
     interface MiniGameProps {
   pastWinningNumbers: number[][];
   isDataLoading?: boolean;
