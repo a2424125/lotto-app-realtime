@@ -201,7 +201,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     currentAngle: 0,
     targetAngle: 0,
     selectedBetAmount: null,
-    resultMultiplier: 0,
+    resultMultiplier: -1, // -1로 초기화하여 결과가 없음을 표시
     betOptions: [2000, 3000, 5000, 7000, 10000],
     segments: [
       { multiplier: 50, color: "#FFE4B5", startAngle: 0, endAngle: 12, probability: 0.015 },
@@ -547,9 +547,11 @@ const MiniGame: React.FC<MiniGameProps> = ({
       }
     }
 
-    // 더 임팩트 있는 회전 (20-30바퀴)
-    const baseSpins = 20 + Math.random() * 10;
-    const targetAngle = baseSpins * 360 + (resultSegment.startAngle + resultSegment.endAngle) / 2;
+    // 화살표가 12시 방향에서 아래를 가리키므로, 해당 섹션이 12시 위치에 오도록 계산
+    const baseSpins = 20 + Math.random() * 10; // 20-30바퀴 회전
+    const segmentCenterAngle = (resultSegment.startAngle + resultSegment.endAngle) / 2;
+    // 12시 방향(0도)에서 화살표가 가리키는 위치로 계산
+    const targetAngle = baseSpins * 360 + (360 - segmentCenterAngle);
     
     setRouletteGame(prev => ({
       ...prev,
@@ -1909,7 +1911,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
               </svg>
 
               {/* 결과 표시 */}
-              {rouletteGame.resultMultiplier !== 0 && !rouletteGame.isSpinning && (
+              {!rouletteGame.isSpinning && rouletteGame.resultMultiplier >= 0 && (
                 <div style={{ 
                   fontSize: "18px", 
                   fontWeight: "bold", 
