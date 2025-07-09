@@ -1817,76 +1817,96 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.5))",
               }} />
               
-              {/* 회전하는 룰렛 판 */}
-              <div style={{
-                width: "260px",
-                height: "260px",
-                borderRadius: "50%",
-                border: "8px solid #000",
-                background: `conic-gradient(
-                  ${rouletteGame.segments.map(segment => 
-                    `${segment.color} ${(segment.startAngle / 360) * 100}% ${(segment.endAngle / 360) * 100}%`
-                  ).join(", ")}
-                )`,
-                transform: `rotate(${rouletteGame.targetAngle || rouletteGame.currentAngle}deg)`,
-                transition: rouletteGame.isSpinning ? "transform 8s cubic-bezier(0.17, 0.67, 0.12, 0.99)" : "transform 0.5s ease-out",
-                position: "relative",
-                willChange: "transform",
-                boxShadow: "0 12px 35px rgba(0,0,0,0.3)",
-              }}>
-                {/* 중앙 원 */}
-                <div style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  width: "60px",
-                  height: "60px",
-                  borderRadius: "50%",
-                  backgroundColor: "#000",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "white",
-                  fontSize: "20px",
-                  fontWeight: "bold",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-                }}>
-                  🎡
-                </div>
-                
-                {/* 배수 표시 */}
+              {/* SVG 룰렛 */}
+              <svg
+                width="260"
+                height="260"
+                style={{
+                  transform: `rotate(${rouletteGame.targetAngle || rouletteGame.currentAngle}deg)`,
+                  transition: rouletteGame.isSpinning ? "transform 8s cubic-bezier(0.17, 0.67, 0.12, 0.99)" : "transform 0.5s ease-out",
+                  willChange: "transform",
+                  filter: "drop-shadow(0 12px 35px rgba(0,0,0,0.3))",
+                }}
+              >
+                {/* 룰렛 섹션들 */}
                 {rouletteGame.segments.map((segment, index) => {
-                  const angle = (segment.startAngle + segment.endAngle) / 2;
-                  const radius = 65;
-                  const x = 50 + radius * Math.cos((angle - 90) * Math.PI / 180);
-                  const y = 50 + radius * Math.sin((angle - 90) * Math.PI / 180);
+                  const centerX = 130;
+                  const centerY = 130;
+                  const radius = 120;
+                  
+                  const startAngleRad = (segment.startAngle * Math.PI) / 180;
+                  const endAngleRad = (segment.endAngle * Math.PI) / 180;
+                  
+                  const x1 = centerX + radius * Math.cos(startAngleRad);
+                  const y1 = centerY + radius * Math.sin(startAngleRad);
+                  const x2 = centerX + radius * Math.cos(endAngleRad);
+                  const y2 = centerY + radius * Math.sin(endAngleRad);
+                  
+                  const largeArcFlag = segment.endAngle - segment.startAngle > 180 ? 1 : 0;
+                  
+                  const pathData = [
+                    `M ${centerX} ${centerY}`,
+                    `L ${x1} ${y1}`,
+                    `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
+                    'Z'
+                  ].join(' ');
+                  
+                  // 텍스트 위치 계산
+                  const textAngle = (segment.startAngle + segment.endAngle) / 2;
+                  const textRadius = 75;
+                  const textX = centerX + textRadius * Math.cos((textAngle * Math.PI) / 180);
+                  const textY = centerY + textRadius * Math.sin((textAngle * Math.PI) / 180);
                   
                   return (
-                    <div
-                      key={index}
-                      style={{
-                        position: "absolute",
-                        left: `${x}%`,
-                        top: `${y}%`,
-                        transform: "translate(-50%, -50%)",
-                        fontSize: segment.multiplier >= 20 ? "12px" : segment.multiplier >= 10 ? "11px" : "10px",
-                        fontWeight: "bold",
-                        color: "white",
-                        textShadow: "2px 2px 4px rgba(0,0,0,0.9)",
-                        backgroundColor: "rgba(0,0,0,0.7)",
-                        padding: "3px 6px",
-                        borderRadius: "6px",
-                        minWidth: "18px",
-                        textAlign: "center",
-                        border: "1px solid rgba(255,255,255,0.3)",
-                      }}
-                    >
-                      {segment.multiplier === 0 ? "꽝" : `×${segment.multiplier}`}
-                    </div>
+                    <g key={index}>
+                      {/* 섹션 */}
+                      <path
+                        d={pathData}
+                        fill={segment.color}
+                        stroke="#000"
+                        strokeWidth="2"
+                      />
+                      {/* 배수 텍스트 */}
+                      <text
+                        x={textX}
+                        y={textY}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fill="white"
+                        fontSize={segment.multiplier >= 20 ? "14" : segment.multiplier >= 10 ? "12" : "11"}
+                        fontWeight="bold"
+                        style={{
+                          textShadow: "2px 2px 4px rgba(0,0,0,0.8)",
+                          filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.8))",
+                        }}
+                      >
+                        {segment.multiplier === 0 ? "꽝" : `×${segment.multiplier}`}
+                      </text>
+                    </g>
                   );
                 })}
-              </div>
+                
+                {/* 중앙 원 */}
+                <circle
+                  cx="130"
+                  cy="130"
+                  r="30"
+                  fill="#000"
+                  stroke="#FFD700"
+                  strokeWidth="3"
+                />
+                <text
+                  x="130"
+                  y="130"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="white"
+                  fontSize="20"
+                  fontWeight="bold"
+                >
+                  🎡
+                </text>
+              </svg>
 
               {/* 결과 표시 */}
               {rouletteGame.resultMultiplier !== 0 && !rouletteGame.isSpinning && (
