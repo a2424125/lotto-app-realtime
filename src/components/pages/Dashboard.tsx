@@ -580,7 +580,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         </button>
       </div>
 
-      {/* 메뉴 버튼들 */}
+      {/* 메뉴 버튼들 - 2x2 그리드로 변경 */}
       <div
         style={{
           display: "grid",
@@ -654,6 +654,74 @@ const Dashboard: React.FC<DashboardProps> = ({
             }}
           >
             재미있는 게임
+          </p>
+        </button>
+
+        <button
+          onClick={() => onMenuChange("stats")}
+          style={{
+            backgroundColor: currentColors.surface,
+            border: `1px solid ${currentColors.border}`,
+            padding: "16px 8px",
+            borderRadius: "8px",
+            cursor: "pointer",
+            textAlign: "center",
+            color: currentColors.text,
+          }}
+        >
+          <div style={{ fontSize: "24px", marginBottom: "4px" }}>📊</div>
+          <p
+            style={{
+              fontWeight: "bold",
+              color: currentColors.text,
+              margin: "0",
+              fontSize: "14px",
+            }}
+          >
+            통계분석
+          </p>
+          <p
+            style={{
+              fontSize: "12px",
+              color: currentColors.textSecondary,
+              margin: "2px 0 0 0",
+            }}
+          >
+            빅데이터 분석
+          </p>
+        </button>
+
+        <button
+          onClick={() => onMenuChange("purchase")}
+          style={{
+            backgroundColor: currentColors.surface,
+            border: `1px solid ${currentColors.border}`,
+            padding: "16px 8px",
+            borderRadius: "8px",
+            cursor: "pointer",
+            textAlign: "center",
+            color: currentColors.text,
+          }}
+        >
+          <div style={{ fontSize: "24px", marginBottom: "4px" }}>🗂️</div>
+          <p
+            style={{
+              fontWeight: "bold",
+              color: currentColors.text,
+              margin: "0",
+              fontSize: "14px",
+            }}
+          >
+            내번호함
+          </p>
+          <p
+            style={{
+              fontSize: "12px",
+              color: currentColors.textSecondary,
+              margin: "2px 0 0 0",
+            }}
+          >
+            로또수첩
           </p>
         </button>
       </div>
