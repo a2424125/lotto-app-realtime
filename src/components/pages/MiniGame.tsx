@@ -1,4 +1,74 @@
-import React, { useState, useEffect } from "react";
+  // 룰렛 게임 함수들
+  const startRouletteGame = () => {
+    const currentPoints = gameStats?.points || 0;
+    const betAmount = rouletteGame.selectedBetAmount;
+    
+    if (!betAmount) {
+      alert("베팅 금액을 먼저 선택해주세요!");
+      return;
+    }
+
+    if (currentPoints < betAmount) {
+      showAdOfferDialog(betAmount, "스피드 룰렛");
+      return;
+    }
+
+    setGameStats(prev => ({
+      ...prev,
+      points: (prev?.points || 0) - betAmount,
+      totalSpent: (prev?.totalSpent || 0) + betAmount,
+    }));
+
+    // 확률에 따른 결과 계산
+    const random = Math.random();
+    let cumulativeProbability = 0;
+    let resultSegment = rouletteGame.segments[rouletteGame.segments.length - 1];
+    
+    for (const segment of rouletteGame.segments) {
+      cumulativeProbability += segment.probability;
+      if (random <= cumulativeProbability) {
+        resultSegment = segment;
+        break;
+      }
+    }
+
+    // 선택된 섹션의 중앙 각도 계산
+    const segmentCenterAngle = (resultSegment.startAngle + resultSegment.endAngle) / 2;
+    
+    // 기본 회전 (20-30바퀴)
+    const baseSpins = 20 + Math.random() * 10;
+    
+    // 현재 각도를 고려하여 목표 각도까지 회전량 계산
+    // 룰렛이 시계방향으로 회전하면, 원래 (270 - 회전각) 위치의 섹션이 12시(270도)에 온다
+    // segmentCenterAngle이 12시에 오려면 룰렛은 (270 - segmentCenterAngle)만큼 회전해야 함
+    const currentAngle = rouletteGame.currentAngle % 360;
+    let targetAngle = (270 - segmentCenterAngle) % 360;
+    if (targetAngle < 0) {
+      targetAngle += 360;
+    }
+    
+    // 현재 각도에서 목표 각도까지의 회전량
+    let angleDiff = targetAngle - currentAngle;
+    if (angleDiff < 0) {
+      angleDiff += 360;
+    }
+    
+    const totalRotation = baseSpins * 360 + angleDiff;
+    
+    // 결과를 미리 저장
+    const finalMultiplier = resultSegment.multiplier;
+    const winnings = betAmount * finalMultiplier;
+    
+    setRouletteGame(prev => ({
+      ...prev,
+      isSpinning: true,
+      targetAngle: prev.currentAngle + totalRotation,
+      resultMultiplier: -1, // 회전 중에는 결과를 숨김
+    }));
+
+    // 회전 시간 8초
+    setTimeout(() => {
+      constimport React, { useState, useEffect } from "react";
 import LottoNumberBall from "../shared/LottoNumberBall";
 
 interface MiniGameProps {
@@ -204,14 +274,14 @@ const MiniGame: React.FC<MiniGameProps> = ({
     resultMultiplier: -1,
     betOptions: [2000, 3000, 5000, 7000, 10000],
     segments: [
-      { multiplier: 2, color: "#FFE5E5", startAngle: 0, endAngle: 45, probability: 0.125 },
-      { multiplier: 5, color: "#FFE0F0", startAngle: 45, endAngle: 90, probability: 0.125 },
-      { multiplier: 10, color: "#FFE5E5", startAngle: 90, endAngle: 135, probability: 0.125 },
-      { multiplier: 0, color: "#F5E5D5", startAngle: 135, endAngle: 180, probability: 0.125 },
-      { multiplier: 20, color: "#FFE5E5", startAngle: 180, endAngle: 225, probability: 0.125 },
-      { multiplier: 0, color: "#F5E5D5", startAngle: 225, endAngle: 270, probability: 0.125 },
-      { multiplier: 12, color: "#FFE0F0", startAngle: 270, endAngle: 315, probability: 0.125 },
-      { multiplier: 0, color: "#F5E5D5", startAngle: 315, endAngle: 360, probability: 0.125 },
+      { multiplier: 2, color: "#FFE5E5", startAngle: 0, endAngle: 45, probability: 0.05 },      // 5%
+      { multiplier: 5, color: "#FFE0F0", startAngle: 45, endAngle: 90, probability: 0.04 },     // 4%
+      { multiplier: 10, color: "#FFE5E5", startAngle: 90, endAngle: 135, probability: 0.03 },   // 3%
+      { multiplier: 0, color: "#F5E5D5", startAngle: 135, endAngle: 180, probability: 0.35 },   // 35% 꽝
+      { multiplier: 20, color: "#FFE5E5", startAngle: 180, endAngle: 225, probability: 0.02 },  // 2%
+      { multiplier: 0, color: "#F5E5D5", startAngle: 225, endAngle: 270, probability: 0.35 },   // 35% 꽝
+      { multiplier: 12, color: "#FFE0F0", startAngle: 270, endAngle: 315, probability: 0.03 },  // 3%
+      { multiplier: 0, color: "#F5E5D5", startAngle: 315, endAngle: 360, probability: 0.13 },   // 13% 꽝
     ],
     spinHistory: [],
   });
@@ -532,10 +602,45 @@ const MiniGame: React.FC<MiniGameProps> = ({
       totalSpent: (prev?.totalSpent || 0) + betAmount,
     }));
 
-    // 기본 회전 (20-30바퀴) + 무작위 추가 회전
+    // 확률에 따른 결과 계산
+    const random = Math.random();
+    let cumulativeProbability = 0;
+    let resultSegment = rouletteGame.segments[rouletteGame.segments.length - 1];
+    
+    for (const segment of rouletteGame.segments) {
+      cumulativeProbability += segment.probability;
+      if (random <= cumulativeProbability) {
+        resultSegment = segment;
+        break;
+      }
+    }
+
+    // 선택된 섹션의 중앙 각도 계산
+    const segmentCenterAngle = (resultSegment.startAngle + resultSegment.endAngle) / 2;
+    
+    // 기본 회전 (20-30바퀴)
     const baseSpins = 20 + Math.random() * 10;
-    const randomAngle = Math.random() * 360;
-    const totalRotation = baseSpins * 360 + randomAngle;
+    
+    // 현재 각도를 고려하여 목표 각도까지 회전량 계산
+    // 룰렛이 시계방향으로 회전하면, 원래 (270 - 회전각) 위치의 섹션이 12시(270도)에 온다
+    // segmentCenterAngle이 12시에 오려면 룰렛은 (270 - segmentCenterAngle)만큼 회전해야 함
+    const currentAngle = rouletteGame.currentAngle % 360;
+    let targetAngle = (270 - segmentCenterAngle) % 360;
+    if (targetAngle < 0) {
+      targetAngle += 360;
+    }
+    
+    // 현재 각도에서 목표 각도까지의 회전량
+    let angleDiff = targetAngle - currentAngle;
+    if (angleDiff < 0) {
+      angleDiff += 360;
+    }
+    
+    const totalRotation = baseSpins * 360 + angleDiff;
+    
+    // 결과를 미리 저장
+    const finalMultiplier = resultSegment.multiplier;
+    const winnings = betAmount * finalMultiplier;
     
     setRouletteGame(prev => ({
       ...prev,
@@ -546,34 +651,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
     // 회전 시간 8초
     setTimeout(() => {
-      // 최종 각도 계산
-      const finalAngle = (rouletteGame.currentAngle + totalRotation) % 360;
-      
-      // 12시 방향에 어떤 섹션이 있는지 계산
-      // 룰렛이 finalAngle만큼 회전했을 때, 
-      // 원래 (270 - finalAngle) 위치의 섹션이 12시(270도)에 온다
-      let angleAt12OClock = (270 - finalAngle) % 360;
-      if (angleAt12OClock < 0) {
-        angleAt12OClock += 360;
-      }
-      
-      // angleAt12OClock이 어떤 섹션에 속하는지 확인
-      let resultSegment = null;
-      for (const segment of rouletteGame.segments) {
-        if (angleAt12OClock >= segment.startAngle && angleAt12OClock < segment.endAngle) {
-          resultSegment = segment;
-          break;
-        }
-      }
-      
-      // 경계 케이스 처리 (360도 = 0도)
-      if (!resultSegment && angleAt12OClock >= 315) {
-        resultSegment = rouletteGame.segments[7]; // 315-360도 섹션
-      }
-      
-      const finalMultiplier = resultSegment ? resultSegment.multiplier : 0;
-      const winnings = betAmount * finalMultiplier;
-
       const newHistory = {
         betAmount: betAmount,
         resultMultiplier: finalMultiplier,
@@ -2017,29 +2094,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 </div>
               </div>
             )}
-          </div>
-
-          <div style={{ marginBottom: "16px", backgroundColor: currentColors.gray, padding: "12px", borderRadius: "8px" }}>
-            <h5 style={{ fontSize: "12px", color: currentColors.text, margin: "0 0 8px 0" }}>배율 및 확률 안내</h5>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "4px" }}>
-              {rouletteGame.segments.map((segment, index) => (
-                <div key={index} style={{ 
-                  fontSize: "10px", 
-                  padding: "6px", 
-                  backgroundColor: segment.color, 
-                  color: "#5A4A3A", 
-                  borderRadius: "4px",
-                  textAlign: "center",
-                  fontWeight: "bold",
-                  border: "1px solid #DDD",
-                }}>
-                  {segment.multiplier === 0 ? "꽝" : `×${segment.multiplier}`}: {(segment.probability * 100).toFixed(1)}%
-                </div>
-              ))}
-            </div>
-            <div style={{ fontSize: "11px", color: currentColors.textSecondary, marginTop: "8px", textAlign: "center" }}>
-              💡 꽝 확률이 높으니 신중하게 베팅하세요!
-            </div>
           </div>
 
           {rouletteGame.spinHistory.length > 0 && (
