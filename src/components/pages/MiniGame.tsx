@@ -547,20 +547,25 @@ const MiniGame: React.FC<MiniGameProps> = ({
       }
     }
 
-    // 화살표가 12시 방향에서 아래를 가리키므로, 해당 섹션이 12시 위치에 오도록 계산
-    const baseSpins = 20 + Math.random() * 10; // 20-30바퀴 회전
+    // 선택된 섹션의 중앙 각도 계산
     const segmentCenterAngle = (resultSegment.startAngle + resultSegment.endAngle) / 2;
-    // 12시 방향(0도)에서 화살표가 가리키는 위치로 계산
-    const targetAngle = baseSpins * 360 + (360 - segmentCenterAngle);
+    
+    // 기본 회전 (20-30바퀴)
+    const baseSpins = 20 + Math.random() * 10;
+    
+    // 화살표가 12시 방향에서 선택된 섹션을 가리키도록 조정
+    // 섹션 중앙이 12시 방향(0도)에 오려면 -segmentCenterAngle만큼 회전
+    const adjustmentAngle = 360 - segmentCenterAngle;
+    const totalRotation = baseSpins * 360 + adjustmentAngle;
     
     setRouletteGame(prev => ({
       ...prev,
       isSpinning: true,
-      targetAngle: prev.currentAngle + targetAngle,
+      targetAngle: prev.currentAngle + totalRotation,
       resultMultiplier: resultSegment.multiplier,
     }));
 
-    // 회전 시간 8초로 증가
+    // 회전 시간 8초
     setTimeout(() => {
       const winnings = betAmount * resultSegment.multiplier;
 
