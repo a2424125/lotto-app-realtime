@@ -214,12 +214,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
       { multiplier: 3, color: "#98D8C8", startAngle: 150, endAngle: 185, probability: 0.08 },
       { multiplier: 2, color: "#F7DC6F", startAngle: 185, endAngle: 220, probability: 0.09 },
       { multiplier: 0, color: "#95A5A6", startAngle: 220, endAngle: 360, probability: 0.555 },
-    ],CEB4", startAngle: 126, endAngle: 180, probability: 0.15 },
-      { multiplier: 8, color: "#FFEAA7", startAngle: 180, endAngle: 234, probability: 0.15 },
-      { multiplier: 5, color: "#DDA0DD", startAngle: 234, endAngle: 279, probability: 0.125 },
-      { multiplier: 3, color: "#98D8C8", startAngle: 279, endAngle: 315, probability: 0.10 },
-      { multiplier: 2, color: "#F7DC6F", startAngle: 315, endAngle: 342, probability: 0.075 },
-      { multiplier: 0, color: "#95A5A6", startAngle: 342, endAngle: 360, probability: 0.05 },
     ],
     spinHistory: [],
   });
@@ -1864,7 +1858,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 {/* 배수 표시 */}
                 {rouletteGame.segments.map((segment, index) => {
                   const angle = (segment.startAngle + segment.endAngle) / 2;
-                  const radius = 65; // 반지름을 줄여서 판 안쪽에 표시
+                  const radius = 65;
                   const x = 50 + radius * Math.cos((angle - 90) * Math.PI / 180);
                   const y = 50 + radius * Math.sin((angle - 90) * Math.PI / 180);
                   
