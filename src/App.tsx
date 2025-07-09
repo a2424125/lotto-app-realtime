@@ -702,7 +702,7 @@ const LottoApp = () => {
         
         {/* 깔끔하게 로또 6/45만 표시 */}
         <h1 style={{ fontSize: "16px", fontWeight: "bold", margin: "0" }}>
-          로또 6/45
+          로또팡 6/45
         </h1>
         
         {/* 빈 공간 (오른쪽 균형 맞추기용) */}
