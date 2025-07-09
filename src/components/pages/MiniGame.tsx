@@ -201,7 +201,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     currentAngle: 0,
     targetAngle: 0,
     selectedBetAmount: null,
-    resultMultiplier: -1, // -1로 초기화하여 결과가 없음을 표시
+    resultMultiplier: -1,
     betOptions: [2000, 3000, 5000, 7000, 10000],
     segments: [
       { multiplier: 2, color: "#FFE5E5", startAngle: 0, endAngle: 45, probability: 0.125 },
@@ -532,34 +532,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
       totalSpent: (prev?.totalSpent || 0) + betAmount,
     }));
 
-    // 확률에 따른 결과 계산
-    const random = Math.random();
-    let cumulativeProbability = 0;
-    let resultSegment = rouletteGame.segments[rouletteGame.segments.length - 1];
-    
-    for (const segment of rouletteGame.segments) {
-      cumulativeProbability += segment.probability;
-      if (random <= cumulativeProbability) {
-        resultSegment = segment;
-        break;
-      }
-    }
-
-    // 선택된 섹션의 중앙 각도 계산
-    const segmentCenterAngle = (resultSegment.startAngle + resultSegment.endAngle) / 2;
-    
-    // 기본 회전 (20-30바퀴)
+    // 기본 회전 (20-30바퀴) + 무작위 추가 회전
     const baseSpins = 20 + Math.random() * 10;
-    
-    // 화살표가 12시 방향에서 선택된 섹션을 가리키도록 조정
-    // 룰렛이 시계방향으로 회전하므로, 섹션이 12시 방향에 오려면
-    // 현재 각도에서 (360 - segmentCenterAngle)만큼 더 회전해야 함
-    const adjustmentAngle = (360 - segmentCenterAngle) % 360;
-    const totalRotation = baseSpins * 360 + adjustmentAngle;
-    
-    // 결과를 미리 저장
-    const finalMultiplier = resultSegment.multiplier;
-    const winnings = betAmount * finalMultiplier;
+    const randomAngle = Math.random() * 360;
+    const totalRotation = baseSpins * 360 + randomAngle;
     
     setRouletteGame(prev => ({
       ...prev,
@@ -570,6 +546,34 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
     // 회전 시간 8초
     setTimeout(() => {
+      // 최종 각도 계산
+      const finalAngle = (rouletteGame.currentAngle + totalRotation) % 360;
+      
+      // 12시 방향에 어떤 섹션이 있는지 계산
+      // 룰렛이 finalAngle만큼 회전했을 때, 
+      // 원래 (270 - finalAngle) 위치의 섹션이 12시(270도)에 온다
+      let angleAt12OClock = (270 - finalAngle) % 360;
+      if (angleAt12OClock < 0) {
+        angleAt12OClock += 360;
+      }
+      
+      // angleAt12OClock이 어떤 섹션에 속하는지 확인
+      let resultSegment = null;
+      for (const segment of rouletteGame.segments) {
+        if (angleAt12OClock >= segment.startAngle && angleAt12OClock < segment.endAngle) {
+          resultSegment = segment;
+          break;
+        }
+      }
+      
+      // 경계 케이스 처리 (360도 = 0도)
+      if (!resultSegment && angleAt12OClock >= 315) {
+        resultSegment = rouletteGame.segments[7]; // 315-360도 섹션
+      }
+      
+      const finalMultiplier = resultSegment ? resultSegment.multiplier : 0;
+      const winnings = betAmount * finalMultiplier;
+
       const newHistory = {
         betAmount: betAmount,
         resultMultiplier: finalMultiplier,
@@ -1811,7 +1815,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
               margin: "0 auto 16px",
               position: "relative",
             }}>
-              {/* 고정 화살표 - 배경 제거 */}
+              {/* 고정 화살표 - 12시 방향 */}
               <div style={{
                 position: "absolute",
                 top: "-20px",
