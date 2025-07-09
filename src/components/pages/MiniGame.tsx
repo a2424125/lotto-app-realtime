@@ -204,14 +204,14 @@ const MiniGame: React.FC<MiniGameProps> = ({
     resultMultiplier: -1, // -1로 초기화하여 결과가 없음을 표시
     betOptions: [2000, 3000, 5000, 7000, 10000],
     segments: [
-      { multiplier: 2, color: "#F5E6D3", startAngle: 0, endAngle: 45, probability: 0.125 },
-      { multiplier: 5, color: "#E8D5C4", startAngle: 45, endAngle: 90, probability: 0.125 },
-      { multiplier: 10, color: "#DBC4B5", startAngle: 90, endAngle: 135, probability: 0.125 },
-      { multiplier: 0, color: "#CEB3A6", startAngle: 135, endAngle: 180, probability: 0.125 },
-      { multiplier: 20, color: "#F5E6D3", startAngle: 180, endAngle: 225, probability: 0.125 },
-      { multiplier: 0, color: "#E8D5C4", startAngle: 225, endAngle: 270, probability: 0.125 },
-      { multiplier: 12, color: "#DBC4B5", startAngle: 270, endAngle: 315, probability: 0.125 },
-      { multiplier: 0, color: "#CEB3A6", startAngle: 315, endAngle: 360, probability: 0.125 },
+      { multiplier: 2, color: "#FFE5E5", startAngle: 0, endAngle: 45, probability: 0.125 },
+      { multiplier: 5, color: "#FFE0F0", startAngle: 45, endAngle: 90, probability: 0.125 },
+      { multiplier: 10, color: "#FFE5E5", startAngle: 90, endAngle: 135, probability: 0.125 },
+      { multiplier: 0, color: "#F5E5D5", startAngle: 135, endAngle: 180, probability: 0.125 },
+      { multiplier: 20, color: "#FFE5E5", startAngle: 180, endAngle: 225, probability: 0.125 },
+      { multiplier: 0, color: "#F5E5D5", startAngle: 225, endAngle: 270, probability: 0.125 },
+      { multiplier: 12, color: "#FFE0F0", startAngle: 270, endAngle: 315, probability: 0.125 },
+      { multiplier: 0, color: "#F5E5D5", startAngle: 315, endAngle: 360, probability: 0.125 },
     ],
     spinHistory: [],
   });
@@ -1802,25 +1802,40 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
           <div style={{ textAlign: "center", marginBottom: "16px" }}>
             <div style={{
-              width: "260px",
-              height: "260px",
+              width: "280px",
+              height: "280px",
               margin: "0 auto 16px",
               position: "relative",
+              backgroundColor: "#FFF5F0",
+              borderRadius: "50%",
+              padding: "10px",
             }}>
-              {/* 고정 화살표 - 위를 향하도록 수정 */}
+              {/* 고정 화살표 - 룰렛을 향하도록 수정 */}
               <div style={{
                 position: "absolute",
-                top: "-10px",
+                top: "-25px",
                 left: "50%",
                 transform: "translateX(-50%)",
-                width: "0",
-                height: "0",
-                borderLeft: "15px solid transparent",
-                borderRight: "15px solid transparent",
-                borderBottom: "30px solid #FFD700",
+                width: "50px",
+                height: "40px",
+                backgroundColor: "#FF4444",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 zIndex: 10,
-                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))",
-              }} />
+                boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                border: "2px solid #FF2222",
+              }}>
+                <div style={{
+                  width: "0",
+                  height: "0",
+                  borderLeft: "10px solid transparent",
+                  borderRight: "10px solid transparent",
+                  borderTop: "20px solid #FFD700",
+                  marginTop: "8px",
+                }} />
+              </div>
               
               {/* SVG 룰렛 */}
               <svg
@@ -1830,9 +1845,18 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   transform: `rotate(${rouletteGame.targetAngle || rouletteGame.currentAngle}deg)`,
                   transition: rouletteGame.isSpinning ? "transform 8s cubic-bezier(0.17, 0.67, 0.12, 0.99)" : "transform 0.5s ease-out",
                   willChange: "transform",
-                  filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.2))",
+                  filter: "drop-shadow(0 4px 8px rgba(139, 115, 85, 0.2))",
                 }}
               >
+                {/* 외곽 테두리 원 */}
+                <circle
+                  cx="130"
+                  cy="130"
+                  r="128"
+                  fill="none"
+                  stroke="#8B7355"
+                  strokeWidth="8"
+                />
                 {/* 룰렛 섹션들 */}
                 {rouletteGame.segments.map((segment, index) => {
                   const centerX = 130;
@@ -1868,7 +1892,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                       <path
                         d={pathData}
                         fill={segment.color}
-                        stroke="#2c2c2c"
+                        stroke="#8B7355"
                         strokeWidth="2"
                       />
                       {/* 배수 텍스트 */}
@@ -1877,16 +1901,29 @@ const MiniGame: React.FC<MiniGameProps> = ({
                         y={textY}
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        fill="#2c2c2c"
+                        fill="#5A4A3A"
                         fontSize={segment.multiplier >= 20 ? "16" : segment.multiplier >= 10 ? "14" : "12"}
                         fontWeight="bold"
-                        style={{
-                          textShadow: "1px 1px 2px rgba(255,255,255,0.5)",
-                        }}
                       >
                         {segment.multiplier === 0 ? "꽝" : `×${segment.multiplier}`}
                       </text>
                     </g>
+                  );
+                })}
+                
+                {/* 외곽 도트 장식 */}
+                {Array.from({ length: 16 }, (_, i) => {
+                  const angle = (i * 22.5 * Math.PI) / 180;
+                  const dotX = 130 + 115 * Math.cos(angle);
+                  const dotY = 130 + 115 * Math.sin(angle);
+                  return (
+                    <circle
+                      key={`dot-${i}`}
+                      cx={dotX}
+                      cy={dotY}
+                      r="3"
+                      fill="#FFD700"
+                    />
                   );
                 })}
                 
@@ -1898,29 +1935,26 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   <circle
                     cx="130"
                     cy="130"
-                    r="35"
-                    fill="#2c2c2c"
-                    stroke="#FFD700"
+                    r="40"
+                    fill="#E0E0E0"
+                    stroke="#8B7355"
                     strokeWidth="3"
                   />
                   <circle
                     cx="130"
                     cy="130"
-                    r="30"
-                    fill={rouletteGame.isSpinning ? "#666" : "#dc2626"}
-                    stroke="#FFD700"
+                    r="35"
+                    fill={rouletteGame.isSpinning ? "#B8B8B8" : "#D0D0D0"}
+                    stroke="#999"
                     strokeWidth="2"
-                    style={{
-                      filter: rouletteGame.isSpinning ? "none" : "drop-shadow(0 0 8px rgba(220, 38, 38, 0.6))",
-                    }}
                   />
                   <text
                     x="130"
                     y="130"
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    fill="white"
-                    fontSize="14"
+                    fill="#5A4A3A"
+                    fontSize="16"
                     fontWeight="bold"
                     pointerEvents="none"
                   >
@@ -2009,11 +2043,11 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   fontSize: "10px", 
                   padding: "6px", 
                   backgroundColor: segment.color, 
-                  color: "#2c2c2c", 
+                  color: "#5A4A3A", 
                   borderRadius: "4px",
                   textAlign: "center",
                   fontWeight: "bold",
-                  border: "1px solid #2c2c2c",
+                  border: "1px solid #8B7355",
                 }}>
                   {segment.multiplier === 0 ? "꽝" : `×${segment.multiplier}`}: {(segment.probability * 100).toFixed(1)}%
                 </div>
