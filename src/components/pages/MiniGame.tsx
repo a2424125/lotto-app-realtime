@@ -204,16 +204,14 @@ const MiniGame: React.FC<MiniGameProps> = ({
     resultMultiplier: -1, // -1로 초기화하여 결과가 없음을 표시
     betOptions: [2000, 3000, 5000, 7000, 10000],
     segments: [
-      { multiplier: 50, color: "#FFE4B5", startAngle: 0, endAngle: 12, probability: 0.015 },
-      { multiplier: 25, color: "#FFB6C1", startAngle: 12, endAngle: 24, probability: 0.02 },
-      { multiplier: 20, color: "#B0E0E6", startAngle: 24, endAngle: 40, probability: 0.03 },
-      { multiplier: 15, color: "#DDA0DD", startAngle: 40, endAngle: 60, probability: 0.04 },
-      { multiplier: 10, color: "#98FB98", startAngle: 60, endAngle: 85, probability: 0.05 },
-      { multiplier: 8, color: "#F0E68C", startAngle: 85, endAngle: 115, probability: 0.06 },
-      { multiplier: 5, color: "#FFA07A", startAngle: 115, endAngle: 150, probability: 0.07 },
-      { multiplier: 3, color: "#87CEEB", startAngle: 150, endAngle: 185, probability: 0.08 },
-      { multiplier: 2, color: "#F5DEB3", startAngle: 185, endAngle: 220, probability: 0.09 },
-      { multiplier: 0, color: "#D3D3D3", startAngle: 220, endAngle: 360, probability: 0.555 },
+      { multiplier: 2, color: "#F5E6D3", startAngle: 0, endAngle: 45, probability: 0.125 },
+      { multiplier: 5, color: "#E8D5C4", startAngle: 45, endAngle: 90, probability: 0.125 },
+      { multiplier: 10, color: "#DBC4B5", startAngle: 90, endAngle: 135, probability: 0.125 },
+      { multiplier: 0, color: "#CEB3A6", startAngle: 135, endAngle: 180, probability: 0.125 },
+      { multiplier: 20, color: "#F5E6D3", startAngle: 180, endAngle: 225, probability: 0.125 },
+      { multiplier: 0, color: "#E8D5C4", startAngle: 225, endAngle: 270, probability: 0.125 },
+      { multiplier: 12, color: "#DBC4B5", startAngle: 270, endAngle: 315, probability: 0.125 },
+      { multiplier: 0, color: "#CEB3A6", startAngle: 315, endAngle: 360, probability: 0.125 },
     ],
     spinHistory: [],
   });
@@ -1980,31 +1978,11 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 <span style={{ fontSize: "14px", color: currentColors.infoText, fontWeight: "bold" }}>
                   베팅 금액: {safeFormatNumber(rouletteGame.selectedBetAmount)}P
                 </span>
+                <div style={{ fontSize: "12px", color: currentColors.textSecondary, marginTop: "4px" }}>
+                  중앙 START 버튼을 눌러주세요!
+                </div>
               </div>
             )}
-
-            <button
-              onClick={startRouletteGame}
-              disabled={!rouletteGame.selectedBetAmount || rouletteGame.isSpinning}
-              style={{
-                width: "100%",
-                padding: "16px",
-                backgroundColor: rouletteGame.selectedBetAmount && !rouletteGame.isSpinning 
-                  ? "#ef4444" : currentColors.textSecondary,
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                fontSize: "16px",
-                fontWeight: "bold",
-                cursor: rouletteGame.selectedBetAmount && !rouletteGame.isSpinning 
-                  ? "pointer" : "not-allowed",
-                transition: "all 0.2s",
-                boxShadow: rouletteGame.selectedBetAmount && !rouletteGame.isSpinning 
-                  ? "0 4px 12px rgba(239, 68, 68, 0.3)" : "none",
-              }}
-            >
-              {rouletteGame.isSpinning ? "🎡 돌리는 중... (8초)" : "🎡 룰렛 돌리기!"}
-            </button>
           </div>
 
           <div style={{ marginBottom: "16px", backgroundColor: currentColors.gray, padding: "12px", borderRadius: "8px" }}>
