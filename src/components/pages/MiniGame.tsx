@@ -494,13 +494,11 @@ const MiniGame: React.FC<MiniGameProps> = ({
         gamesPlayed: (prev?.gamesPlayed || 0) + 1,
         totalWins: (prev?.totalWins || 0) + 1,
       }));
-      setTimeout(() => alert(`🎉 ${selectedPrize.name} ${safeFormatNumber(selectedPrize.points)}P 획득!`), 500);
     } else {
       setGameStats(prev => ({
         ...prev,
         gamesPlayed: (prev?.gamesPlayed || 0) + 1,
       }));
-      setTimeout(() => alert(`😅 ${selectedPrize.name}! 다음에 도전해보세요!`), 500);
     }
   };
 
@@ -542,12 +540,13 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }));
 
     const resultNumber = Math.floor(Math.random() * 45) + 1;
-    const targetAngle = rouletteGame.currentAngle + 360 * 5 + (resultNumber - 1) * (360 / 45);
+    const spins = 8 + Math.random() * 4; // 8-12바퀴 회전
+    const targetAngle = spins * 360 + (resultNumber - 1) * (360 / 45);
     
     setRouletteGame(prev => ({
       ...prev,
       isSpinning: true,
-      targetAngle,
+      targetAngle: prev.currentAngle + targetAngle,
       selectedNumber: resultNumber,
     }));
 
@@ -567,7 +566,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
       setRouletteGame(prev => ({
         ...prev,
         isSpinning: false,
-        currentAngle: targetAngle % 360,
+        currentAngle: prev.targetAngle % 360,
         spinHistory: [newHistory, ...prev.spinHistory].slice(0, 5),
       }));
 
@@ -579,15 +578,15 @@ const MiniGame: React.FC<MiniGameProps> = ({
           gamesPlayed: (prev?.gamesPlayed || 0) + 1,
           totalWins: (prev?.totalWins || 0) + 1,
         }));
-        setTimeout(() => alert(`🎉 대성공! ${multiplier}배 당첨! ${safeFormatNumber(winnings)}P 획득!`), 1000);
+        setTimeout(() => alert(`🎉 대성공! ${multiplier}배 당첨! ${safeFormatNumber(winnings)}P 획득!`), 4000);
       } else {
         setGameStats(prev => ({
           ...prev,
           gamesPlayed: (prev?.gamesPlayed || 0) + 1,
         }));
-        setTimeout(() => alert(`😢 아쉽게 실패! 결과: ${resultNumber}번`), 1000);
+        setTimeout(() => alert(`😢 아쉽게 실패! 결과: ${resultNumber}번`), 4000);
       }
-    }, 3000);
+    }, 4000);
   };
 
   const getMultiplier = (number: number): number => {
@@ -1685,10 +1684,8 @@ const MiniGame: React.FC<MiniGameProps> = ({
               <div style={{ 
                 display: "grid", 
                 gridTemplateColumns: "repeat(10, 1fr)", 
-                gap: "4px", 
+                gap: "3px", 
                 marginBottom: "16px",
-                maxHeight: "300px",
-                overflowY: "auto",
               }}>
                 {drawGame.slots.map((slot) => (
                   <button
@@ -1698,54 +1695,60 @@ const MiniGame: React.FC<MiniGameProps> = ({
                     onMouseEnter={() => setDrawGame(prev => ({ ...prev, hoveredSlot: slot.id }))}
                     onMouseLeave={() => setDrawGame(prev => ({ ...prev, hoveredSlot: null }))}
                     style={{
-                      width: "28px",
-                      height: "28px",
+                      width: "24px",
+                      height: "24px",
                       borderRadius: "4px",
                       border: slot.isRevealed 
-                        ? `2px solid ${slot.isWinner ? "#10b981" : currentColors.border}`
-                        : `1px solid ${currentColors.border}`,
+                        ? `2px solid ${slot.isWinner ? "#ffd700" : "#ef4444"}`
+                        : `1px solid #333`,
                       backgroundColor: slot.isRevealed 
-                        ? (slot.isWinner ? "#10b981" : "#ef4444")
-                        : (drawGame.hoveredSlot === slot.id ? currentColors.primary : currentColors.surface),
-                      color: slot.isRevealed || drawGame.hoveredSlot === slot.id ? "white" : currentColors.text,
-                      fontSize: slot.isRevealed ? "12px" : "10px",
+                        ? (slot.isWinner ? "#ffd700" : "#ef4444")
+                        : (drawGame.hoveredSlot === slot.id ? "#333" : "#000"),
+                      color: slot.isRevealed 
+                        ? "#000" 
+                        : (drawGame.hoveredSlot === slot.id ? "#ffd700" : "#ffd700"),
+                      fontSize: slot.isRevealed ? "10px" : "12px",
                       cursor: drawGame.selectedSlot !== null ? "not-allowed" : "pointer",
                       fontWeight: slot.isRevealed ? "bold" : "normal",
                       transition: "all 0.2s",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                   >
-                    {slot.isRevealed ? slot.prize?.emoji : slot.id + 1}
+                    {slot.isRevealed ? slot.prize?.emoji : "⭐"}
                   </button>
                 ))}
               </div>
 
               {drawGame.result && (
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ 
-                    padding: "16px",
-                    backgroundColor: drawGame.result.points > 0 ? currentColors.success : currentColors.error,
-                    borderRadius: "8px",
-                    marginBottom: "12px",
-                  }}>
-                    <div style={{ fontSize: "48px", marginBottom: "8px" }}>
-                      {drawGame.result.emoji}
-                    </div>
-                    <h4 style={{ 
-                      fontSize: "18px", 
-                      fontWeight: "bold", 
-                      color: drawGame.result.points > 0 ? currentColors.successText : currentColors.errorText,
-                      margin: "0 0 8px 0"
-                    }}>
-                      {drawGame.result.name}
-                    </h4>
-                    <p style={{
-                      color: drawGame.result.points > 0 ? currentColors.successText : currentColors.errorText,
-                      margin: "0",
-                      fontSize: "14px",
-                    }}>
-                      {drawGame.result.points > 0 ? `${safeFormatNumber(drawGame.result.points)}P 획득!` : "다음에 도전해보세요!"}
-                    </p>
+                <div style={{ 
+                  textAlign: "center",
+                  padding: "16px",
+                  backgroundColor: drawGame.result.points > 0 ? currentColors.success : currentColors.error,
+                  borderRadius: "8px",
+                  marginBottom: "12px",
+                  border: `2px solid ${drawGame.result.points > 0 ? "#ffd700" : "#ef4444"}`,
+                }}>
+                  <div style={{ fontSize: "48px", marginBottom: "8px" }}>
+                    {drawGame.result.emoji}
                   </div>
+                  <h4 style={{ 
+                    fontSize: "18px", 
+                    fontWeight: "bold", 
+                    color: drawGame.result.points > 0 ? currentColors.successText : currentColors.errorText,
+                    margin: "0 0 8px 0"
+                  }}>
+                    {drawGame.result.name}
+                  </h4>
+                  <p style={{
+                    color: drawGame.result.points > 0 ? currentColors.successText : currentColors.errorText,
+                    margin: "0 0 12px 0",
+                    fontSize: "14px",
+                    fontWeight: "bold",
+                  }}>
+                    {drawGame.result.points > 0 ? `🎉 ${safeFormatNumber(drawGame.result.points)}P 획득!` : "😅 다음에 도전해보세요!"}
+                  </p>
                   <button
                     onClick={resetDrawGame}
                     style={{
@@ -1807,9 +1810,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   `${m.color} ${(m.startAngle / 360) * 100}% ${(m.endAngle / 360) * 100}%`
                 ).join(", ")}
               )`,
-              transform: `rotate(${rouletteGame.currentAngle}deg)`,
-              transition: rouletteGame.isSpinning ? "transform 3s cubic-bezier(0.25, 0.46, 0.45, 0.94)" : "none",
+              transform: `rotate(${rouletteGame.targetAngle || rouletteGame.currentAngle}deg)`,
+              transition: rouletteGame.isSpinning ? "transform 4s cubic-bezier(0.25, 0.1, 0.25, 1)" : "transform 0.3s ease-out",
               position: "relative",
+              willChange: "transform",
             }}>
               <div style={{
                 position: "absolute",
