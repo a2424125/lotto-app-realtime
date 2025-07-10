@@ -518,7 +518,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }));
   };
 
-  // 룰렛 게임 함수들
+  // 룰렛 게임 함수들 - 수정된 부분
   const startRouletteGame = () => {
     const currentPoints = gameStats?.points || 0;
     const betAmount = rouletteGame.selectedBetAmount;
@@ -558,21 +558,28 @@ const MiniGame: React.FC<MiniGameProps> = ({
     // 기본 회전 (20-30바퀴)
     const baseSpins = 20 + Math.random() * 10;
     
-    // 현재 각도를 고려하여 목표 각도까지 회전량 계산
-    // 룰렛이 시계방향으로 회전하면, 원래 (270 - 회전각) 위치의 섹션이 12시(270도)에 온다
-    // segmentCenterAngle이 12시에 오려면 룰렛은 (270 - segmentCenterAngle)만큼 회전해야 함
+    // 현재 각도를 정규화 (0-360)
     const currentAngle = rouletteGame.currentAngle % 360;
-    let targetAngle = (270 - segmentCenterAngle) % 360;
-    if (targetAngle < 0) {
-      targetAngle += 360;
+    
+    // SVG에서 0도는 3시 방향이고, 화살표는 12시 방향(270도)에 있음
+    // 섹션이 12시 방향에 오려면, 섹션의 중앙 각도가 270도에 와야 함
+    // 따라서 회전해야 할 각도 = 270 - segmentCenterAngle
+    let targetRotation = 270 - segmentCenterAngle;
+    
+    // 음수일 경우 360을 더해서 양수로 변환
+    if (targetRotation < 0) {
+      targetRotation += 360;
     }
     
-    // 현재 각도에서 목표 각도까지의 회전량
-    let angleDiff = targetAngle - currentAngle;
+    // 현재 각도에서 목표까지의 최단 거리 계산
+    let angleDiff = targetRotation - currentAngle;
+    
+    // 항상 정방향(시계방향)으로 회전하도록 조정
     if (angleDiff < 0) {
       angleDiff += 360;
     }
     
+    // 전체 회전량 = 기본 회전 + 목표 각도까지의 회전
     const totalRotation = baseSpins * 360 + angleDiff;
     
     // 결과를 미리 저장
