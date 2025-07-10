@@ -205,14 +205,16 @@ const MiniGame: React.FC<MiniGameProps> = ({
     resultMultiplier: -1,
     betOptions: [2000, 3000, 5000, 7000, 10000],
     segments: [
-      { multiplier: 2, color: "#FFE5E5", startAngle: 0, endAngle: 45, probability: 0.05 },      // 5%
-      { multiplier: 5, color: "#FFE0F0", startAngle: 45, endAngle: 90, probability: 0.04 },     // 4%
-      { multiplier: 10, color: "#FFE5E5", startAngle: 90, endAngle: 135, probability: 0.03 },   // 3%
-      { multiplier: 0, color: "#F5E5D5", startAngle: 135, endAngle: 180, probability: 0.35 },   // 35% 꽝
-      { multiplier: 20, color: "#FFE5E5", startAngle: 180, endAngle: 225, probability: 0.02 },  // 2%
-      { multiplier: 0, color: "#F5E5D5", startAngle: 225, endAngle: 270, probability: 0.35 },   // 35% 꽝
-      { multiplier: 12, color: "#FFE0F0", startAngle: 270, endAngle: 315, probability: 0.03 },  // 3%
-      { multiplier: 0, color: "#F5E5D5", startAngle: 315, endAngle: 360, probability: 0.13 },   // 13% 꽝
+      // 확률에 맞게 섹션 크기 조정 (총 360도)
+      // 꽝 83% = 298.8도를 여러 섹션으로 분할
+      { multiplier: 0, color: "#F5E5D5", startAngle: 0, endAngle: 126, probability: 0.35 },      // 꽝 35% = 126도
+      { multiplier: 2, color: "#FFE5E5", startAngle: 126, endAngle: 144, probability: 0.05 },    // ×2배 5% = 18도
+      { multiplier: 0, color: "#F5E5D5", startAngle: 144, endAngle: 270, probability: 0.35 },    // 꽝 35% = 126도
+      { multiplier: 5, color: "#FFE0F0", startAngle: 270, endAngle: 284.4, probability: 0.04 },  // ×5배 4% = 14.4도
+      { multiplier: 10, color: "#FFE5E5", startAngle: 284.4, endAngle: 295.2, probability: 0.03 },// ×10배 3% = 10.8도
+      { multiplier: 12, color: "#FFE0F0", startAngle: 295.2, endAngle: 306, probability: 0.03 }, // ×12배 3% = 10.8도
+      { multiplier: 20, color: "#FFD700", startAngle: 306, endAngle: 313.2, probability: 0.02 }, // ×20배 2% = 7.2도
+      { multiplier: 0, color: "#F5E5D5", startAngle: 313.2, endAngle: 360, probability: 0.13 },  // 꽝 13% = 46.8도
     ],
     spinHistory: [],
   });
@@ -519,6 +521,33 @@ const MiniGame: React.FC<MiniGameProps> = ({
   };
 
   // 룰렛 게임 함수들 - 수정된 부분
+  const getSegmentAtAngle = (angle: number): any => {
+    // 정규화된 각도 (0-360)
+    const normalizedAngle = ((angle % 360) + 360) % 360;
+    
+    // 화살표는 12시 방향(SVG 좌표계에서 270도)에 있음
+    // 룰렛이 시계방향으로 angle만큼 회전했을 때,
+    // 원래 270도 위치에 있던 섹션이 화살표 위치에 옴
+    let sectionAngle = (270 + normalizedAngle) % 360;
+    
+    // 해당 각도에 있는 섹션 찾기
+    for (const segment of rouletteGame.segments) {
+      if (sectionAngle >= segment.startAngle && sectionAngle < segment.endAngle) {
+        return segment;
+      }
+      // 360도 경계 처리
+      if (segment.startAngle > segment.endAngle) { // 예: 315-360, 0-45 같은 경우
+        if (sectionAngle >= segment.startAngle || sectionAngle < segment.endAngle) {
+          return segment;
+        }
+      }
+    }
+    
+    // 기본값 (찾지 못한 경우)
+    return rouletteGame.segments[0];
+  };
+
+  // 룰렛 게임 함수들 - 완전히 수정된 버전
   const startRouletteGame = () => {
     const currentPoints = gameStats?.points || 0;
     const betAmount = rouletteGame.selectedBetAmount;
@@ -539,57 +568,66 @@ const MiniGame: React.FC<MiniGameProps> = ({
       totalSpent: (prev?.totalSpent || 0) + betAmount,
     }));
 
-    // 확률에 따른 결과 계산
+    // 확률에 따른 결과 계산 (83%가 꽝이 되도록)
     const random = Math.random();
     let cumulativeProbability = 0;
-    let resultSegment = rouletteGame.segments[rouletteGame.segments.length - 1];
+    let targetSegment = rouletteGame.segments[rouletteGame.segments.length - 1];
     
+    // 디버깅: 랜덤 값 확인
+    console.log('Random value:', random);
+    
+    // 확률에 따라 세그먼트 선택
     for (const segment of rouletteGame.segments) {
       cumulativeProbability += segment.probability;
-      if (random <= cumulativeProbability) {
-        resultSegment = segment;
+      if (random < cumulativeProbability) {
+        targetSegment = segment;
         break;
       }
     }
 
-    // 선택된 섹션의 중앙 각도 계산
-    const segmentCenterAngle = (resultSegment.startAngle + resultSegment.endAngle) / 2;
+    // 선택된 섹션 내에서 중앙 위치 선택
+    const targetAngleInSegment = (targetSegment.startAngle + targetSegment.endAngle) / 2;
     
-    // 기본 회전 (20-30바퀴)
-    const baseSpins = 20 + Math.random() * 10;
+    // 기본 회전 (10-15바퀴)
+    const baseSpins = 10 + Math.random() * 5;
     
-    // 현재 각도를 정규화 (0-360)
-    const currentAngle = rouletteGame.currentAngle % 360;
+    // 현재 각도 (0-360 범위로 정규화)
+    const currentAngle = ((rouletteGame.currentAngle % 360) + 360) % 360;
     
-    // SVG에서 0도는 3시 방향이고, 화살표는 12시 방향(270도)에 있음
-    // 섹션이 12시 방향에 오려면, 섹션의 중앙 각도가 270도에 와야 함
-    // 따라서 회전해야 할 각도 = 270 - segmentCenterAngle
-    let targetRotation = 270 - segmentCenterAngle;
+    // 룰렛이 A도 회전하면, 원래 위치 P는 (P + A) % 360 위치로 이동
+    // 화살표는 270도에 고정되어 있음
+    // targetAngleInSegment이 270도에 오려면: (targetAngleInSegment + 회전각도) % 360 = 270
+    // 회전각도 = (270 - targetAngleInSegment + 360) % 360
+    let requiredRotation = (270 - targetAngleInSegment + 360) % 360;
     
-    // 음수일 경우 360을 더해서 양수로 변환
-    if (targetRotation < 0) {
-      targetRotation += 360;
+    // 현재 각도에서 필요한 회전량까지
+    let additionalRotation = requiredRotation - (currentAngle % 360);
+    if (additionalRotation < 0) {
+      additionalRotation += 360;
     }
     
-    // 현재 각도에서 목표까지의 최단 거리 계산
-    let angleDiff = targetRotation - currentAngle;
+    // 전체 회전량 = 기본 회전 + 필요한 회전
+    const totalRotation = baseSpins * 360 + additionalRotation;
+    const finalAngle = currentAngle + totalRotation;
     
-    // 항상 정방향(시계방향)으로 회전하도록 조정
-    if (angleDiff < 0) {
-      angleDiff += 360;
-    }
-    
-    // 전체 회전량 = 기본 회전 + 목표 각도까지의 회전
-    const totalRotation = baseSpins * 360 + angleDiff;
-    
-    // 결과를 미리 저장
-    const finalMultiplier = resultSegment.multiplier;
+    // 결과 미리 저장
+    const finalMultiplier = targetSegment.multiplier;
     const winnings = betAmount * finalMultiplier;
+    
+    // 디버깅 정보
+    console.log('Target segment:', targetSegment);
+    console.log('Target angle in segment:', targetAngleInSegment);
+    console.log('Current angle:', currentAngle);
+    console.log('Required rotation:', requiredRotation);
+    console.log('Additional rotation:', additionalRotation);
+    console.log('Total rotation:', totalRotation);
+    console.log('Final angle:', finalAngle % 360);
+    console.log('Expected multiplier:', finalMultiplier);
     
     setRouletteGame(prev => ({
       ...prev,
       isSpinning: true,
-      targetAngle: prev.currentAngle + totalRotation,
+      targetAngle: finalAngle,
       resultMultiplier: -1, // 회전 중에는 결과를 숨김
     }));
 
@@ -605,7 +643,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
       setRouletteGame(prev => ({
         ...prev,
         isSpinning: false,
-        currentAngle: prev.targetAngle % 360,
+        currentAngle: finalAngle % 360,
         resultMultiplier: finalMultiplier,
         spinHistory: [newHistory, ...prev.spinHistory].slice(0, 5),
       }));
