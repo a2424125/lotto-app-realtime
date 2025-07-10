@@ -205,16 +205,15 @@ const MiniGame: React.FC<MiniGameProps> = ({
     resultMultiplier: -1,
     betOptions: [2000, 3000, 5000, 7000, 10000],
     segments: [
-      // 확률에 맞게 섹션 크기 조정 (총 360도)
-      // 꽝 83% = 298.8도를 여러 섹션으로 분할
-      { multiplier: 0, color: "#F5E5D5", startAngle: 0, endAngle: 126, probability: 0.35 },      // 꽝 35% = 126도
-      { multiplier: 2, color: "#FFE5E5", startAngle: 126, endAngle: 144, probability: 0.05 },    // ×2배 5% = 18도
-      { multiplier: 0, color: "#F5E5D5", startAngle: 144, endAngle: 270, probability: 0.35 },    // 꽝 35% = 126도
-      { multiplier: 5, color: "#FFE0F0", startAngle: 270, endAngle: 284.4, probability: 0.04 },  // ×5배 4% = 14.4도
-      { multiplier: 10, color: "#FFE5E5", startAngle: 284.4, endAngle: 295.2, probability: 0.03 },// ×10배 3% = 10.8도
-      { multiplier: 12, color: "#FFE0F0", startAngle: 295.2, endAngle: 306, probability: 0.03 }, // ×12배 3% = 10.8도
-      { multiplier: 20, color: "#FFD700", startAngle: 306, endAngle: 313.2, probability: 0.02 }, // ×20배 2% = 7.2도
-      { multiplier: 0, color: "#F5E5D5", startAngle: 313.2, endAngle: 360, probability: 0.13 },  // 꽝 13% = 46.8도
+      // 8개 섹션으로 구성 (시각적으로 균등하게 보이도록)
+      { multiplier: 0, color: "#E8E8E8", startAngle: 0, endAngle: 45, probability: 0.35 },      // 꽝 35%
+      { multiplier: 2, color: "#FFB6C1", startAngle: 45, endAngle: 90, probability: 0.05 },     // ×2배 5%
+      { multiplier: 0, color: "#E8E8E8", startAngle: 90, endAngle: 135, probability: 0.35 },    // 꽝 35%
+      { multiplier: 5, color: "#98FB98", startAngle: 135, endAngle: 180, probability: 0.04 },   // ×5배 4%
+      { multiplier: 10, color: "#87CEEB", startAngle: 180, endAngle: 225, probability: 0.03 },  // ×10배 3%
+      { multiplier: 12, color: "#DDA0DD", startAngle: 225, endAngle: 270, probability: 0.03 },  // ×12배 3%
+      { multiplier: 20, color: "#FFD700", startAngle: 270, endAngle: 315, probability: 0.02 },  // ×20배 2%
+      { multiplier: 0, color: "#E8E8E8", startAngle: 315, endAngle: 360, probability: 0.13 },   // 꽝 13%
     ],
     spinHistory: [],
   });
@@ -547,7 +546,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     return rouletteGame.segments[0];
   };
 
-  // 룰렛 게임 함수들 - 완전히 수정된 버전
+  // 룰렛 게임 함수들 - 완전히 새로운 접근
   const startRouletteGame = () => {
     const currentPoints = gameStats?.points || 0;
     const betAmount = rouletteGame.selectedBetAmount;
@@ -568,74 +567,86 @@ const MiniGame: React.FC<MiniGameProps> = ({
       totalSpent: (prev?.totalSpent || 0) + betAmount,
     }));
 
-    // 확률에 따른 결과 계산 (83%가 꽝이 되도록)
+    // 확률에 따른 결과 계산
     const random = Math.random();
-    let cumulativeProbability = 0;
-    let targetSegment = rouletteGame.segments[rouletteGame.segments.length - 1];
+    console.log('랜덤값:', random);
     
-    // 디버깅: 랜덤 값 확인
-    console.log('Random value:', random);
+    // 확률 테이블
+    const probTable = [
+      { multiplier: 0, prob: 0.83 },   // 83% 꽝
+      { multiplier: 2, prob: 0.05 },   // 5% ×2
+      { multiplier: 5, prob: 0.04 },   // 4% ×5
+      { multiplier: 10, prob: 0.03 },  // 3% ×10
+      { multiplier: 12, prob: 0.03 },  // 3% ×12
+      { multiplier: 20, prob: 0.02 },  // 2% ×20
+    ];
     
-    // 확률에 따라 세그먼트 선택
-    for (const segment of rouletteGame.segments) {
-      cumulativeProbability += segment.probability;
-      if (random < cumulativeProbability) {
-        targetSegment = segment;
+    let selectedMultiplier = 0;
+    let cumProb = 0;
+    
+    for (const item of probTable) {
+      cumProb += item.prob;
+      if (random < cumProb) {
+        selectedMultiplier = item.multiplier;
         break;
       }
     }
-
-    // 선택된 섹션 내에서 중앙 위치 선택
-    const targetAngleInSegment = (targetSegment.startAngle + targetSegment.endAngle) / 2;
     
-    // 기본 회전 (10-15바퀴)
-    const baseSpins = 10 + Math.random() * 5;
+    console.log('선택된 배수:', selectedMultiplier);
     
-    // 현재 각도 (0-360 범위로 정규화)
-    const currentAngle = ((rouletteGame.currentAngle % 360) + 360) % 360;
+    // 선택된 배수에 해당하는 섹션 찾기
+    const matchingSegments = rouletteGame.segments.filter(s => s.multiplier === selectedMultiplier);
+    const targetSegment = matchingSegments[Math.floor(Math.random() * matchingSegments.length)];
     
-    // 룰렛이 A도 회전하면, 원래 위치 P는 (P + A) % 360 위치로 이동
-    // 화살표는 270도에 고정되어 있음
-    // targetAngleInSegment이 270도에 오려면: (targetAngleInSegment + 회전각도) % 360 = 270
-    // 회전각도 = (270 - targetAngleInSegment + 360) % 360
-    let requiredRotation = (270 - targetAngleInSegment + 360) % 360;
+    // 타겟 섹션의 중앙 각도
+    const targetAngle = (targetSegment.startAngle + targetSegment.endAngle) / 2;
     
-    // 현재 각도에서 필요한 회전량까지
-    let additionalRotation = requiredRotation - (currentAngle % 360);
-    if (additionalRotation < 0) {
+    // 기본 회전 (최소 5바퀴)
+    const baseSpins = 5 + Math.floor(Math.random() * 5);
+    
+    // 현재 각도
+    const currentAngle = rouletteGame.currentAngle % 360;
+    
+    // 화살표는 270도(12시)에 있음
+    // SVG rotate는 시계방향
+    // targetAngle이 270도 위치에 오려면 (270 - targetAngle)만큼 회전
+    let neededRotation = (270 - targetAngle + 720) % 360; // +720은 음수 방지
+    
+    // 현재 위치에서 추가로 회전할 양
+    let additionalRotation = neededRotation - (currentAngle % 360);
+    while (additionalRotation < 0) {
       additionalRotation += 360;
     }
     
-    // 전체 회전량 = 기본 회전 + 필요한 회전
+    // 전체 회전량
     const totalRotation = baseSpins * 360 + additionalRotation;
     const finalAngle = currentAngle + totalRotation;
     
-    // 결과 미리 저장
-    const finalMultiplier = targetSegment.multiplier;
-    const winnings = betAmount * finalMultiplier;
+    console.log('=== 룰렛 회전 정보 ===');
+    console.log('타겟 섹션:', targetSegment);
+    console.log('타겟 각도:', targetAngle);
+    console.log('현재 각도:', currentAngle);
+    console.log('필요 회전:', neededRotation);
+    console.log('추가 회전:', additionalRotation);
+    console.log('전체 회전:', totalRotation);
+    console.log('최종 각도:', finalAngle % 360);
+    console.log('검증: (', targetAngle, ' + ', finalAngle % 360, ') % 360 =', (targetAngle + (finalAngle % 360)) % 360, '(270이어야 함)');
     
-    // 디버깅 정보
-    console.log('Target segment:', targetSegment);
-    console.log('Target angle in segment:', targetAngleInSegment);
-    console.log('Current angle:', currentAngle);
-    console.log('Required rotation:', requiredRotation);
-    console.log('Additional rotation:', additionalRotation);
-    console.log('Total rotation:', totalRotation);
-    console.log('Final angle:', finalAngle % 360);
-    console.log('Expected multiplier:', finalMultiplier);
+    // 최종 결과
+    const winnings = betAmount * selectedMultiplier;
     
     setRouletteGame(prev => ({
       ...prev,
       isSpinning: true,
       targetAngle: finalAngle,
-      resultMultiplier: -1, // 회전 중에는 결과를 숨김
+      resultMultiplier: -1,
     }));
 
-    // 회전 시간 8초
+    // 8초 후 결과 표시
     setTimeout(() => {
       const newHistory = {
         betAmount: betAmount,
-        resultMultiplier: finalMultiplier,
+        resultMultiplier: selectedMultiplier,
         winnings,
         timestamp: new Date().toLocaleTimeString(),
       };
@@ -644,7 +655,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
         ...prev,
         isSpinning: false,
         currentAngle: finalAngle % 360,
-        resultMultiplier: finalMultiplier,
+        resultMultiplier: selectedMultiplier,
         spinHistory: [newHistory, ...prev.spinHistory].slice(0, 5),
       }));
 
@@ -656,13 +667,13 @@ const MiniGame: React.FC<MiniGameProps> = ({
           gamesPlayed: (prev?.gamesPlayed || 0) + 1,
           totalWins: (prev?.totalWins || 0) + 1,
         }));
-        setTimeout(() => alert(`🎉 대성공! ${finalMultiplier}배 당첨! ${safeFormatNumber(winnings)}P 획득!`), 500);
+        setTimeout(() => alert(`🎉 축하합니다! ${selectedMultiplier}배 당첨! ${safeFormatNumber(winnings)}P 획득!`), 100);
       } else {
         setGameStats(prev => ({
           ...prev,
           gamesPlayed: (prev?.gamesPlayed || 0) + 1,
         }));
-        setTimeout(() => alert(`😢 아쉽게 꽝! 다음 기회에 도전하세요!`), 500);
+        setTimeout(() => alert(`😢 아쉽게 꽝! 다음 기회에 도전하세요!`), 100);
       }
     }, 8000);
   };
@@ -1897,19 +1908,19 @@ const MiniGame: React.FC<MiniGameProps> = ({
               margin: "0 auto 16px",
               position: "relative",
             }}>
-              {/* 고정 화살표 - 12시 방향 */}
+              {/* 고정 화살표 - 12시 방향 - 더 크고 명확하게 */}
               <div style={{
                 position: "absolute",
-                top: "-20px",
+                top: "-25px",
                 left: "50%",
                 transform: "translateX(-50%)",
                 width: "0",
                 height: "0",
-                borderLeft: "12px solid transparent",
-                borderRight: "12px solid transparent",
-                borderTop: "24px solid #FFD700",
+                borderLeft: "15px solid transparent",
+                borderRight: "15px solid transparent",
+                borderTop: "30px solid #FF0000",
                 zIndex: 10,
-                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))",
+                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))",
               }} />
               
               {/* SVG 룰렛 */}
@@ -1918,6 +1929,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 height="260"
                 style={{
                   transform: `rotate(${rouletteGame.targetAngle || rouletteGame.currentAngle}deg)`,
+                  transformOrigin: "130px 130px",
                   transition: rouletteGame.isSpinning ? "transform 8s cubic-bezier(0.17, 0.67, 0.12, 0.99)" : "transform 0.5s ease-out",
                   willChange: "transform",
                   filter: "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15))",
@@ -1958,8 +1970,8 @@ const MiniGame: React.FC<MiniGameProps> = ({
                       <path
                         d={pathData}
                         fill={segment.color}
-                        stroke="#DDD"
-                        strokeWidth="1"
+                        stroke="#333"
+                        strokeWidth="2"
                       />
                       {/* 배수 텍스트 */}
                       <text
@@ -1967,9 +1979,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
                         y={textY}
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        fill="#5A4A3A"
-                        fontSize={segment.multiplier >= 20 ? "16" : segment.multiplier >= 10 ? "14" : "12"}
+                        fill={segment.multiplier === 0 ? "#999" : "#333"}
+                        fontSize={segment.multiplier >= 10 ? "20" : "18"}
                         fontWeight="bold"
+                        style={{ userSelect: "none" }}
                       >
                         {segment.multiplier === 0 ? "꽝" : `×${segment.multiplier}`}
                       </text>
@@ -1996,31 +2009,31 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 {/* 중앙 START 버튼 */}
                 <g 
                   onClick={startRouletteGame}
-                  style={{ cursor: rouletteGame.isSpinning ? "not-allowed" : "pointer" }}
+                  style={{ cursor: rouletteGame.isSpinning || !rouletteGame.selectedBetAmount ? "not-allowed" : "pointer" }}
                 >
                   <circle
                     cx="130"
                     cy="130"
-                    r="40"
-                    fill="#E0E0E0"
-                    stroke="#AAA"
-                    strokeWidth="2"
+                    r="45"
+                    fill="#FFF"
+                    stroke="#333"
+                    strokeWidth="3"
                   />
                   <circle
                     cx="130"
                     cy="130"
-                    r="35"
-                    fill={rouletteGame.isSpinning ? "#B8B8B8" : "#D0D0D0"}
-                    stroke="#999"
-                    strokeWidth="1"
+                    r="40"
+                    fill={rouletteGame.isSpinning ? "#CCC" : "#FFF"}
+                    stroke="#666"
+                    strokeWidth="2"
                   />
                   <text
                     x="130"
                     y="130"
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    fill="#5A4A3A"
-                    fontSize="16"
+                    fill="#333"
+                    fontSize="18"
                     fontWeight="bold"
                     pointerEvents="none"
                   >
@@ -2029,16 +2042,26 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 </g>
               </svg>
 
-              {/* 결과 표시 */}
+              {/* 결과 표시 - 디버깅 정보 포함 */}
               {!rouletteGame.isSpinning && rouletteGame.resultMultiplier >= 0 && (
                 <div style={{ 
-                  fontSize: "18px", 
-                  fontWeight: "bold", 
-                  color: currentColors.text, 
-                  marginTop: "12px",
+                  marginTop: "16px",
                   textAlign: "center",
                 }}>
-                  결과: {rouletteGame.resultMultiplier === 0 ? "꽝 😢" : `×${rouletteGame.resultMultiplier} 당첨! 🎉`}
+                  <div style={{ 
+                    fontSize: "20px", 
+                    fontWeight: "bold", 
+                    color: currentColors.text, 
+                    marginBottom: "8px",
+                  }}>
+                    결과: {rouletteGame.resultMultiplier === 0 ? "꽝 😢" : `×${rouletteGame.resultMultiplier} 당첨! 🎉`}
+                  </div>
+                  <div style={{
+                    fontSize: "12px",
+                    color: currentColors.textSecondary,
+                  }}>
+                    최종 각도: {Math.round(rouletteGame.currentAngle)}°
+                  </div>
                 </div>
               )}
             </div>
