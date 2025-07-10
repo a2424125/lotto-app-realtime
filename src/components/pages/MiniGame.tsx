@@ -1,4 +1,4 @@
-  // 룰렛 게임 함수들
+// 룰렛 게임 함수들
   const startRouletteGame = () => {
     const currentPoints = gameStats?.points || 0;
     const betAmount = rouletteGame.selectedBetAmount;
@@ -68,9 +68,42 @@
 
     // 회전 시간 8초
     setTimeout(() => {
-      constimport React, { useState, useEffect } from "react";
+      const newHistory = {
+        betAmount: betAmount,
+        resultMultiplier: finalMultiplier,
+        winnings,
+        timestamp: new Date().toLocaleTimeString(),
+      };
+
+      setRouletteGame(prev => ({
+        ...prev,
+        isSpinning: false,
+        currentAngle: prev.targetAngle % 360,
+        resultMultiplier: finalMultiplier,
+        spinHistory: [newHistory, ...prev.spinHistory].slice(0, 5),
+      }));
+
+      if (winnings > 0) {
+        setGameStats(prev => ({
+          ...prev,
+          points: (prev?.points || 0) + winnings,
+          totalWon: (prev?.totalWon || 0) + winnings,
+          gamesPlayed: (prev?.gamesPlayed || 0) + 1,
+          totalWins: (prev?.totalWins || 0) + 1,
+        }));
+        setTimeout(() => alert(`🎉 대성공! ${finalMultiplier}배 당첨! ${safeFormatNumber(winnings)}P 획득!`), 500);
+      } else {
+        setGameStats(prev => ({
+          ...prev,
+          gamesPlayed: (prev?.gamesPlayed || 0) + 1,
+        }));
+        setTimeout(() => alert(`😢 아쉽게 꽝! 다음 기회에 도전하세요!`), 500);
+      }
+    }, 8000);
+  };import React, { useState, useEffect } from "react";
 import LottoNumberBall from "../shared/LottoNumberBall";
-    interface MiniGameProps {
+
+interface MiniGameProps {
   pastWinningNumbers: number[][];
   isDataLoading?: boolean;
   dataStatus?: any;
