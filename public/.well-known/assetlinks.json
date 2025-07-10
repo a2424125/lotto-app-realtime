@@ -3,6 +3,9 @@
   "target": {
     "namespace": "android_app",
     "package_name": "com.lottopang645.app",
-    "sha256_cert_fingerprints": ["B5:2F:B3:37:6F:C7:95:C2:65:A2:76:18:FD:72:2F:A6:54:99:FD:D8:50:50:EA:A2:3A:29:5D:3F:E8:8D:08:8B"]
+    "sha256_cert_fingerprints": [
+      "B5:2F:B3:37:6F:C7:95:C2:65:A2:76:18:FD:72:2F:A6:54:99:FD:D8:50:50:EA:A2:3A:29:5D:3F:E8:8D:08:8B",
+      "AC:67:83:18:EB:9B:E2:B3:20:1C:5D:3D:B9:33:BF:44:18:EE:7F:38:00:27:6A:11:23:D0:38:AB:C0:BC:74:F5"
+    ]
   }
 }]
