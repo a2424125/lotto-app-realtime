@@ -1,0 +1,8 @@
+json[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.lottopang645.app",
+    "sha256_cert_fingerprints": ["B5:2F:B3:37:6F:C7:95:C2:65:A2:76:18:FD:72:2F:A6:54:99:FD:D8:50:50:EA:A2:3A:29:5D:3F:E8:8D:08:8B"]
+  }
+}]
