@@ -205,15 +205,15 @@ const MiniGame: React.FC<MiniGameProps> = ({
     resultMultiplier: -1,
     betOptions: [2000, 3000, 5000, 7000, 10000],
     segments: [
-      // 8개 섹션으로 구성 (시각적으로 균등하게 보이도록)
-      { multiplier: 0, color: "#F5E5D5", startAngle: 0, endAngle: 45, probability: 0.35 },      // 꽝 35%
-      { multiplier: 2, color: "#FFE5E5", startAngle: 45, endAngle: 90, probability: 0.05 },     // ×2배 5%
-      { multiplier: 0, color: "#F5E5D5", startAngle: 90, endAngle: 135, probability: 0.35 },    // 꽝 35%
-      { multiplier: 5, color: "#FFE0F0", startAngle: 135, endAngle: 180, probability: 0.04 },   // ×5배 4%
-      { multiplier: 10, color: "#E5F5FF", startAngle: 180, endAngle: 225, probability: 0.03 },  // ×10배 3%
-      { multiplier: 12, color: "#FFE0F0", startAngle: 225, endAngle: 270, probability: 0.03 },  // ×12배 3%
-      { multiplier: 20, color: "#FFD700", startAngle: 270, endAngle: 315, probability: 0.02 },  // ×20배 2%
-      { multiplier: 0, color: "#F5E5D5", startAngle: 315, endAngle: 360, probability: 0.13 },   // 꽝 13%
+      // 8개 섹션으로 구성 (매우 부드러운 파스텔톤)
+      { multiplier: 0, color: "#FFF5F5", startAngle: 0, endAngle: 45, probability: 0.35 },      // 꽝 35%
+      { multiplier: 2, color: "#FFF0F5", startAngle: 45, endAngle: 90, probability: 0.05 },     // ×2배 5%
+      { multiplier: 0, color: "#FFF5F5", startAngle: 90, endAngle: 135, probability: 0.35 },    // 꽝 35%
+      { multiplier: 5, color: "#FFF5F0", startAngle: 135, endAngle: 180, probability: 0.04 },   // ×5배 4%
+      { multiplier: 10, color: "#F5F5FF", startAngle: 180, endAngle: 225, probability: 0.03 },  // ×10배 3%
+      { multiplier: 12, color: "#FFF0F5", startAngle: 225, endAngle: 270, probability: 0.03 },  // ×12배 3%
+      { multiplier: 20, color: "#FFFAF0", startAngle: 270, endAngle: 315, probability: 0.02 },  // ×20배 2%
+      { multiplier: 0, color: "#FFF5F5", startAngle: 315, endAngle: 360, probability: 0.13 },   // 꽝 13%
     ],
     spinHistory: [],
   });
@@ -1882,19 +1882,20 @@ const MiniGame: React.FC<MiniGameProps> = ({
           border: `1px solid ${currentColors.border}`,
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-            <h3 style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0" }}>
+            <h3 style={{ fontSize: "16px", fontWeight: "500", color: currentColors.text, margin: "0" }}>
               🎡 스피드 룰렛
             </h3>
             <button
               onClick={() => setSelectedGame(null)}
               style={{
                 padding: "6px 12px",
-                backgroundColor: currentColors.textSecondary,
-                color: "white",
-                border: "none",
+                backgroundColor: "#F5F5F5",
+                color: "#666",
+                border: "1px solid #E0E0E0",
                 borderRadius: "6px",
-                fontSize: "12px",
+                fontSize: "11px",
                 cursor: "pointer",
+                fontWeight: "normal",
               }}
             >
               게임 선택으로
@@ -1908,19 +1909,19 @@ const MiniGame: React.FC<MiniGameProps> = ({
               margin: "0 auto 16px",
               position: "relative",
             }}>
-              {/* 고정 화살표 - 12시 방향 - 더 크고 명확하게 */}
+              {/* 고정 화살표 - 12시 방향 - 부드러운 색상 */}
               <div style={{
                 position: "absolute",
-                top: "-25px",
+                top: "-20px",
                 left: "50%",
                 transform: "translateX(-50%)",
                 width: "0",
                 height: "0",
-                borderLeft: "15px solid transparent",
-                borderRight: "15px solid transparent",
-                borderTop: "30px solid #FF0000",
+                borderLeft: "12px solid transparent",
+                borderRight: "12px solid transparent",
+                borderTop: "24px solid #FF9999",
                 zIndex: 10,
-                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))",
+                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))",
               }} />
               
               {/* SVG 룰렛 */}
@@ -1932,9 +1933,22 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   transformOrigin: "130px 130px",
                   transition: rouletteGame.isSpinning ? "transform 8s cubic-bezier(0.17, 0.67, 0.12, 0.99)" : "transform 0.5s ease-out",
                   willChange: "transform",
-                  filter: "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15))",
                 }}
               >
+                {/* 외곽 원 배경 */}
+                <circle
+                  cx="130"
+                  cy="130"
+                  r="125"
+                  fill="#D4A574"
+                  opacity="0.3"
+                />
+                <circle
+                  cx="130"
+                  cy="130"
+                  r="120"
+                  fill="white"
+                />
                 {/* 룰렛 섹션들 */}
                 {rouletteGame.segments.map((segment, index) => {
                   const centerX = 130;
@@ -1970,8 +1984,8 @@ const MiniGame: React.FC<MiniGameProps> = ({
                       <path
                         d={pathData}
                         fill={segment.color}
-                        stroke="#333"
-                        strokeWidth="2"
+                        stroke="#E0E0E0"
+                        strokeWidth="1"
                       />
                       {/* 배수 텍스트 */}
                       <text
@@ -1979,9 +1993,9 @@ const MiniGame: React.FC<MiniGameProps> = ({
                         y={textY}
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        fill={segment.multiplier === 0 ? "#999" : "#333"}
-                        fontSize={segment.multiplier >= 10 ? "20" : "18"}
-                        fontWeight="bold"
+                        fill={segment.multiplier === 0 ? "#B0B0B0" : "#666"}
+                        fontSize="14"
+                        fontWeight="normal"
                         style={{ userSelect: "none" }}
                       >
                         {segment.multiplier === 0 ? "꽝" : `×${segment.multiplier}`}
@@ -2000,8 +2014,8 @@ const MiniGame: React.FC<MiniGameProps> = ({
                       key={`dot-${i}`}
                       cx={dotX}
                       cy={dotY}
-                      r="3"
-                      fill="#FFD700"
+                      r="2"
+                      fill="#F0C0A0"
                     />
                   );
                 })}
@@ -2014,27 +2028,27 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   <circle
                     cx="130"
                     cy="130"
-                    r="45"
-                    fill="#FFF"
-                    stroke="#333"
-                    strokeWidth="3"
+                    r="40"
+                    fill="#F5F5F5"
+                    stroke="#DDD"
+                    strokeWidth="1"
                   />
                   <circle
                     cx="130"
                     cy="130"
-                    r="40"
-                    fill={rouletteGame.isSpinning ? "#CCC" : "#FFF"}
-                    stroke="#666"
-                    strokeWidth="2"
+                    r="35"
+                    fill={rouletteGame.isSpinning ? "#E8E8E8" : "#FAFAFA"}
+                    stroke="#E0E0E0"
+                    strokeWidth="1"
                   />
                   <text
                     x="130"
                     y="130"
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    fill="#333"
-                    fontSize="18"
-                    fontWeight="bold"
+                    fill="#888"
+                    fontSize="14"
+                    fontWeight="normal"
                     pointerEvents="none"
                   >
                     {rouletteGame.isSpinning ? "SPIN" : "START"}
@@ -2042,25 +2056,19 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 </g>
               </svg>
 
-              {/* 결과 표시 - 디버깅 정보 포함 */}
+              {/* 결과 표시 */}
               {!rouletteGame.isSpinning && rouletteGame.resultMultiplier >= 0 && (
                 <div style={{ 
                   marginTop: "16px",
                   textAlign: "center",
                 }}>
                   <div style={{ 
-                    fontSize: "20px", 
-                    fontWeight: "bold", 
+                    fontSize: "16px", 
+                    fontWeight: "normal", 
                     color: currentColors.text, 
-                    marginBottom: "8px",
+                    marginBottom: "4px",
                   }}>
                     결과: {rouletteGame.resultMultiplier === 0 ? "꽝 😢" : `×${rouletteGame.resultMultiplier} 당첨! 🎉`}
-                  </div>
-                  <div style={{
-                    fontSize: "12px",
-                    color: currentColors.textSecondary,
-                  }}>
-                    최종 각도: {Math.round(rouletteGame.currentAngle)}°
                   </div>
                 </div>
               )}
@@ -2068,7 +2076,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
           </div>
 
           <div style={{ marginBottom: "16px" }}>
-            <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 12px 0" }}>
+            <h4 style={{ fontSize: "13px", color: currentColors.text, margin: "0 0 12px 0" }}>
               베팅 금액 선택
             </h4>
             
@@ -2082,18 +2090,18 @@ const MiniGame: React.FC<MiniGameProps> = ({
                     onClick={() => setRouletteGame(prev => ({ ...prev, selectedBetAmount: amount }))}
                     disabled={rouletteGame.isSpinning || !canAfford}
                     style={{
-                      padding: "12px",
+                      padding: "10px",
                       borderRadius: "8px",
-                      border: isSelected ? `3px solid ${currentColors.primary}` : `2px solid ${currentColors.border}`,
+                      border: isSelected ? `2px solid #FF9999` : `1px solid #E0E0E0`,
                       backgroundColor: isSelected 
-                        ? currentColors.primary 
+                        ? "#FFF0F0" 
                         : canAfford 
-                          ? currentColors.surface 
-                          : currentColors.gray,
-                      color: isSelected ? "white" : canAfford ? currentColors.text : currentColors.textSecondary,
-                      fontSize: "14px",
+                          ? "#FAFAFA" 
+                          : "#F5F5F5",
+                      color: isSelected ? "#FF6666" : canAfford ? "#666" : "#CCC",
+                      fontSize: "13px",
                       cursor: rouletteGame.isSpinning || !canAfford ? "not-allowed" : "pointer",
-                      fontWeight: isSelected ? "bold" : "normal",
+                      fontWeight: isSelected ? "500" : "normal",
                       textAlign: "center",
                       opacity: canAfford ? 1 : 0.6,
                       transition: "all 0.2s",
@@ -2108,16 +2116,16 @@ const MiniGame: React.FC<MiniGameProps> = ({
             {rouletteGame.selectedBetAmount && (
               <div style={{ 
                 padding: "12px", 
-                backgroundColor: currentColors.info, 
+                backgroundColor: "#F5F5FF", 
                 borderRadius: "8px", 
                 marginBottom: "16px",
                 textAlign: "center",
-                border: `1px solid ${currentColors.infoBorder}`,
+                border: `1px solid #E0E0F0`,
               }}>
-                <span style={{ fontSize: "14px", color: currentColors.infoText, fontWeight: "bold" }}>
+                <span style={{ fontSize: "13px", color: "#666", fontWeight: "normal" }}>
                   베팅 금액: {safeFormatNumber(rouletteGame.selectedBetAmount)}P
                 </span>
-                <div style={{ fontSize: "12px", color: currentColors.textSecondary, marginTop: "4px" }}>
+                <div style={{ fontSize: "11px", color: "#999", marginTop: "4px" }}>
                   중앙 START 버튼을 눌러주세요!
                 </div>
               </div>
@@ -2126,32 +2134,32 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
           {rouletteGame.spinHistory.length > 0 && (
             <div>
-              <h4 style={{ fontSize: "14px", color: currentColors.text, margin: "0 0 8px 0" }}>
-                최근 결과 (최대 5회)
+              <h4 style={{ fontSize: "13px", color: currentColors.text, margin: "0 0 8px 0" }}>
+                최근 결과
               </h4>
               <div style={{ maxHeight: "150px", overflowY: "auto" }}>
                 {rouletteGame.spinHistory.map((history, index) => (
                   <div
                     key={index}
                     style={{
-                      padding: "10px",
-                      backgroundColor: history.winnings > 0 ? currentColors.success : currentColors.error,
+                      padding: "8px",
+                      backgroundColor: history.winnings > 0 ? "#F0FFF0" : "#FFF5F5",
                       borderRadius: "6px",
                       marginBottom: "6px",
-                      fontSize: "12px",
-                      color: history.winnings > 0 ? currentColors.successText : currentColors.errorText,
-                      border: `1px solid ${history.winnings > 0 ? currentColors.successBorder : currentColors.errorBorder}`,
+                      fontSize: "11px",
+                      color: "#666",
+                      border: `1px solid ${history.winnings > 0 ? "#E0F0E0" : "#F0E0E0"}`,
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                      <span style={{ fontWeight: "bold" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+                      <span>
                         베팅: {safeFormatNumber(history.betAmount)}P
                       </span>
-                      <span style={{ fontWeight: "bold" }}>
+                      <span style={{ color: history.winnings > 0 ? "#66BB66" : "#BB6666" }}>
                         {history.winnings > 0 ? `+${safeFormatNumber(history.winnings)}P` : "꽝"}
                       </span>
                     </div>
-                    <div style={{ fontSize: "10px", opacity: 0.8 }}>
+                    <div style={{ fontSize: "10px", color: "#999" }}>
                       {history.timestamp} | {history.resultMultiplier === 0 ? "꽝" : `×${history.resultMultiplier}배`}
                     </div>
                   </div>
