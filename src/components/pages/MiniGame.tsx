@@ -206,14 +206,14 @@ const MiniGame: React.FC<MiniGameProps> = ({
     betOptions: [2000, 3000, 5000, 7000, 10000],
     segments: [
       // 8개 섹션으로 구성 (시각적으로 균등하게 보이도록)
-      { multiplier: 0, color: "#E8E8E8", startAngle: 0, endAngle: 45, probability: 0.35 },      // 꽝 35%
-      { multiplier: 2, color: "#FFB6C1", startAngle: 45, endAngle: 90, probability: 0.05 },     // ×2배 5%
-      { multiplier: 0, color: "#E8E8E8", startAngle: 90, endAngle: 135, probability: 0.35 },    // 꽝 35%
-      { multiplier: 5, color: "#98FB98", startAngle: 135, endAngle: 180, probability: 0.04 },   // ×5배 4%
-      { multiplier: 10, color: "#87CEEB", startAngle: 180, endAngle: 225, probability: 0.03 },  // ×10배 3%
-      { multiplier: 12, color: "#DDA0DD", startAngle: 225, endAngle: 270, probability: 0.03 },  // ×12배 3%
+      { multiplier: 0, color: "#F5E5D5", startAngle: 0, endAngle: 45, probability: 0.35 },      // 꽝 35%
+      { multiplier: 2, color: "#FFE5E5", startAngle: 45, endAngle: 90, probability: 0.05 },     // ×2배 5%
+      { multiplier: 0, color: "#F5E5D5", startAngle: 90, endAngle: 135, probability: 0.35 },    // 꽝 35%
+      { multiplier: 5, color: "#FFE0F0", startAngle: 135, endAngle: 180, probability: 0.04 },   // ×5배 4%
+      { multiplier: 10, color: "#E5F5FF", startAngle: 180, endAngle: 225, probability: 0.03 },  // ×10배 3%
+      { multiplier: 12, color: "#FFE0F0", startAngle: 225, endAngle: 270, probability: 0.03 },  // ×12배 3%
       { multiplier: 20, color: "#FFD700", startAngle: 270, endAngle: 315, probability: 0.02 },  // ×20배 2%
-      { multiplier: 0, color: "#E8E8E8", startAngle: 315, endAngle: 360, probability: 0.13 },   // 꽝 13%
+      { multiplier: 0, color: "#F5E5D5", startAngle: 315, endAngle: 360, probability: 0.13 },   // 꽝 13%
     ],
     spinHistory: [],
   });
