@@ -1,106 +1,4 @@
-// 룰렛 게임 함수들
-  const startRouletteGame = () => {
-    const currentPoints = gameStats?.points || 0;
-    const betAmount = rouletteGame.selectedBetAmount;
-    
-    if (!betAmount) {
-      alert("베팅 금액을 먼저 선택해주세요!");
-      return;
-    }
-
-    if (currentPoints < betAmount) {
-      showAdOfferDialog(betAmount, "스피드 룰렛");
-      return;
-    }
-
-    setGameStats(prev => ({
-      ...prev,
-      points: (prev?.points || 0) - betAmount,
-      totalSpent: (prev?.totalSpent || 0) + betAmount,
-    }));
-
-    // 확률에 따른 결과 계산
-    const random = Math.random();
-    let cumulativeProbability = 0;
-    let resultSegment = rouletteGame.segments[rouletteGame.segments.length - 1];
-    
-    for (const segment of rouletteGame.segments) {
-      cumulativeProbability += segment.probability;
-      if (random <= cumulativeProbability) {
-        resultSegment = segment;
-        break;
-      }
-    }
-
-    // 선택된 섹션의 중앙 각도 계산
-    const segmentCenterAngle = (resultSegment.startAngle + resultSegment.endAngle) / 2;
-    
-    // 기본 회전 (20-30바퀴)
-    const baseSpins = 20 + Math.random() * 10;
-    
-    // 현재 각도를 고려하여 목표 각도까지 회전량 계산
-    // 룰렛이 시계방향으로 회전하면, 원래 (270 - 회전각) 위치의 섹션이 12시(270도)에 온다
-    // segmentCenterAngle이 12시에 오려면 룰렛은 (270 - segmentCenterAngle)만큼 회전해야 함
-    const currentAngle = rouletteGame.currentAngle % 360;
-    let targetAngle = (270 - segmentCenterAngle) % 360;
-    if (targetAngle < 0) {
-      targetAngle += 360;
-    }
-    
-    // 현재 각도에서 목표 각도까지의 회전량
-    let angleDiff = targetAngle - currentAngle;
-    if (angleDiff < 0) {
-      angleDiff += 360;
-    }
-    
-    const totalRotation = baseSpins * 360 + angleDiff;
-    
-    // 결과를 미리 저장
-    const finalMultiplier = resultSegment.multiplier;
-    const winnings = betAmount * finalMultiplier;
-    
-    setRouletteGame(prev => ({
-      ...prev,
-      isSpinning: true,
-      targetAngle: prev.currentAngle + totalRotation,
-      resultMultiplier: -1, // 회전 중에는 결과를 숨김
-    }));
-
-    // 회전 시간 8초
-    setTimeout(() => {
-      const newHistory = {
-        betAmount: betAmount,
-        resultMultiplier: finalMultiplier,
-        winnings,
-        timestamp: new Date().toLocaleTimeString(),
-      };
-
-      setRouletteGame(prev => ({
-        ...prev,
-        isSpinning: false,
-        currentAngle: prev.targetAngle % 360,
-        resultMultiplier: finalMultiplier,
-        spinHistory: [newHistory, ...prev.spinHistory].slice(0, 5),
-      }));
-
-      if (winnings > 0) {
-        setGameStats(prev => ({
-          ...prev,
-          points: (prev?.points || 0) + winnings,
-          totalWon: (prev?.totalWon || 0) + winnings,
-          gamesPlayed: (prev?.gamesPlayed || 0) + 1,
-          totalWins: (prev?.totalWins || 0) + 1,
-        }));
-        setTimeout(() => alert(`🎉 대성공! ${finalMultiplier}배 당첨! ${safeFormatNumber(winnings)}P 획득!`), 500);
-      } else {
-        setGameStats(prev => ({
-          ...prev,
-          gamesPlayed: (prev?.gamesPlayed || 0) + 1,
-        }));
-        setTimeout(() => alert(`😢 아쉽게 꽝! 다음 기회에 도전하세요!`), 500);
-      }
-    }, 8000);
-  };import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import LottoNumberBall from "../shared/LottoNumberBall";
 
 interface MiniGameProps {
@@ -156,6 +54,7 @@ interface SimulationState {
     winningNumbers: number[];
     bonusNumber: number;
     matches: number;
+    bonusMatch?: boolean;
     grade: string;
     prize: number;
     spent: number;
@@ -453,7 +352,8 @@ const MiniGame: React.FC<MiniGameProps> = ({
     const winningNumbers = generateWinningNumbers();
     const bonusNumber = generateBonusNumber(winningNumbers);
     const matches = simulation.selectedNumbers.filter(num => winningNumbers.includes(num)).length;
-    const gradeResult = calculatePrize(matches);
+    const bonusMatch = matches === 5 && simulation.selectedNumbers.includes(bonusNumber);
+    const gradeResult = calculatePrize(matches, bonusMatch);
 
     const newResult = {
       round: simulation.currentRound + 1,
@@ -461,6 +361,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
       winningNumbers,
       bonusNumber,
       matches,
+      bonusMatch,
       grade: gradeResult.grade,
       prize: gradeResult.prize,
       spent: cost,
@@ -514,15 +415,19 @@ const MiniGame: React.FC<MiniGameProps> = ({
     return bonus;
   };
 
-  const calculatePrize = (matches: number): { grade: string; prize: number } => {
-    switch (matches) {
-      case 6: return { grade: "1등", prize: 50000 };
-      case 5: return { grade: "2등", prize: 10000 };
-      case 4: return { grade: "3등", prize: 3000 };
-      case 3: return { grade: "4등", prize: 1000 };
-      case 2: return { grade: "5등", prize: 500 };
-      default: return { grade: "꽝", prize: 0 };
+  const calculatePrize = (matches: number, bonusMatch: boolean = false): { grade: string; prize: number } => {
+    if (matches === 6) {
+      return { grade: "1등", prize: 1000000 };
+    } else if (matches === 5 && bonusMatch) {
+      return { grade: "2등", prize: 500000 };
+    } else if (matches === 5) {
+      return { grade: "3등", prize: 100000 };
+    } else if (matches === 4) {
+      return { grade: "4등", prize: 50000 };
+    } else if (matches === 3) {
+      return { grade: "5등", prize: 5000 };
     }
+    return { grade: "꽝", prize: 0 };
   };
 
   const selectRandomSimNumbers = () => {
@@ -1410,6 +1315,29 @@ const MiniGame: React.FC<MiniGameProps> = ({
             >
               🎲 로또 구매! ({safeFormatNumber(simulation.ticketPrice)}P)
             </button>
+          </div>
+
+          {/* 당첨 규칙 설명 */}
+          <div style={{
+            marginTop: "16px",
+            padding: "12px",
+            backgroundColor: currentColors.info,
+            borderRadius: "8px",
+            border: `1px solid ${currentColors.infoBorder}`,
+          }}>
+            <h5 style={{ fontSize: "12px", fontWeight: "bold", color: currentColors.infoText, margin: "0 0 8px 0" }}>
+              📋 당첨 규칙
+            </h5>
+            <div style={{ fontSize: "11px", color: currentColors.infoText, lineHeight: "1.6" }}>
+              <div>🥇 <strong>1등</strong>: 6개 번호 일치 - 1,000,000P</div>
+              <div>🥈 <strong>2등</strong>: 5개 번호 + 보너스 번호 일치 - 500,000P</div>
+              <div>🥉 <strong>3등</strong>: 5개 번호 일치 - 100,000P</div>
+              <div>🏅 <strong>4등</strong>: 4개 번호 일치 - 50,000P</div>
+              <div>🎖️ <strong>5등</strong>: 3개 번호 일치 - 5,000P</div>
+              <div style={{ marginTop: "4px", opacity: 0.8 }}>
+                ※ 실제 로또와 동일한 규칙으로 진행됩니다
+              </div>
+            </div>
           </div>
 
           {simulation.results.length > 0 && (
