@@ -118,6 +118,15 @@ interface AdWatchState {
   canSkip: boolean;
 }
 
+interface PopupState {
+  isOpen: boolean;
+  message: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+  confirmCallback?: () => void;
+  cancelCallback?: () => void;
+  isConfirm?: boolean;
+}
+
 const MiniGame: React.FC<MiniGameProps> = ({
   pastWinningNumbers = [],
   isDataLoading = false,
@@ -142,6 +151,13 @@ const MiniGame: React.FC<MiniGameProps> = ({
   };
 
   const [gameStats, setGameStats] = useState<GameStats>(defaultGameStats);
+  const [popup, setPopup] = useState<PopupState>({
+    isOpen: false,
+    message: '',
+    type: 'info',
+    isConfirm: false
+  });
+
   const [adWatchState, setAdWatchState] = useState<AdWatchState>({
     isWatching: false,
     countdown: 30,
@@ -205,15 +221,14 @@ const MiniGame: React.FC<MiniGameProps> = ({
     resultMultiplier: -1,
     betOptions: [2000, 3000, 5000, 7000, 10000],
     segments: [
-      // 8개 섹션으로 구성 (매우 부드러운 파스텔톤)
-      { multiplier: 0, color: "#FFF5F5", startAngle: 0, endAngle: 45, probability: 0.35 },      // 꽝 35%
-      { multiplier: 2, color: "#FFF0F5", startAngle: 45, endAngle: 90, probability: 0.05 },     // ×2배 5%
-      { multiplier: 0, color: "#FFF5F5", startAngle: 90, endAngle: 135, probability: 0.35 },    // 꽝 35%
-      { multiplier: 5, color: "#FFF5F0", startAngle: 135, endAngle: 180, probability: 0.04 },   // ×5배 4%
-      { multiplier: 10, color: "#F5F5FF", startAngle: 180, endAngle: 225, probability: 0.03 },  // ×10배 3%
-      { multiplier: 12, color: "#FFF0F5", startAngle: 225, endAngle: 270, probability: 0.03 },  // ×12배 3%
-      { multiplier: 20, color: "#FFFAF0", startAngle: 270, endAngle: 315, probability: 0.02 },  // ×20배 2%
-      { multiplier: 0, color: "#FFF5F5", startAngle: 315, endAngle: 360, probability: 0.13 },   // 꽝 13%
+      { multiplier: 0, color: "#FFF5F5", startAngle: 0, endAngle: 45, probability: 0.35 },
+      { multiplier: 2, color: "#FFF0F5", startAngle: 45, endAngle: 90, probability: 0.05 },
+      { multiplier: 0, color: "#FFF5F5", startAngle: 90, endAngle: 135, probability: 0.35 },
+      { multiplier: 5, color: "#FFF5F0", startAngle: 135, endAngle: 180, probability: 0.04 },
+      { multiplier: 10, color: "#F5F5FF", startAngle: 180, endAngle: 225, probability: 0.03 },
+      { multiplier: 12, color: "#FFF0F5", startAngle: 225, endAngle: 270, probability: 0.03 },
+      { multiplier: 20, color: "#FFFAF0", startAngle: 270, endAngle: 315, probability: 0.02 },
+      { multiplier: 0, color: "#FFF5F5", startAngle: 315, endAngle: 360, probability: 0.13 },
     ],
     spinHistory: [],
   });
@@ -290,6 +305,28 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
   const currentColors = colors[theme] || colors.light;
 
+  // 커스텀 팝업 표시 함수
+  const showPopup = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    setPopup({ isOpen: true, message, type, isConfirm: false });
+  };
+
+  // 확인/취소 팝업 표시 함수
+  const showConfirmPopup = (message: string, confirmCallback: () => void, cancelCallback?: () => void) => {
+    setPopup({
+      isOpen: true,
+      message,
+      type: 'info',
+      isConfirm: true,
+      confirmCallback,
+      cancelCallback
+    });
+  };
+
+  // 팝업 닫기 함수
+  const closePopup = () => {
+    setPopup({ isOpen: false, message: '', type: 'info', isConfirm: false });
+  };
+
   const games = [
     {
       id: "guess",
@@ -340,7 +377,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }
 
     if (simulation.selectedNumbers.length !== 6) {
-      alert("6개 번호를 먼저 선택해주세요!");
+      showPopup("6개 번호를 먼저 선택해주세요!", "warning");
       return;
     }
 
@@ -384,7 +421,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
         gamesPlayed: (prev?.gamesPlayed || 0) + 1,
         totalWins: (prev?.totalWins || 0) + 1,
       }));
-      setTimeout(() => alert(`🎉 ${gradeResult.grade} 당첨! ${safeFormatNumber(gradeResult.prize)}P 획득!`), 500);
+      setTimeout(() => showPopup(`🎉 ${gradeResult.grade} 당첨! ${safeFormatNumber(gradeResult.prize)}P 획득!`, "success"), 500);
     } else {
       setGameStats(prev => ({
         ...prev,
@@ -519,40 +556,31 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }));
   };
 
-  // 룰렛 게임 함수들 - 수정된 부분
+  // 룰렛 게임 함수들
   const getSegmentAtAngle = (angle: number): any => {
-    // 정규화된 각도 (0-360)
     const normalizedAngle = ((angle % 360) + 360) % 360;
-    
-    // 화살표는 12시 방향(SVG 좌표계에서 270도)에 있음
-    // 룰렛이 시계방향으로 angle만큼 회전했을 때,
-    // 원래 270도 위치에 있던 섹션이 화살표 위치에 옴
     let sectionAngle = (270 + normalizedAngle) % 360;
     
-    // 해당 각도에 있는 섹션 찾기
     for (const segment of rouletteGame.segments) {
       if (sectionAngle >= segment.startAngle && sectionAngle < segment.endAngle) {
         return segment;
       }
-      // 360도 경계 처리
-      if (segment.startAngle > segment.endAngle) { // 예: 315-360, 0-45 같은 경우
+      if (segment.startAngle > segment.endAngle) {
         if (sectionAngle >= segment.startAngle || sectionAngle < segment.endAngle) {
           return segment;
         }
       }
     }
     
-    // 기본값 (찾지 못한 경우)
     return rouletteGame.segments[0];
   };
 
-  // 룰렛 게임 함수들 - 완전히 새로운 접근
   const startRouletteGame = () => {
     const currentPoints = gameStats?.points || 0;
     const betAmount = rouletteGame.selectedBetAmount;
     
     if (!betAmount) {
-      alert("베팅 금액을 먼저 선택해주세요!");
+      showPopup("베팅 금액을 먼저 선택해주세요!", "warning");
       return;
     }
 
@@ -567,18 +595,14 @@ const MiniGame: React.FC<MiniGameProps> = ({
       totalSpent: (prev?.totalSpent || 0) + betAmount,
     }));
 
-    // 확률에 따른 결과 계산
     const random = Math.random();
-    console.log('랜덤값:', random);
-    
-    // 확률 테이블
     const probTable = [
-      { multiplier: 0, prob: 0.83 },   // 83% 꽝
-      { multiplier: 2, prob: 0.05 },   // 5% ×2
-      { multiplier: 5, prob: 0.04 },   // 4% ×5
-      { multiplier: 10, prob: 0.03 },  // 3% ×10
-      { multiplier: 12, prob: 0.03 },  // 3% ×12
-      { multiplier: 20, prob: 0.02 },  // 2% ×20
+      { multiplier: 0, prob: 0.83 },
+      { multiplier: 2, prob: 0.05 },
+      { multiplier: 5, prob: 0.04 },
+      { multiplier: 10, prob: 0.03 },
+      { multiplier: 12, prob: 0.03 },
+      { multiplier: 20, prob: 0.02 },
     ];
     
     let selectedMultiplier = 0;
@@ -592,47 +616,22 @@ const MiniGame: React.FC<MiniGameProps> = ({
       }
     }
     
-    console.log('선택된 배수:', selectedMultiplier);
-    
-    // 선택된 배수에 해당하는 섹션 찾기
     const matchingSegments = rouletteGame.segments.filter(s => s.multiplier === selectedMultiplier);
     const targetSegment = matchingSegments[Math.floor(Math.random() * matchingSegments.length)];
     
-    // 타겟 섹션의 중앙 각도
     const targetAngle = (targetSegment.startAngle + targetSegment.endAngle) / 2;
-    
-    // 기본 회전 (최소 5바퀴)
     const baseSpins = 5 + Math.floor(Math.random() * 5);
-    
-    // 현재 각도
     const currentAngle = rouletteGame.currentAngle % 360;
     
-    // 화살표는 270도(12시)에 있음
-    // SVG rotate는 시계방향
-    // targetAngle이 270도 위치에 오려면 (270 - targetAngle)만큼 회전
-    let neededRotation = (270 - targetAngle + 720) % 360; // +720은 음수 방지
-    
-    // 현재 위치에서 추가로 회전할 양
+    let neededRotation = (270 - targetAngle + 720) % 360;
     let additionalRotation = neededRotation - (currentAngle % 360);
     while (additionalRotation < 0) {
       additionalRotation += 360;
     }
     
-    // 전체 회전량
     const totalRotation = baseSpins * 360 + additionalRotation;
     const finalAngle = currentAngle + totalRotation;
     
-    console.log('=== 룰렛 회전 정보 ===');
-    console.log('타겟 섹션:', targetSegment);
-    console.log('타겟 각도:', targetAngle);
-    console.log('현재 각도:', currentAngle);
-    console.log('필요 회전:', neededRotation);
-    console.log('추가 회전:', additionalRotation);
-    console.log('전체 회전:', totalRotation);
-    console.log('최종 각도:', finalAngle % 360);
-    console.log('검증: (', targetAngle, ' + ', finalAngle % 360, ') % 360 =', (targetAngle + (finalAngle % 360)) % 360, '(270이어야 함)');
-    
-    // 최종 결과
     const winnings = betAmount * selectedMultiplier;
     
     setRouletteGame(prev => ({
@@ -642,7 +641,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
       resultMultiplier: -1,
     }));
 
-    // 8초 후 결과 표시
     setTimeout(() => {
       const newHistory = {
         betAmount: betAmount,
@@ -667,13 +665,13 @@ const MiniGame: React.FC<MiniGameProps> = ({
           gamesPlayed: (prev?.gamesPlayed || 0) + 1,
           totalWins: (prev?.totalWins || 0) + 1,
         }));
-        setTimeout(() => alert(`🎉 축하합니다! ${selectedMultiplier}배 당첨! ${safeFormatNumber(winnings)}P 획득!`), 100);
+        setTimeout(() => showPopup(`🎉 축하합니다! ${selectedMultiplier}배 당첨! ${safeFormatNumber(winnings)}P 획득!`, "success"), 100);
       } else {
         setGameStats(prev => ({
           ...prev,
           gamesPlayed: (prev?.gamesPlayed || 0) + 1,
         }));
-        setTimeout(() => alert(`😢 아쉽게 꽝! 다음 기회에 도전하세요!`), 100);
+        setTimeout(() => showPopup(`😢 아쉽게 꽝! 다음 기회에 도전하세요!`, "error"), 100);
       }
     }, 8000);
   };
@@ -727,7 +725,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
   const startAdWatch = () => {
     if (!checkDailyAdLimit()) {
-      alert("😅 오늘 광고 시청 횟수를 모두 사용했어요! 내일 다시 이용해주세요.");
+      showPopup("😅 오늘 광고 시청 횟수를 모두 사용했어요! 내일 다시 이용해주세요.", "warning");
       return;
     }
 
@@ -769,7 +767,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     });
 
     const remaining = 10 - ((gameStats.dailyAdWatchDate === today ? gameStats.dailyAdWatchCount || 0 : 0) + 1);
-    alert(`🎉 광고 시청 완료! ${safeFormatNumber(adPoints)}P 획득! 오늘 ${remaining}번 더 시청 가능합니다.`);
+    showPopup(`🎉 광고 시청 완료! ${safeFormatNumber(adPoints)}P 획득! 오늘 ${remaining}번 더 시청 가능합니다.`, "success");
   };
 
   const skipAd = () => {
@@ -787,14 +785,14 @@ const MiniGame: React.FC<MiniGameProps> = ({
     const shortage = requiredPoints - currentPoints;
     
     if (checkDailyAdLimit()) {
-      const confirmMessage = `포인트가 ${safeFormatNumber(shortage)}P 부족합니다. 광고를 시청하여 3,000P를 받으시겠습니까?`;
-      
-      if (window.confirm(confirmMessage)) {
-        startAdWatch();
-        return true;
-      }
+      showConfirmPopup(
+        `포인트가 ${safeFormatNumber(shortage)}P 부족합니다. 광고를 시청하여 3,000P를 받으시겠습니까?`,
+        () => {
+          startAdWatch();
+        }
+      );
     } else {
-      alert("😅 오늘 광고 시청 횟수를 모두 사용했어요!");
+      showPopup("😅 오늘 광고 시청 횟수를 모두 사용했어요!", "warning");
     }
     return false;
   };
@@ -808,15 +806,15 @@ const MiniGame: React.FC<MiniGameProps> = ({
         points: (prev?.points || 0) + bonusPoints,
         dailyBonusDate: today,
       }));
-      alert(`🎁 일일 보너스 ${safeFormatNumber(bonusPoints)}P 지급! 내일 또 받으세요!`);
+      showPopup(`🎁 일일 보너스 ${safeFormatNumber(bonusPoints)}P 지급! 내일 또 받으세요!`, "success");
     } else {
-      alert("😊 오늘은 이미 보너스를 받았어요. 내일 다시 오세요!");
+      showPopup("😊 오늘은 이미 보너스를 받았어요. 내일 다시 오세요!", "info");
     }
   };
 
   const chargePoints = () => {
     if (!checkDailyLimit('charge')) {
-      alert("😅 오늘 충전 횟수를 모두 사용했어요! 내일 다시 이용해주세요.");
+      showPopup("😅 오늘 충전 횟수를 모두 사용했어요! 내일 다시 이용해주세요.", "warning");
       return;
     }
 
@@ -831,7 +829,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }));
     
     const remaining = 3 - ((gameStats.dailyChargeDate === today ? gameStats.dailyChargeCount || 0 : 0) + 1);
-    alert(`💎 ${safeFormatNumber(chargeAmount)}P 충전 완료! 오늘 ${remaining}번 더 충전 가능합니다.`);
+    showPopup(`💎 ${safeFormatNumber(chargeAmount)}P 충전 완료! 오늘 ${remaining}번 더 충전 가능합니다.`, "success");
   };
 
   const startGuessGame = () => {
@@ -890,7 +888,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
 
   const submitGuess = (guess: number[]) => {
     if (guess.length !== 6) {
-      alert("6개 번호를 모두 선택해주세요!");
+      showPopup("6개 번호를 모두 선택해주세요!", "warning");
       return;
     }
 
@@ -931,13 +929,13 @@ const MiniGame: React.FC<MiniGameProps> = ({
           gamesPlayed: (prev?.gamesPlayed || 0) + 1,
           totalWins: (prev?.totalWins || 0) + 1,
         }));
-        setTimeout(() => alert(`🎉 축하합니다! ${safeFormatNumber(prize)}P 상금을 획득했습니다!`), 500);
+        setTimeout(() => showPopup(`🎉 축하합니다! ${safeFormatNumber(prize)}P 상금을 획득했습니다!`, "success"), 500);
       } else {
         setGameStats(prev => ({
           ...prev,
           gamesPlayed: (prev?.gamesPlayed || 0) + 1,
         }));
-        setTimeout(() => alert(`😢 게임 종료! 정답: ${guessGame.secretNumbers.join(", ")}`), 500);
+        setTimeout(() => showPopup(`😢 게임 종료! 정답: ${guessGame.secretNumbers.join(", ")}`, "error"), 500);
       }
     }
   };
@@ -999,6 +997,120 @@ const MiniGame: React.FC<MiniGameProps> = ({
       minHeight: "100vh",
       color: currentColors.text
     }}>
+      {/* 커스텀 팝업 */}
+      {popup.isOpen && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
+          zIndex: 2000,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}>
+          <div style={{
+            backgroundColor: currentColors.surface,
+            borderRadius: "12px",
+            padding: "24px",
+            width: "90%",
+            maxWidth: "400px",
+            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
+            border: `2px solid ${
+              popup.type === 'success' ? currentColors.successBorder :
+              popup.type === 'error' ? currentColors.errorBorder :
+              popup.type === 'warning' ? currentColors.warningBorder :
+              currentColors.infoBorder
+            }`,
+            animation: "slideIn 0.3s ease-out",
+          }}>
+            <div style={{
+              fontSize: "48px",
+              textAlign: "center",
+              marginBottom: "16px",
+            }}>
+              {popup.type === 'success' ? '🎉' :
+               popup.type === 'error' ? '😢' :
+               popup.type === 'warning' ? '⚠️' :
+               '💡'}
+            </div>
+            <p style={{
+              fontSize: "16px",
+              textAlign: "center",
+              color: currentColors.text,
+              margin: "0 0 20px 0",
+              lineHeight: "1.5",
+            }}>
+              {popup.message}
+            </p>
+            <div style={{
+              display: "flex",
+              gap: "8px",
+              justifyContent: "center",
+            }}>
+              {popup.isConfirm ? (
+                <>
+                  <button
+                    onClick={() => {
+                      if (popup.confirmCallback) popup.confirmCallback();
+                      closePopup();
+                    }}
+                    style={{
+                      padding: "10px 24px",
+                      backgroundColor: currentColors.primary,
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    확인
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (popup.cancelCallback) popup.cancelCallback();
+                      closePopup();
+                    }}
+                    style={{
+                      padding: "10px 24px",
+                      backgroundColor: currentColors.textSecondary,
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    취소
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={closePopup}
+                  style={{
+                    padding: "10px 32px",
+                    backgroundColor: currentColors.primary,
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                  }}
+                >
+                  확인
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {adWatchState.isWatching && (
         <div style={{
           position: "fixed",
@@ -1373,7 +1485,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
             </button>
           </div>
 
-          {/* 당첨 규칙 설명 */}
           <div style={{
             marginTop: "16px",
             padding: "12px",
@@ -1909,7 +2020,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
               margin: "0 auto 16px",
               position: "relative",
             }}>
-              {/* 고정 화살표 - 12시 방향 - 부드러운 색상 */}
               <div style={{
                 position: "absolute",
                 top: "-20px",
@@ -1924,7 +2034,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))",
               }} />
               
-              {/* SVG 룰렛 */}
               <svg
                 width="260"
                 height="260"
@@ -1935,7 +2044,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   willChange: "transform",
                 }}
               >
-                {/* 외곽 원 배경 */}
                 <circle
                   cx="130"
                   cy="130"
@@ -1949,7 +2057,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   r="120"
                   fill="white"
                 />
-                {/* 룰렛 섹션들 */}
                 {rouletteGame.segments.map((segment, index) => {
                   const centerX = 130;
                   const centerY = 130;
@@ -1972,7 +2079,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
                     'Z'
                   ].join(' ');
                   
-                  // 텍스트 위치 계산
                   const textAngle = (segment.startAngle + segment.endAngle) / 2;
                   const textRadius = 75;
                   const textX = centerX + textRadius * Math.cos((textAngle * Math.PI) / 180);
@@ -1980,14 +2086,12 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   
                   return (
                     <g key={index}>
-                      {/* 섹션 */}
                       <path
                         d={pathData}
                         fill={segment.color}
                         stroke="#E0E0E0"
                         strokeWidth="1"
                       />
-                      {/* 배수 텍스트 */}
                       <text
                         x={textX}
                         y={textY}
@@ -2004,7 +2108,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   );
                 })}
                 
-                {/* 외곽 도트 장식 */}
                 {Array.from({ length: 16 }, (_, i) => {
                   const angle = (i * 22.5 * Math.PI) / 180;
                   const dotX = 130 + 115 * Math.cos(angle);
@@ -2020,7 +2123,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
                   );
                 })}
                 
-                {/* 중앙 START 버튼 */}
                 <g 
                   onClick={startRouletteGame}
                   style={{ cursor: rouletteGame.isSpinning || !rouletteGame.selectedBetAmount ? "not-allowed" : "pointer" }}
@@ -2056,7 +2158,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
                 </g>
               </svg>
 
-              {/* 결과 표시 */}
               {!rouletteGame.isSpinning && rouletteGame.resultMultiplier >= 0 && (
                 <div style={{ 
                   marginTop: "16px",
@@ -2192,6 +2293,16 @@ const MiniGame: React.FC<MiniGameProps> = ({
             50% { 
               box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
               transform: scale(1.02);
+            }
+          }
+          @keyframes slideIn {
+            from {
+              opacity: 0;
+              transform: translateY(-20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
             }
           }
         `}
