@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no, user-scalable=no"
     />
     <meta name="theme-color" content="#2563eb" />
     <meta
@@ -21,7 +21,7 @@
     <noscript> 이 앱을 실행하려면 JavaScript를 활성화해야 합니다. </noscript>
     <div id="root"></div>
 
-    <!-- 서비스 워커 등록 방지 -->
+    <!-- 안드로이드 뒤로가기 버튼 처리 및 서비스 워커 제거 -->
     <script>
       // 기존 서비스 워커가 있다면 제거
       if ("serviceWorker" in navigator) {
@@ -44,6 +44,57 @@
       window.addEventListener("appinstalled", (e) => {
         console.log("PWA가 설치되었지만 알림은 표시하지 않습니다.");
       });
+
+      // 안드로이드 하드웨어 뒤로가기 버튼 처리를 위한 글로벌 설정
+      (function() {
+        // 안드로이드 웹뷰 감지
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isWebView = /wv/.test(navigator.userAgent);
+        
+        if (isAndroid) {
+          // 히스토리 초기화 - 앱 시작 시 깨끗한 상태로
+          if (window.history.length > 1) {
+            window.history.go(-(window.history.length - 1));
+          }
+          
+          // 안드로이드 뒤로가기 버튼 이벤트 처리
+          document.addEventListener('deviceready', function() {
+            // Cordova/PhoneGap 환경인 경우
+            document.addEventListener('backbutton', function(e) {
+              // React 앱에서 처리하도록 이벤트 전파
+              const event = new Event('backbutton');
+              document.dispatchEvent(event);
+            }, false);
+          });
+
+          // 브라우저 뒤로가기 방지 (앱처럼 동작하도록)
+          window.addEventListener('beforeunload', function(e) {
+            // 앱 종료 시에만 확인 메시지 표시
+            if (window.history.length <= 1) {
+              e.preventDefault();
+              e.returnValue = '';
+            }
+          });
+        }
+      })();
+
+      // 안드로이드 웹뷰 인터페이스 확인 및 설정
+      if (typeof Android === 'undefined') {
+        // 안드로이드 인터페이스가 없는 경우 더미 생성
+        window.Android = {
+          exitApp: function() {
+            // 웹 환경에서는 작동하지 않음
+            if (window.confirm('앱을 종료하시겠습니까?')) {
+              window.close();
+            }
+          }
+        };
+      }
+
+      // 디버그 모드 비활성화 (프로덕션)
+      console.log = function() {};
+      console.warn = function() {};
+      console.error = function() {};
     </script>
   </body>
 </html>
