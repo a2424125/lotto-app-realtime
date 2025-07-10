@@ -25,6 +25,7 @@ const LottoApp = () => {
   const [purchaseHistory, setPurchaseHistory] = useState<PurchaseItem[]>([]);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [autoSave, setAutoSave] = useState<boolean>(false);
+  const [exitConfirmCount, setExitConfirmCount] = useState(0);
 
   const [pastWinningNumbers, setPastWinningNumbers] = useState<number[][]>([]);
   
@@ -94,6 +95,106 @@ const LottoApp = () => {
     { id: "minigame", name: "🎮 미니게임" },
     { id: "settings", name: "⚙️ 설정" },
   ];
+
+  // 🔧 메뉴 변경 함수 - 히스토리 관리 추가
+  const handleMenuChange = (newMenu: string, shouldPushState: boolean = true) => {
+    if (currentMenu === newMenu) return;
+    
+    setCurrentMenu(newMenu);
+    setSidebarOpen(false);
+    
+    // 브라우저 히스토리에 추가
+    if (shouldPushState) {
+      const state = { menu: newMenu };
+      const url = `#${newMenu}`;
+      window.history.pushState(state, '', url);
+    }
+  };
+
+  // 🔧 뒤로가기 버튼 이벤트 처리
+  useEffect(() => {
+    // 초기 상태 설정
+    const initialMenu = window.location.hash.slice(1) || "dashboard";
+    setCurrentMenu(initialMenu);
+    window.history.replaceState({ menu: initialMenu }, '', `#${initialMenu}`);
+
+    // popstate 이벤트 리스너 (뒤로가기/앞으로가기 버튼)
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.menu) {
+        handleMenuChange(event.state.menu, false);
+        setExitConfirmCount(0); // 종료 확인 카운트 초기화
+      } else {
+        // 히스토리가 없으면 대시보드로
+        handleMenuChange("dashboard", false);
+      }
+    };
+
+    // 안드로이드 하드웨어 뒤로가기 버튼 처리
+    const handleBackButton = (e: Event) => {
+      e.preventDefault();
+      
+      // 사이드바가 열려있으면 닫기
+      if (sidebarOpen) {
+        setSidebarOpen(false);
+        return;
+      }
+
+      // 대시보드가 아니면 대시보드로 이동
+      if (currentMenu !== "dashboard") {
+        window.history.back();
+        return;
+      }
+
+      // 대시보드에서 뒤로가기 시 종료 확인
+      if (exitConfirmCount === 0) {
+        setExitConfirmCount(1);
+        
+        // 토스트 메시지 표시
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+          position: fixed;
+          bottom: 80px;
+          left: 50%;
+          transform: translateX(-50%);
+          background-color: rgba(0, 0, 0, 0.8);
+          color: white;
+          padding: 12px 24px;
+          border-radius: 4px;
+          font-size: 14px;
+          z-index: 9999;
+          max-width: 300px;
+          text-align: center;
+        `;
+        toast.textContent = '뒤로가기를 한 번 더 누르면 앱이 종료됩니다.';
+        document.body.appendChild(toast);
+
+        // 2초 후 토스트 제거 및 카운트 초기화
+        setTimeout(() => {
+          document.body.removeChild(toast);
+          setExitConfirmCount(0);
+        }, 2000);
+      } else {
+        // 실제 종료 (웹뷰에서는 window.close()가 작동하지 않을 수 있음)
+        if (window.history.length > 1) {
+          window.history.go(-(window.history.length - 1));
+        }
+        // 안드로이드 웹뷰의 경우 네이티브 인터페이스 호출
+        if ((window as any).Android && (window as any).Android.exitApp) {
+          (window as any).Android.exitApp();
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    
+    // 안드로이드 웹뷰에서 뒤로가기 버튼 이벤트 처리
+    document.addEventListener('backbutton', handleBackButton);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      document.removeEventListener('backbutton', handleBackButton);
+    };
+  }, [currentMenu, sidebarOpen, exitConfirmCount]);
 
   const handleThemeChange = (newTheme: "light" | "dark") => {
     setTheme(newTheme);
@@ -617,7 +718,7 @@ const LottoApp = () => {
         return (
           <Dashboard
             {...commonProps}
-            onMenuChange={setCurrentMenu}
+            onMenuChange={handleMenuChange}
             generate1stGradeNumbers={generate1stGradeNumbers}
             onRefreshData={refreshData}
             nextDrawInfo={nextDrawInfo}
@@ -652,7 +753,7 @@ const LottoApp = () => {
         return (
           <Dashboard
             {...commonProps}
-            onMenuChange={setCurrentMenu}
+            onMenuChange={handleMenuChange}
             generate1stGradeNumbers={generate1stGradeNumbers}
             onRefreshData={refreshData}
             nextDrawInfo={nextDrawInfo}
@@ -783,8 +884,7 @@ const LottoApp = () => {
                 <button
                   key={item.id}
                   onClick={() => {
-                    setCurrentMenu(item.id);
-                    setSidebarOpen(false);
+                    handleMenuChange(item.id);
                   }}
                   style={{
                     width: "100%",
