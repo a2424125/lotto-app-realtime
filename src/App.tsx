@@ -26,6 +26,7 @@ const LottoApp = () => {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [autoSave, setAutoSave] = useState<boolean>(false);
   const [exitConfirmCount, setExitConfirmCount] = useState(0);
+  const [currentSystemTime, setCurrentSystemTime] = useState(new Date());
 
   const [pastWinningNumbers, setPastWinningNumbers] = useState<number[][]>([]);
   
@@ -95,6 +96,15 @@ const LottoApp = () => {
     { id: "minigame", name: "🎮 미니게임" },
     { id: "settings", name: "⚙️ 설정" },
   ];
+
+  // 시스템 시간 업데이트
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSystemTime(new Date());
+    }, 1000); // 1초마다 업데이트
+
+    return () => clearInterval(timer);
+  }, []);
 
   // 🔧 메뉴 변경 함수 - 히스토리 관리 추가
   const handleMenuChange = (newMenu: string, shouldPushState: boolean = true) => {
@@ -765,8 +775,7 @@ const LottoApp = () => {
   return (
     <div
       style={{
-        maxWidth: "400px",
-        margin: "0 auto",
+        width: "100%",
         backgroundColor: currentColors.background,
         minHeight: "100vh",
         position: "relative",
@@ -775,270 +784,304 @@ const LottoApp = () => {
         transition: "all 0.3s ease",
       }}
     >
-      {/* 깔끔한 헤더 - 불필요한 요소들 제거 */}
+      {/* 모바일 상태바 */}
       <div
         style={{
-          backgroundColor: currentColors.primary,
+          backgroundColor: "#000000",
           color: "white",
-          padding: "12px 16px",
+          padding: "4px 16px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          fontSize: "12px",
+          fontWeight: "500",
         }}
       >
-        <button
-          onClick={() => setSidebarOpen(true)}
-          style={{
-            padding: "6px",
-            backgroundColor: "transparent",
-            border: "none",
-            color: "white",
-            cursor: "pointer",
-            borderRadius: "4px",
-            fontSize: "16px",
-          }}
-        >
-          ☰
-        </button>
-        
-        {/* 깔끔하게 로또 6/45만 표시 */}
-        <h1 style={{ fontSize: "16px", fontWeight: "bold", margin: "0" }}>
-          로또팡 6/45
-        </h1>
-        
-        {/* 빈 공간 (오른쪽 균형 맞추기용) */}
-        <div style={{ width: "32px" }}></div>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <span>{currentSystemTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ fontSize: "10px" }}>📶</span>
+          <span style={{ fontSize: "10px" }}>📳</span>
+          <span style={{ fontSize: "10px" }}>🔋</span>
+          <span style={{ fontSize: "11px" }}>100%</span>
+        </div>
       </div>
 
-      {/* 사이드바 */}
-      {sidebarOpen && (
+      {/* 전체 화면 컨테이너 */}
+      <div
+        style={{
+          maxWidth: "100%",
+          margin: "0 auto",
+          backgroundColor: currentColors.background,
+          minHeight: "calc(100vh - 28px)", // 상태바 높이 제외
+          position: "relative",
+        }}
+      >
+        {/* 헤더 */}
         <div
           style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 50,
+            backgroundColor: currentColors.primary,
+            color: "white",
+            padding: "12px 16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
           }}
         >
+          <button
+            onClick={() => setSidebarOpen(true)}
+            style={{
+              padding: "8px",
+              backgroundColor: "transparent",
+              border: "none",
+              color: "white",
+              cursor: "pointer",
+              borderRadius: "4px",
+              fontSize: "20px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            ☰
+          </button>
+          
+          <h1 style={{ fontSize: "16px", fontWeight: "bold", margin: "0" }}>
+            로또팡 6/45
+          </h1>
+          
+          <div style={{ width: "36px" }}></div>
+        </div>
+
+        {/* 사이드바 */}
+        {sidebarOpen && (
           <div
             style={{
-              position: "absolute",
+              position: "fixed",
               top: 0,
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: "rgba(0,0,0,0.5)",
-            }}
-            onClick={() => setSidebarOpen(false)}
-          />
-          <div
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 0,
-              height: "100%",
-              width: "240px",
-              backgroundColor: currentColors.surface,
-              boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
-              color: currentColors.text,
+              zIndex: 50,
             }}
           >
             <div
               style={{
-                backgroundColor: currentColors.primary,
-                color: "white",
-                padding: "12px 16px",
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(0,0,0,0.5)",
+              }}
+              onClick={() => setSidebarOpen(false)}
+            />
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                height: "100%",
+                width: "240px",
+                backgroundColor: currentColors.surface,
+                boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+                color: currentColors.text,
               }}
             >
               <div
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
+                  backgroundColor: currentColors.primary,
+                  color: "white",
+                  padding: "12px 16px",
                 }}
               >
-                <h2 style={{ fontSize: "16px", fontWeight: "bold", margin: "0" }}>
-                  메뉴
-                </h2>
-                <button
-                  onClick={() => setSidebarOpen(false)}
-                  style={{
-                    padding: "6px",
-                    backgroundColor: "transparent",
-                    border: "none",
-                    color: "white",
-                    cursor: "pointer",
-                    borderRadius: "4px",
-                    fontSize: "14px",
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            <div style={{ padding: "8px" }}>
-              {menuItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    handleMenuChange(item.id);
-                  }}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "10px",
-                    borderRadius: "6px",
-                    textAlign: "left",
-                    border: "none",
-                    backgroundColor: currentMenu === item.id
-                      ? theme === "dark" ? "#334155" : "#eff6ff"
-                      : "transparent",
-                    color: currentMenu === item.id ? currentColors.primary : currentColors.text,
-                    cursor: "pointer",
-                    fontSize: "14px",
-                  }}
-                >
-                  <span style={{ fontWeight: "500" }}>{item.name}</span>
-                </button>
-              ))}
-
-              <div
-                style={{
-                  marginTop: "16px",
-                  padding: "8px",
-                  backgroundColor: theme === "dark" ? "#134e4a" : "#f0fdf4",
-                  borderRadius: "6px",
-                  fontSize: "12px",
-                  border: theme === "dark" ? "1px solid #047857" : "1px solid #bbf7d0",
-                }}
-              >
-               
-                <div style={{ color: theme === "dark" ? "#6ee7b7" : "#166534", fontWeight: "500" }}>
-                  ✅ 서비스 정상 동작
-                </div>
-                {dataStatus.lastUpdate && (
-                  <div style={{ color: theme === "dark" ? "#6ee7b7" : "#166534", marginTop: "2px" }}>
-                    업데이트: {dataStatus.lastUpdate.toLocaleTimeString()}
-                  </div>
-                )}
-                
                 <div
                   style={{
-                    marginTop: "8px",
-                    padding: "6px",
-                    backgroundColor: theme === "dark" ? "#1e293b" : "#e0f2fe",
-                    borderRadius: "4px",
-                    border: theme === "dark" ? "1px solid #475569" : "1px solid #81d4fa",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
                   }}
                 >
-                  <div
+                  <h2 style={{ fontSize: "16px", fontWeight: "bold", margin: "0" }}>
+                    메뉴
+                  </h2>
+                  <button
+                    onClick={() => setSidebarOpen(false)}
                     style={{
-                      color: theme === "dark" ? "#38bdf8" : "#0277bd",
-                      fontWeight: "500",
-                      fontSize: "11px",
+                      padding: "6px",
+                      backgroundColor: "transparent",
+                      border: "none",
+                      color: "white",
+                      cursor: "pointer",
+                      borderRadius: "4px",
+                      fontSize: "14px",
                     }}
                   >
-                    📊 데이터 {roundRange.latestRound}~{roundRange.oldestRound}회차 ({pastWinningNumbers.length.toLocaleString()}개)
-                  </div>
-                  <div style={{ color: theme === "dark" ? "#38bdf8" : "#0277bd", fontSize: "10px" }}>
-                    커버리지: {Math.round((pastWinningNumbers.length / (roundRange.latestRound || 1179)) * 100)}%
-                  </div>
-                  <div style={{ color: theme === "dark" ? "#38bdf8" : "#0277bd", fontSize: "10px" }}>
-                    품질: ✅ 안전 보장
-                  </div>
+                    ✕
+                  </button>
                 </div>
-                
-                {nextDrawInfo && (
+              </div>
+
+              <div style={{ padding: "8px" }}>
+                {menuItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      handleMenuChange(item.id);
+                    }}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "10px",
+                      borderRadius: "6px",
+                      textAlign: "left",
+                      border: "none",
+                      backgroundColor: currentMenu === item.id
+                        ? theme === "dark" ? "#334155" : "#eff6ff"
+                        : "transparent",
+                      color: currentMenu === item.id ? currentColors.primary : currentColors.text,
+                      cursor: "pointer",
+                      fontSize: "14px",
+                    }}
+                  >
+                    <span style={{ fontWeight: "500" }}>{item.name}</span>
+                  </button>
+                ))}
+
+                <div
+                  style={{
+                    marginTop: "16px",
+                    padding: "8px",
+                    backgroundColor: theme === "dark" ? "#134e4a" : "#f0fdf4",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    border: theme === "dark" ? "1px solid #047857" : "1px solid #bbf7d0",
+                  }}
+                >
+               
+                  <div style={{ color: theme === "dark" ? "#6ee7b7" : "#166534", fontWeight: "500" }}>
+                    ✅ 서비스 정상 동작
+                  </div>
+                  {dataStatus.lastUpdate && (
+                    <div style={{ color: theme === "dark" ? "#6ee7b7" : "#166534", marginTop: "2px" }}>
+                      업데이트: {dataStatus.lastUpdate.toLocaleTimeString()}
+                    </div>
+                  )}
+                  
                   <div
                     style={{
                       marginTop: "8px",
                       padding: "6px",
-                      backgroundColor: theme === "dark" ? "#1e293b" : "#f0fdf4",
+                      backgroundColor: theme === "dark" ? "#1e293b" : "#e0f2fe",
                       borderRadius: "4px",
-                      border: theme === "dark" ? "1px solid #475569" : "1px solid #bbf7d0",
+                      border: theme === "dark" ? "1px solid #475569" : "1px solid #81d4fa",
                     }}
                   >
                     <div
                       style={{
-                        color: theme === "dark" ? "#4ade80" : "#166534",
+                        color: theme === "dark" ? "#38bdf8" : "#0277bd",
                         fontWeight: "500",
                         fontSize: "11px",
                       }}
                     >
-                      📅 다음 {nextDrawInfo.round}회차
+                      📊 데이터 {roundRange.latestRound}~{roundRange.oldestRound}회차 ({pastWinningNumbers.length.toLocaleString()}개)
                     </div>
-                    <div style={{ color: theme === "dark" ? "#22c55e" : "#16a34a", fontSize: "10px" }}>
-                      {nextDrawInfo.isToday ? "오늘 추첨!" :
-                       nextDrawInfo.daysUntilDraw === 1 ? "내일 추첨!" :
-                       nextDrawInfo.daysUntilDraw === 0 ? "오늘 추첨!" :
-                       `${nextDrawInfo.daysUntilDraw}일 후`}
+                    <div style={{ color: theme === "dark" ? "#38bdf8" : "#0277bd", fontSize: "10px" }}>
+                      커버리지: {Math.round((pastWinningNumbers.length / (roundRange.latestRound || 1179)) * 100)}%
+                    </div>
+                    <div style={{ color: theme === "dark" ? "#38bdf8" : "#0277bd", fontSize: "10px" }}>
+                      품질: ✅ 안전 보장
                     </div>
                   </div>
-                )}
+                  
+                  {nextDrawInfo && (
+                    <div
+                      style={{
+                        marginTop: "8px",
+                        padding: "6px",
+                        backgroundColor: theme === "dark" ? "#1e293b" : "#f0fdf4",
+                        borderRadius: "4px",
+                        border: theme === "dark" ? "1px solid #475569" : "1px solid #bbf7d0",
+                      }}
+                    >
+                      <div
+                        style={{
+                          color: theme === "dark" ? "#4ade80" : "#166534",
+                          fontWeight: "500",
+                          fontSize: "11px",
+                        }}
+                      >
+                        📅 다음 {nextDrawInfo.round}회차
+                      </div>
+                      <div style={{ color: theme === "dark" ? "#22c55e" : "#16a34a", fontSize: "10px" }}>
+                        {nextDrawInfo.isToday ? "오늘 추첨!" :
+                         nextDrawInfo.daysUntilDraw === 1 ? "내일 추첨!" :
+                         nextDrawInfo.daysUntilDraw === 0 ? "오늘 추첨!" :
+                         `${nextDrawInfo.daysUntilDraw}일 후`}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
+        )}
+
+        {/* 메인 콘텐츠 */}
+        <div style={{ paddingBottom: "56px" }}>
+          {isDataLoading && (
+            <div
+              style={{
+                position: "fixed",
+                top: "60px",
+                left: "50%",
+                transform: "translateX(-50%)",
+                backgroundColor: "#10b981",
+                color: "white",
+                padding: "8px 16px",
+                borderRadius: "6px",
+                fontSize: "12px",
+                zIndex: 40,
+              }}
+            >
+              🛡️ 안전한 데이터 새로고침 중...
+            </div>
+          )}
+          {renderContent()}
         </div>
-      )}
 
-      {/* 메인 콘텐츠 */}
-      <div style={{ paddingBottom: "56px" }}>
-        {isDataLoading && (
-          <div
-            style={{
-              position: "fixed",
-              top: "60px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              backgroundColor: "#10b981",
-              color: "white",
-              padding: "8px 16px",
-              borderRadius: "6px",
-              fontSize: "12px",
-              zIndex: 40,
-            }}
-          >
-            🛡️ 안전한 데이터 새로고침 중...
-          </div>
-        )}
-        {renderContent()}
-      </div>
-
-      {/* 푸터 */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "100%",
-          maxWidth: "400px",
-          backgroundColor: currentColors.surface,
-          borderTop: `1px solid ${currentColors.border}`,
-          padding: "8px 12px",
-          textAlign: "center",
-          fontSize: "10px",
-          color: currentColors.textSecondary,
-        }}
-      >
-        로또는 확률게임입니다. 과도한 구매는 가계에 부담이 됩니다.
-        <span style={{ color: "#10b981", marginLeft: "8px" }}>
-         ({pastWinningNumbers.length}회차)
-        </span>
-        {nextDrawInfo && (
-          <div style={{ color: "#dc2626", marginLeft: "8px", fontWeight: "bold", textAlign: "center" }}>
-            • 다음 추첨{" "}
-            {nextDrawInfo.isToday ? "오늘!" :
-             nextDrawInfo.daysUntilDraw === 1 ? "내일!" :
-             nextDrawInfo.daysUntilDraw === 0 ? "오늘!" :
-             `${nextDrawInfo.daysUntilDraw}일 후`} ({nextDrawInfo.round}회차)
-          </div>
-        )}
+        {/* 푸터 */}
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            width: "100%",
+            backgroundColor: currentColors.surface,
+            borderTop: `1px solid ${currentColors.border}`,
+            padding: "8px 12px",
+            textAlign: "center",
+            fontSize: "10px",
+            color: currentColors.textSecondary,
+          }}
+        >
+          로또는 확률게임입니다. 과도한 구매는 가계에 부담이 됩니다.
+          <span style={{ color: "#10b981", marginLeft: "8px" }}>
+           ({pastWinningNumbers.length}회차)
+          </span>
+          {nextDrawInfo && (
+            <div style={{ color: "#dc2626", marginLeft: "8px", fontWeight: "bold", textAlign: "center" }}>
+              • 다음 추첨{" "}
+              {nextDrawInfo.isToday ? "오늘!" :
+               nextDrawInfo.daysUntilDraw === 1 ? "내일!" :
+               nextDrawInfo.daysUntilDraw === 0 ? "오늘!" :
+               `${nextDrawInfo.daysUntilDraw}일 후`} ({nextDrawInfo.round}회차)
+            </div>
+          )}
+        </div>
       </div>
 
       <style>
@@ -1050,6 +1093,14 @@ const LottoApp = () => {
           @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
+          }
+          * {
+            box-sizing: border-box;
+          }
+          body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
           }
         `}
       </style>
