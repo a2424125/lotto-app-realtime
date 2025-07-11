@@ -45,7 +45,7 @@ class LottoRecommendService {
   } = {
     latestRound: 1179,
     oldestRound: 1,
-    totalCount: 1179,
+    totalCount: 1179
   };
   
   // 🔧 추가: 무한 루프 방지 플래그
@@ -146,7 +146,7 @@ class LottoRecommendService {
             this.actualDataRange = {
               latestRound: this.allData[0].round,
               oldestRound: this.allData[this.allData.length - 1].round,
-              totalCount: this.allData.length,
+              totalCount: this.allData.length
             };
 
             console.log(`✅ ${this.actualDataRange.totalCount}회차 전체 빅데이터 로드 완료!`);
@@ -197,12 +197,12 @@ class LottoRecommendService {
       const fallbackData: LottoDrawResult[] = [];
       const startDate = new Date('2002-12-07');
       
-      const knownResults: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
+      const knownResults: { [key: number]: { numbers: number[]; bonus: number; date: string } } = {
         1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
         1178: { numbers: [1, 7, 17, 28, 29, 40], bonus: 33, date: '2025-06-28' },
         1177: { numbers: [4, 11, 15, 28, 34, 42], bonus: 45, date: '2025-06-21' },
         1176: { numbers: [2, 8, 19, 25, 32, 44], bonus: 7, date: '2025-06-14' },
-        1175: { numbers: [6, 12, 16, 28, 35, 43], bonus: 9, date: '2025-06-07' },
+        1175: { numbers: [6, 12, 16, 28, 35, 43], bonus: 9, date: '2025-06-07' }
       };
 
       // 현재 회차부터 역순으로 생성
@@ -215,7 +215,7 @@ class LottoRecommendService {
             numbers: known.numbers.sort((a, b) => a - b),
             bonusNumber: known.bonus,
             crawledAt: new Date().toISOString(),
-            source: "verified_fallback",
+            source: "verified_fallback"
           });
         } else {
           const seed = round * 7919;
@@ -231,7 +231,7 @@ class LottoRecommendService {
             numbers: numbers.sort((a, b) => a - b),
             bonusNumber,
             crawledAt: new Date().toISOString(),
-            source: "fallback_analysis",
+            source: "fallback_analysis"
           });
         }
       }
@@ -240,7 +240,7 @@ class LottoRecommendService {
       this.actualDataRange = {
         latestRound: currentRound,
         oldestRound: Math.max(1, currentRound - fallbackCount + 1),
-        totalCount: fallbackData.length,
+        totalCount: fallbackData.length
       };
       this.isDataLoaded = true;
 
@@ -262,13 +262,13 @@ class LottoRecommendService {
       numbers: [3, 16, 18, 24, 40, 44],
       bonusNumber: 21,
       crawledAt: new Date().toISOString(),
-      source: "minimal_fallback",
+      source: "minimal_fallback"
     }];
     
     this.actualDataRange = {
       latestRound: currentRound,
       oldestRound: currentRound,
-      totalCount: 1,
+      totalCount: 1
     };
     this.isDataLoaded = true;
     console.log("📊 최소한의 fallback 데이터 생성 완료");
@@ -339,7 +339,7 @@ class LottoRecommendService {
       dataRange: targetData.length > 0
         ? `${targetData[0]?.round}회 ~ ${targetData[targetData.length - 1]?.round}회 (${targetData.length}개)`
         : "데이터 없음",
-      totalDraws: targetData.length,
+      totalDraws: targetData.length
     };
 
     // 캐시 저장
@@ -378,8 +378,8 @@ class LottoRecommendService {
           dataRange: allTimeData.dataRange,
           method: "전체 회차 완전 분석",
           patterns: ["전체최고빈도", "역대최강패턴", "빅데이터완전분석"],
-          specialInfo: `전체 ${allTimeData.totalDraws}회차 완전 가중치 적용`,
-        },
+          specialInfo: `전체 ${allTimeData.totalDraws}회차 완전 가중치 적용`
+        }
       });
 
       // 🚀 전략 2: 장기 트렌드 분석
@@ -394,8 +394,8 @@ class LottoRecommendService {
           dataRange: longTermData.dataRange,
           method: "장기 트렌드 분석",
           patterns: ["장기패턴", "안정트렌드", "역사적패턴"],
-          specialInfo: `${longTermData.totalDraws}회차 장기 가중치 적용`,
-        },
+          specialInfo: `${longTermData.totalDraws}회차 장기 가중치 적용`
+        }
       });
 
       // 🎲 전략 3: 중기 밸런스
@@ -410,8 +410,8 @@ class LottoRecommendService {
           dataRange: midTermData.dataRange,
           method: "중기 밸런스 분석",
           patterns: ["중기밸런스", "안정성", "균형패턴"],
-          specialInfo: `${midTermData.totalDraws}회차 중기 특화`,
-        },
+          specialInfo: `${midTermData.totalDraws}회차 중기 특화`
+        }
       });
 
       // 🏆 전략 4: 역대 대박 패턴
@@ -426,8 +426,8 @@ class LottoRecommendService {
           dataRange: `역대 독점 당첨 회차들 (1~${this.actualDataRange.latestRound}회차 전체)`,
           method: "역대 독점 패턴 분석",
           patterns: ["역대독점패턴", "역사적대박", "희소성극대"],
-          specialInfo: `전체 ${this.actualDataRange.totalCount}회차 독점 당첨 특별 분석`,
-        },
+          specialInfo: `전체 ${this.actualDataRange.totalCount}회차 독점 당첨 특별 분석`
+        }
       });
 
       // 🤖 전략 5: AI 딥러닝 예측
@@ -442,8 +442,8 @@ class LottoRecommendService {
           dataRange: `전체 1~${this.actualDataRange.latestRound}회차 완전 학습 (${this.actualDataRange.totalCount}개)`,
           method: "AI 딥러닝 전체 분석",
           patterns: ["완전머신러닝", "전체패턴인식", "확률완전최적화"],
-          specialInfo: `전체 ${this.actualDataRange.totalCount}회차 AI 가중치 알고리즘`,
-        },
+          specialInfo: `전체 ${this.actualDataRange.totalCount}회차 AI 가중치 알고리즘`
+        }
       });
 
       console.log(`✅ 전체 회차 1등 AI 분석 완료! ${strategies.length}개 전략 생성`);
@@ -492,7 +492,7 @@ class LottoRecommendService {
           method: "보너스볼 특화 분석",
           patterns: ["보너스볼 빈도", "최근 10회 분석", "핫넘버 조합"],
           specialInfo: `보너스 핫넘버: ${hotBonusNumbers.slice(0, 5).join(", ")}`
-        },
+        }
       });
 
       // 전략 2: 준당첨 패턴 분석
@@ -506,8 +506,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "준당첨 통계 분석",
-          patterns: ["2등 당첨 패턴", "보너스볼 예측", "차집합 분석"],
-        },
+          patterns: ["2등 당첨 패턴", "보너스볼 예측", "차집합 분석"]
+        }
       });
 
       // 전략 3: 고빈도 5+1 조합
@@ -521,8 +521,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "5+1 최적화",
-          patterns: ["고빈도 5개", "보너스 후보군", "30회차 분석"],
-        },
+          patterns: ["고빈도 5개", "보너스 후보군", "30회차 분석"]
+        }
       });
 
       // 전략 4: 보너스볼 주기 분석
@@ -536,8 +536,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "주기 예측 모델",
-          patterns: ["주기성 분석", "보너스 예측", "순환 패턴"],
-        },
+          patterns: ["주기성 분석", "보너스 예측", "순환 패턴"]
+        }
       });
 
       // 전략 5: 2등 확률 극대화
@@ -551,8 +551,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "확률 최적화",
-          patterns: ["2등 확률 우선", "보너스 강화", "밸런스 조정"],
-        },
+          patterns: ["2등 확률 우선", "보너스 강화", "밸런스 조정"]
+        }
       });
 
       return strategies;
@@ -583,8 +583,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "균형 분석",
-          patterns: ["홀짝 균형", "고저 균형", "구간 분산"],
-        },
+          patterns: ["홀짝 균형", "고저 균형", "구간 분산"]
+        }
       });
 
       // 전략 2: 중간값 집중 전략
@@ -597,8 +597,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "중간값 분석",
-          patterns: ["중간값 선호", "15-35 구간", "통계 기반"],
-        },
+          patterns: ["중간값 선호", "15-35 구간", "통계 기반"]
+        }
       });
 
       // 전략 3: 최근 트렌드 반영
@@ -611,8 +611,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "트렌드 추적",
-          patterns: ["20회차 트렌드", "최신 패턴", "동향 분석"],
-        },
+          patterns: ["20회차 트렌드", "최신 패턴", "동향 분석"]
+        }
       });
 
       // 전략 4: 구간별 안정 조합
@@ -625,8 +625,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "구간 분석",
-          patterns: ["구간별 선택", "안정성 우선", "분산 투자"],
-        },
+          patterns: ["구간별 선택", "안정성 우선", "분산 투자"]
+        }
       });
 
       // 전략 5: 3등 빈출 패턴
@@ -639,8 +639,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "3등 특화",
-          patterns: ["3등 패턴", "빈출 조합", "역대 분석"],
-        },
+          patterns: ["3등 패턴", "빈출 조합", "역대 분석"]
+        }
       });
 
       return strategies;
@@ -671,8 +671,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "연속성 분석",
-          patterns: ["연속 번호", "4개 패턴", "연번 분석"],
-        },
+          patterns: ["연속 번호", "4개 패턴", "연번 분석"]
+        }
       });
 
       // 전략 2: 핫콜드 믹스
@@ -685,8 +685,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "핫콜드 조합",
-          patterns: ["핫넘버 2개", "콜드넘버 2개", "믹스 전략"],
-        },
+          patterns: ["핫넘버 2개", "콜드넘버 2개", "믹스 전략"]
+        }
       });
 
       // 전략 3: 쿼드 섹터 분석
@@ -699,8 +699,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "섹터 분석",
-          patterns: ["4구간 분할", "섹터별 선택", "구간 균등"],
-        },
+          patterns: ["4구간 분할", "섹터별 선택", "구간 균등"]
+        }
       });
 
       // 전략 4: 4등 최다 조합
@@ -713,8 +713,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "4등 통계",
-          patterns: ["4등 최다", "빈출 4개조", "통계 우선"],
-        },
+          patterns: ["4등 최다", "빈출 4개조", "통계 우선"]
+        }
       });
 
       // 전략 5: 반복 주기 포착
@@ -727,8 +727,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "주기 분석",
-          patterns: ["반복 주기", "4개 세트", "주기성"],
-        },
+          patterns: ["반복 주기", "4개 세트", "주기성"]
+        }
       });
 
       return strategies;
@@ -759,8 +759,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "확률론",
-          patterns: ["순수 확률", "랜덤성", "기본 전략"],
-        },
+          patterns: ["순수 확률", "랜덤성", "기본 전략"]
+        }
       });
 
       // 전략 2: 인기번호 3종
@@ -773,8 +773,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "인기도 분석",
-          patterns: ["인기번호", "TOP3 포함", "대중 선택"],
-        },
+          patterns: ["인기번호", "TOP3 포함", "대중 선택"]
+        }
       });
 
       // 전략 3: 미니 조합 전략
@@ -787,8 +787,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "집중 전략",
-          patterns: ["집중 선택", "좁은 범위", "미니 조합"],
-        },
+          patterns: ["집중 선택", "좁은 범위", "미니 조합"]
+        }
       });
 
       // 전략 4: 행운의 트리플
@@ -801,8 +801,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "동반 분석",
-          patterns: ["트리플 조합", "동반 출현", "행운 번호"],
-        },
+          patterns: ["트리플 조합", "동반 출현", "행운 번호"]
+        }
       });
 
       // 전략 5: 5천원의 행복
@@ -815,8 +815,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: `${this.actualDataRange.latestRound}~${this.actualDataRange.oldestRound}회차 (${this.actualDataRange.totalCount}개)`,
           method: "기본 분석",
-          patterns: ["기본 전략", "부담 없음", "즐거운 로또"],
-        },
+          patterns: ["기본 전략", "부담 없음", "즐거운 로또"]
+        }
       });
 
       return strategies;
@@ -1626,7 +1626,7 @@ class LottoRecommendService {
   // 등급별 fallback 전략
   private generateFallbackStrategiesForGrade(grade: string): RecommendStrategy[] {
     const strategies: RecommendStrategy[] = [];
-    const gradeInfo: { [key: string]: { name: string, count: number } } = {
+    const gradeInfo: { [key: string]: { name: string; count: number } } = {
       "2": { name: "2등", count: 5 },
       "3": { name: "3등", count: 5 },
       "4": { name: "4등", count: 5 },
@@ -1646,8 +1646,8 @@ class LottoRecommendService {
         analysisData: {
           dataRange: "fallback 모드",
           method: "기본 분석",
-          patterns: ["기본 패턴"],
-        },
+          patterns: ["기본 패턴"]
+        }
       });
     }
 
@@ -1827,7 +1827,7 @@ class LottoRecommendService {
           method: "기본 분석",
           patterns: ["빈도 분석", "패턴 분석"],
           specialInfo: "fallback 모드"
-        },
+        }
       });
     }
     
@@ -1855,8 +1855,8 @@ class LottoRecommendService {
         recentTrend: "분석 중...",
         actualRounds: {
           latest: this.calculateCurrentRound(),
-          oldest: 1,
-        },
+          oldest: 1
+        }
       };
     }
 
@@ -1885,8 +1885,8 @@ class LottoRecommendService {
       recentTrend: `전체 ${this.actualDataRange.totalCount}회차 분석 기준`,
       actualRounds: {
         latest: this.actualDataRange.latestRound,
-        oldest: this.actualDataRange.oldestRound,
-      },
+        oldest: this.actualDataRange.oldestRound
+      }
     };
   }
 
@@ -1957,7 +1957,7 @@ class LottoRecommendService {
       recentRank: recentRank || 46,
       frequency: allFreq[number] || 0,
       lastAppeared,
-      trend,
+      trend
     };
   }
 
@@ -1985,7 +1985,7 @@ class LottoRecommendService {
       latestRound: this.actualDataRange.latestRound,
       oldestRound: this.actualDataRange.oldestRound,
       hasValidData: this.allData.length >= 100, // 최소 100개 이상이어야 유효
-      isLoading: this.isLoading,
+      isLoading: this.isLoading
     };
   }
 }
