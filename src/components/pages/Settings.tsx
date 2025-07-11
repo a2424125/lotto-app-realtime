@@ -218,6 +218,21 @@ const Settings: React.FC<SettingsProps> = ({
 
   const currentColors = colors[currentTheme];
 
+  // 데이터 새로고침 핸들러
+  const handleDataRefresh = async () => {
+    try {
+      if (onRefreshData) {
+        await onRefreshData();
+        // 성공 메시지를 팝업으로 표시
+        showPopup("안전한 데이터가 업데이트되었습니다!", "success");
+      }
+    } catch (error) {
+      // 에러 메시지를 팝업으로 표시
+      showPopup("데이터 새로고침 중 오류가 발생했지만 서비스는 계속됩니다.", "error");
+      console.error("데이터 새로고침 오류:", error);
+    }
+  };
+
   // 캐시 초기화 함수
   const handleClearCache = async () => {
     try {
@@ -439,7 +454,7 @@ const Settings: React.FC<SettingsProps> = ({
           {/* 🆕 실시간 데이터 새로고침 버튼 */}
           {onRefreshData && (
             <button
-              onClick={onRefreshData}
+              onClick={handleDataRefresh}
               style={{
                 width: "100%",
                 marginTop: "12px",
