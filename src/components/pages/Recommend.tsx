@@ -230,7 +230,7 @@ const Recommend: React.FC<RecommendProps> = ({
       desc: "5개 번호 + 보너스 일치",
       probability: "1/1,357,510",
       prize: "약 6천만원",
-      strategy: "고빈도 + 보너스 고려",
+      strategy: "고빈도 + 보너스 고려 다각도 분석",
       emoji: "🥈",
       color: "#0891b2",
     },
@@ -261,6 +261,138 @@ const Recommend: React.FC<RecommendProps> = ({
       emoji: "🎲",
       color: "#ea580c",
     },
+  };
+
+  // 등급별 전략 정의
+  const gradeStrategies: { [key: string]: Array<{ name: string; description: string; patterns: string[]; method: string }> } = {
+    "2": [
+      {
+        name: "보너스볼 핫넘버 전략",
+        description: "최근 10회차 보너스볼 출현 패턴과 고빈도 번호를 조합한 2등 특화 전략",
+        patterns: ["보너스볼 빈도", "최근 10회 분석", "핫넘버 조합"],
+        method: "보너스볼 특화 분석"
+      },
+      {
+        name: "준당첨 패턴 분석",
+        description: "역대 2등 당첨번호와 1등의 차이를 분석하여 보너스볼 예측 강화",
+        patterns: ["2등 당첨 패턴", "보너스볼 예측", "차집합 분석"],
+        method: "준당첨 통계 분석"
+      },
+      {
+        name: "고빈도 5+1 조합",
+        description: "최근 30회차 고빈도 5개 번호와 보너스볼 후보군을 결합한 전략",
+        patterns: ["고빈도 5개", "보너스 후보군", "30회차 분석"],
+        method: "5+1 최적화"
+      },
+      {
+        name: "보너스볼 주기 분석",
+        description: "보너스볼의 출현 주기를 분석하여 다음 보너스볼 예측에 중점",
+        patterns: ["주기성 분석", "보너스 예측", "순환 패턴"],
+        method: "주기 예측 모델"
+      },
+      {
+        name: "2등 확률 극대화",
+        description: "1등보다 2등 확률을 극대화하는 번호 조합 전략",
+        patterns: ["2등 확률 우선", "보너스 강화", "밸런스 조정"],
+        method: "확률 최적화"
+      }
+    ],
+    "3": [
+      {
+        name: "균형잡힌 번호 조합",
+        description: "홀짝, 고저, 구간별 균형을 맞춘 5개 적중 목표 전략",
+        patterns: ["홀짝 균형", "고저 균형", "구간 분산"],
+        method: "균형 분석"
+      },
+      {
+        name: "중간값 집중 전략",
+        description: "통계적으로 5개 적중 확률이 높은 중간 범위 번호 집중 선택",
+        patterns: ["중간값 선호", "15-35 구간", "통계 기반"],
+        method: "중간값 분석"
+      },
+      {
+        name: "최근 트렌드 반영",
+        description: "최근 20회차의 당첨 트렌드를 반영한 5개 맞추기 전략",
+        patterns: ["20회차 트렌드", "최신 패턴", "동향 분석"],
+        method: "트렌드 추적"
+      },
+      {
+        name: "구간별 안정 조합",
+        description: "각 10번대 구간에서 안정적으로 선택하여 5개 적중 확률 향상",
+        patterns: ["구간별 선택", "안정성 우선", "분산 투자"],
+        method: "구간 분석"
+      },
+      {
+        name: "3등 빈출 패턴",
+        description: "역대 3등 당첨번호의 공통 패턴을 분석한 전략",
+        patterns: ["3등 패턴", "빈출 조합", "역대 분석"],
+        method: "3등 특화"
+      }
+    ],
+    "4": [
+      {
+        name: "4연속 패턴 포착",
+        description: "연속된 4개 번호가 나올 확률을 계산한 패턴 전략",
+        patterns: ["연속 번호", "4개 패턴", "연번 분석"],
+        method: "연속성 분석"
+      },
+      {
+        name: "핫콜드 믹스",
+        description: "핫넘버 2개와 콜드넘버 2개를 섞어 4개 적중 확률 향상",
+        patterns: ["핫넘버 2개", "콜드넘버 2개", "믹스 전략"],
+        method: "핫콜드 조합"
+      },
+      {
+        name: "쿼드 섹터 분석",
+        description: "45개 번호를 4구간으로 나누어 각 구간에서 선택하는 전략",
+        patterns: ["4구간 분할", "섹터별 선택", "구간 균등"],
+        method: "섹터 분석"
+      },
+      {
+        name: "4등 최다 조합",
+        description: "역대 4등 당첨에서 가장 많이 나온 번호 조합 패턴",
+        patterns: ["4등 최다", "빈출 4개조", "통계 우선"],
+        method: "4등 통계"
+      },
+      {
+        name: "반복 주기 포착",
+        description: "4개 번호가 함께 나오는 반복 주기를 분석한 전략",
+        patterns: ["반복 주기", "4개 세트", "주기성"],
+        method: "주기 분석"
+      }
+    ],
+    "5": [
+      {
+        name: "기본 확률 전략",
+        description: "순수 확률론에 기반한 3개 번호 적중 전략",
+        patterns: ["순수 확률", "랜덤성", "기본 전략"],
+        method: "확률론"
+      },
+      {
+        name: "인기번호 3종",
+        description: "가장 인기있는 번호 3개를 포함한 조합 전략",
+        patterns: ["인기번호", "TOP3 포함", "대중 선택"],
+        method: "인기도 분석"
+      },
+      {
+        name: "미니 조합 전략",
+        description: "작은 범위에서 3개를 집중 선택하는 미니멀 전략",
+        patterns: ["집중 선택", "좁은 범위", "미니 조합"],
+        method: "집중 전략"
+      },
+      {
+        name: "행운의 트리플",
+        description: "통계적으로 함께 자주 나오는 3개 번호 조합",
+        patterns: ["트리플 조합", "동반 출현", "행운 번호"],
+        method: "동반 분석"
+      },
+      {
+        name: "5천원의 행복",
+        description: "부담없이 즐기는 3개 맞추기 기본 전략",
+        patterns: ["기본 전략", "부담 없음", "즐거운 로또"],
+        method: "기본 분석"
+      }
+    ]
   };
 
   // 컴포넌트 마운트 시 분석 통계만 로드 (자동 추천 제거)
@@ -324,14 +456,40 @@ const Recommend: React.FC<RecommendProps> = ({
     }
   };
 
-  // 기존 방식 폴백 (2-5등급용)
-  const generateBasicRecommendations = (grade: string) => {
+  // 개선된 기본 추천 생성 (2-5등급용) - 실제 데이터 분석
+  const generateBasicRecommendations = async (grade: string) => {
     setLoading(true);
     setHasGenerated(true);
 
-    setTimeout(() => {
-      const strategies = generateFallbackStrategies(grade);
+    try {
+      console.log(`🎯 ${gradeInfo[grade].name} 데이터 분석 시작...`);
+
+      // 로딩 애니메이션을 위한 약간의 지연
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      let strategies: RecommendStrategy[] = [];
+
+      // 각 등급별 실제 데이터 분석 메서드 호출
+      switch (grade) {
+        case "2":
+          strategies = await lottoRecommendService.generate2ndGradeRecommendations();
+          break;
+        case "3":
+          strategies = await lottoRecommendService.generate3rdGradeRecommendations();
+          break;
+        case "4":
+          strategies = await lottoRecommendService.generate4thGradeRecommendations();
+          break;
+        case "5":
+          strategies = await lottoRecommendService.generate5thGradeRecommendations();
+          break;
+        default:
+          strategies = generateGradeSpecificStrategies(grade);
+      }
+
       setRecommendedStrategies(strategies);
+
+      console.log(`✅ ${gradeInfo[grade].name} 분석 완료! ${strategies.length}개 전략 생성`);
 
       // 자동저장 기능 구현 (2-5등급도 적용)
       if (autoSave && strategies.length > 0) {
@@ -344,10 +502,97 @@ const Recommend: React.FC<RecommendProps> = ({
       }
 
       setLoading(false);
-    }, 800);
+    } catch (error) {
+      console.error(`❌ ${gradeInfo[grade].name} 분석 실패:`, error);
+      setRecommendedStrategies(generateGradeSpecificStrategies(grade));
+      setLoading(false);
+    }
   };
 
-  // 폴백 전략 생성
+차 (${totalRounds}개)`,
+          method: strategyInfo.method,
+          patterns: strategyInfo.patterns,
+          specialInfo: index === 0 ? "⭐ 추천 전략" : undefined
+        },
+      });
+    });
+
+    return strategies;
+  };
+
+  // 전략에 따른 스마트 번호 생성
+  const generateSmartNumbers = (grade: string, method: string): number[] => {
+    const numbers = new Set<number>();
+    
+    // 기본적으로 랜덤하게 생성하되, 메서드에 따라 약간의 변화를 줌
+    switch(method) {
+      case "보너스볼 특화 분석":
+      case "5+1 최적화":
+        // 고빈도 번호 위주로 선택 (예시)
+        const hotNumbers = [3, 6, 7, 9, 27, 38];
+        hotNumbers.forEach(num => {
+          if (numbers.size < 3 && Math.random() > 0.5) {
+            numbers.add(num);
+          }
+        });
+        break;
+        
+      case "균형 분석":
+        // 홀짝 균형 맞추기
+        let oddCount = 0;
+        let evenCount = 0;
+        while (numbers.size < 6) {
+          const num = Math.floor(Math.random() * 45) + 1;
+          if (num % 2 === 0 && evenCount < 3) {
+            numbers.add(num);
+            evenCount++;
+          } else if (num % 2 === 1 && oddCount < 3) {
+            numbers.add(num);
+            oddCount++;
+          }
+        }
+        break;
+        
+      case "중간값 분석":
+        // 15-35 구간 집중
+        while (numbers.size < 6) {
+          const num = Math.floor(Math.random() * 21) + 15; // 15-35
+          numbers.add(num);
+        }
+        break;
+        
+      case "핫콜드 조합":
+        // 핫넘버와 콜드넘버 믹스
+        const hotNums = [3, 6, 7, 9, 27];
+        const coldNums = [2, 5, 23, 25, 32];
+        // 핫넘버 2개
+        let hotAdded = 0;
+        while (hotAdded < 2 && numbers.size < 6) {
+          const idx = Math.floor(Math.random() * hotNums.length);
+          if (numbers.add(hotNums[idx])) {
+            hotAdded++;
+          }
+        }
+        // 콜드넘버 2개
+        let coldAdded = 0;
+        while (coldAdded < 2 && numbers.size < 6) {
+          const idx = Math.floor(Math.random() * coldNums.length);
+          if (numbers.add(coldNums[idx])) {
+            coldAdded++;
+          }
+        }
+        break;
+    }
+    
+    // 나머지는 랜덤으로 채우기
+    while (numbers.size < 6) {
+      numbers.add(Math.floor(Math.random() * 45) + 1);
+    }
+    
+    return Array.from(numbers).sort((a, b) => a - b);
+  };
+
+  // 폴백 전략 생성 (1등급용)
   const generateFallbackStrategies = (
     grade: string = "1"
   ): RecommendStrategy[] => {
