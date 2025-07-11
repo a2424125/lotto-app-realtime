@@ -1031,6 +1031,7 @@ const Recommend: React.FC<RecommendProps> = ({
                       alignItems: "center",
                       gap: "2px",
                       lineHeight: "1",
+                      zIndex: 1,
                     }}
                   >
                     <IconWrapper size="sm">{confStyle.emoji}</IconWrapper>
@@ -1120,7 +1121,38 @@ const Recommend: React.FC<RecommendProps> = ({
                       </span>
                     </div>
                   </div>
+                </div>
 
+                {/* 번호 표시 */}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "6px",
+                    justifyContent: "center",
+                    flexWrap: "wrap",
+                    backgroundColor: currentColors.gray,
+                    padding: "12px",
+                    borderRadius: "8px",
+                    marginBottom: "12px",
+                    border: `2px dashed ${currentColors.grayBorder}`,
+                  }}
+                >
+                  {strategy.numbers.map((num, i) => (
+                    <LottoNumberBall
+                      key={i}
+                      number={num}
+                      size="md"
+                      theme={theme}
+                    />
+                  ))}
+                </div>
+
+                {/* 내번호함 추가 버튼 - 위치 변경 */}
+                <div style={{ 
+                  display: "flex", 
+                  justifyContent: "center",
+                  marginBottom: "12px"
+                }}>
                   <button
                     onClick={() => {
                       onAddToPurchaseHistory(strategy.numbers, strategy.name);
@@ -1148,30 +1180,6 @@ const Recommend: React.FC<RecommendProps> = ({
                     <IconWrapper size="sm">🗂️</IconWrapper>
                     내번호함에 추가
                   </button>
-                </div>
-
-                {/* 번호 표시 */}
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "6px",
-                    justifyContent: "center",
-                    flexWrap: "wrap",
-                    backgroundColor: currentColors.gray,
-                    padding: "12px",
-                    borderRadius: "8px",
-                    marginBottom: "12px",
-                    border: `2px dashed ${currentColors.grayBorder}`,
-                  }}
-                >
-                  {strategy.numbers.map((num, i) => (
-                    <LottoNumberBall
-                      key={i}
-                      number={num}
-                      size="md"
-                      theme={theme}
-                    />
-                  ))}
                 </div>
 
                 {/* 분석 패턴 태그들 */}
