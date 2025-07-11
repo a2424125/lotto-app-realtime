@@ -5,6 +5,108 @@ import {
   RecommendStrategy,
 } from "../../services/lottoRecommendService";
 
+// 커스텀 팝업 컴포넌트
+interface PopupProps {
+  isOpen: boolean;
+  onClose: () => void;
+  message: string;
+  type?: "success" | "error" | "info";
+  theme?: "light" | "dark";
+}
+
+const CustomPopup: React.FC<PopupProps> = ({ isOpen, onClose, message, type = "success", theme = "light" }) => {
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 2000); // 2초 후 자동 닫기
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const colors = {
+    light: {
+      overlay: "rgba(0, 0, 0, 0.5)",
+      background: "#ffffff",
+      text: "#1f2937",
+      border: "#e5e7eb",
+      success: "#059669",
+    },
+    dark: {
+      overlay: "rgba(0, 0, 0, 0.7)",
+      background: "#1e293b",
+      text: "#f1f5f9",
+      border: "#334155",
+      success: "#10b981",
+    },
+  };
+
+  const currentColors = colors[theme];
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: currentColors.overlay,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 9999,
+        animation: "fadeIn 0.2s ease-out",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          backgroundColor: currentColors.background,
+          borderRadius: "12px",
+          padding: "20px 24px",
+          minWidth: "280px",
+          maxWidth: "90%",
+          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+          border: `1px solid ${currentColors.border}`,
+          animation: "slideUp 0.3s ease-out",
+          textAlign: "center",
+        }}
+      >
+        <div style={{ fontSize: "48px", marginBottom: "12px" }}>
+          {type === "success" ? "✅" : type === "error" ? "❌" : "ℹ️"}
+        </div>
+        <div
+          style={{
+            fontSize: "16px",
+            color: currentColors.text,
+            lineHeight: "1.5",
+            whiteSpace: "pre-line",
+          }}
+        >
+          {message}
+        </div>
+      </div>
+      
+      <style>
+        {`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+          }
+        `}
+      </style>
+    </div>
+  );
+};
+
 interface RecommendProps {
   pastWinningNumbers: number[][];
   onAddToPurchaseHistory: (numbers: number[], strategy: string) => void;
@@ -35,6 +137,17 @@ const Recommend: React.FC<RecommendProps> = ({
   const [analysisStats, setAnalysisStats] = useState<any>(null);
   const [showAnalysisDetail, setShowAnalysisDetail] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
+
+  // 팝업 상태 관리
+  const [popup, setPopup] = useState({ isOpen: false, message: "", type: "success" as const });
+
+  const showPopup = (message: string, type: "success" | "error" | "info" = "success") => {
+    setPopup({ isOpen: true, message, type });
+  };
+
+  const closePopup = () => {
+    setPopup({ ...popup, isOpen: false });
+  };
 
   // 동적 회차 계산 - 실제 데이터 기반
   const totalRounds = pastWinningNumbers.length;
@@ -189,11 +302,9 @@ const Recommend: React.FC<RecommendProps> = ({
 
         onAddToPurchaseHistory(bestStrategy.numbers, bestStrategy.name);
 
-        // 자동저장 알림
+        // 자동저장 알림 - 커스텀 팝업 사용
         setTimeout(() => {
-          alert(
-            `✅ 자동저장 완료!\n"${bestStrategy.name}" 번호가 내번호함에 저장되었습니다.`
-          );
+          showPopup(`자동저장 완료!\n"${bestStrategy.name}" 번호가 내번호함에 저장되었습니다.`);
         }, 500);
       }
 
@@ -224,9 +335,7 @@ const Recommend: React.FC<RecommendProps> = ({
         onAddToPurchaseHistory(bestStrategy.numbers, bestStrategy.name);
 
         setTimeout(() => {
-          alert(
-            `✅ 자동저장 완료!\n"${bestStrategy.name}" 번호가 내번호함에 저장되었습니다.`
-          );
+          showPopup(`자동저장 완료!\n"${bestStrategy.name}" 번호가 내번호함에 저장되었습니다.`);
         }, 500);
       }
 
@@ -332,6 +441,15 @@ const Recommend: React.FC<RecommendProps> = ({
 
   return (
     <div style={{ padding: "12px" }}>
+      {/* 커스텀 팝업 */}
+      <CustomPopup
+        isOpen={popup.isOpen}
+        onClose={closePopup}
+        message={popup.message}
+        type={popup.type}
+        theme={theme}
+      />
+
       {/* 빅데이터 분석 시스템 헤더 - 실제 회차 범위 표시 */}
       {analysisStats && (
         <div
@@ -1002,7 +1120,7 @@ const Recommend: React.FC<RecommendProps> = ({
                   <button
                     onClick={() => {
                       onAddToPurchaseHistory(strategy.numbers, strategy.name);
-                      alert("✅ 내번호함에 저장되었습니다!");
+                      showPopup("내번호함에 저장되었습니다!");
                     }}
                     style={{
                       background: `linear-gradient(45deg, ${currentColors.primary}, #3b82f6)`,
