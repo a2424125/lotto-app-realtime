@@ -792,7 +792,7 @@ const LottoApp = () => {
       {/* 모바일 상태바 */}
       <div
         style={{
-          backgroundColor: "#000000",
+          backgroundColor: currentColors.primary,
           color: "white",
           padding: "4px 16px",
           display: "flex",
