@@ -1,6 +1,120 @@
 import React, { useState } from "react";
 import { lottoRecommendService } from "../../services/lottoRecommendService";
 
+// 커스텀 팝업 컴포넌트
+interface PopupProps {
+  isOpen: boolean;
+  onClose: () => void;
+  message: string;
+  type?: "success" | "error" | "info";
+  theme?: "light" | "dark";
+}
+
+const CustomPopup: React.FC<PopupProps> = ({ isOpen, onClose, message, type = "success", theme = "light" }) => {
+  if (!isOpen) return null;
+
+  const colors = {
+    light: {
+      overlay: "rgba(0, 0, 0, 0.5)",
+      background: "#ffffff",
+      text: "#1f2937",
+      border: "#e5e7eb",
+      success: "#059669",
+      error: "#dc2626",
+    },
+    dark: {
+      overlay: "rgba(0, 0, 0, 0.7)",
+      background: "#1e293b",
+      text: "#f1f5f9",
+      border: "#334155",
+      success: "#10b981",
+      error: "#ef4444",
+    },
+  };
+
+  const currentColors = colors[theme];
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: currentColors.overlay,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 9999,
+        animation: "fadeIn 0.2s ease-out",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          backgroundColor: currentColors.background,
+          borderRadius: "12px",
+          padding: "24px",
+          minWidth: "300px",
+          maxWidth: "90%",
+          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+          border: `1px solid ${currentColors.border}`,
+          animation: "slideUp 0.3s ease-out",
+        }}
+      >
+        <div style={{ textAlign: "center", marginBottom: "16px" }}>
+          <div style={{ fontSize: "48px", marginBottom: "12px" }}>
+            {type === "success" ? "✅" : "❌"}
+          </div>
+          <div
+            style={{
+              fontSize: "16px",
+              color: currentColors.text,
+              lineHeight: "1.5",
+            }}
+          >
+            {message}
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          style={{
+            width: "100%",
+            padding: "10px",
+            backgroundColor: type === "success" ? currentColors.success : currentColors.error,
+            color: "white",
+            border: "none",
+            borderRadius: "8px",
+            fontSize: "14px",
+            fontWeight: "600",
+            cursor: "pointer",
+            transition: "transform 0.2s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
+          onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
+        >
+          확인
+        </button>
+      </div>
+      
+      <style>
+        {`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+          }
+        `}
+      </style>
+    </div>
+  );
+};
+
 interface SettingsProps {
   onDataExport: () => void;
   onDataImport: (data: any) => void;
@@ -26,6 +140,21 @@ const Settings: React.FC<SettingsProps> = ({
 }) => {
   const [notifications, setNotifications] = useState(true);
   const [isClearing, setIsClearing] = useState(false);
+  
+  // 팝업 상태 관리
+  const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: "success" | "error" }>({ 
+    isOpen: false, 
+    message: "", 
+    type: "success" 
+  });
+
+  const showPopup = (message: string, type: "success" | "error" = "success") => {
+    setPopup({ isOpen: true, message, type });
+  };
+
+  const closePopup = () => {
+    setPopup({ ...popup, isOpen: false });
+  };
 
   // ✅ 수정된 다크 모드 색상 테마 - 모든 필요한 속성 포함
   const colors = {
@@ -107,11 +236,11 @@ const Settings: React.FC<SettingsProps> = ({
 
       setTimeout(() => {
         setIsClearing(false);
-        alert("✅ 캐시가 성공적으로 초기화되었습니다!");
+        showPopup("캐시가 성공적으로 초기화되었습니다!", "success");
       }, 1000);
     } catch (error) {
       setIsClearing(false);
-      alert("❌ 캐시 초기화 중 오류가 발생했습니다.");
+      showPopup("캐시 초기화 중 오류가 발생했습니다.", "error");
       console.error("캐시 초기화 오류:", error);
     }
   };
@@ -134,6 +263,15 @@ const Settings: React.FC<SettingsProps> = ({
 
   return (
     <div style={{ padding: "12px" }}>
+      {/* 커스텀 팝업 */}
+      <CustomPopup
+        isOpen={popup.isOpen}
+        onClose={closePopup}
+        message={popup.message}
+        type={popup.type}
+        theme={currentTheme}
+      />
+
       <div
         style={{
           backgroundColor: currentColors.surface,
