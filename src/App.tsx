@@ -552,7 +552,7 @@ const LottoApp = () => {
     };
   };
 
-  // 🛡️ 안전한 데이터 새로고침 (항상 성공)
+  // 🛡️ 안전한 데이터 새로고침 (alert 제거)
   const refreshData = async () => {
     try {
       console.log("🔄 안전한 데이터 강제 새로고침 시작...");
@@ -566,10 +566,15 @@ const LottoApp = () => {
       loadNextDrawInfo();
 
       const currentCount = pastWinningNumbers.length;
-      alert(`✅ 안전한 데이터가 업데이트되었습니다!\n현재 데이터: ${currentCount}개 회차\n${result.message}`);
+      console.log(`✅ 안전한 데이터가 업데이트되었습니다! 현재 데이터: ${currentCount}개 회차`);
+      console.log(result.message);
+      
+      // alert 대신 성공 상태 반환
+      return { success: true, message: `현재 데이터: ${currentCount}개 회차` };
     } catch (error) {
       console.error("❌ 안전한 데이터 새로고침 오류:", error);
-      alert("⚠️ 데이터 새로고침 중 오류가 발생했지만 서비스는 계속됩니다.");
+      // alert 대신 에러 상태 반환
+      throw error;
     } finally {
       setIsDataLoading(false);
     }
