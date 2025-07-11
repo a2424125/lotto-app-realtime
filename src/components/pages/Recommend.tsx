@@ -509,7 +509,41 @@ const Recommend: React.FC<RecommendProps> = ({
     }
   };
 
-차 (${totalRounds}개)`,
+  // 등급별 특화 전략 생성 (fallback용)
+  const generateGradeSpecificStrategies = (grade: string): RecommendStrategy[] => {
+    const strategies: RecommendStrategy[] = [];
+    const gradeSpecificStrategies = gradeStrategies[grade] || [];
+
+    gradeSpecificStrategies.forEach((strategyInfo, index) => {
+      const numbers = generateSmartNumbers(grade, strategyInfo.method);
+      
+      // 신뢰도는 등급과 전략에 따라 다르게 설정
+      let confidence = 0;
+      switch(grade) {
+        case "2":
+          confidence = 75 + Math.floor(Math.random() * 15); // 75-89
+          break;
+        case "3":
+          confidence = 70 + Math.floor(Math.random() * 15); // 70-84
+          break;
+        case "4":
+          confidence = 65 + Math.floor(Math.random() * 15); // 65-79
+          break;
+        case "5":
+          confidence = 60 + Math.floor(Math.random() * 15); // 60-74
+          break;
+        default:
+          confidence = 70 + Math.floor(Math.random() * 10);
+      }
+
+      strategies.push({
+        name: strategyInfo.name,
+        numbers: numbers,
+        grade: gradeInfo[grade].name,
+        description: strategyInfo.description,
+        confidence: confidence,
+        analysisData: {
+          dataRange: `${actualLatestRound}~${actualOldestRound}회차 (${totalRounds}개)`,
           method: strategyInfo.method,
           patterns: strategyInfo.patterns,
           specialInfo: index === 0 ? "⭐ 추천 전략" : undefined
