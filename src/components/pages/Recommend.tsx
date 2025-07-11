@@ -139,7 +139,11 @@ const Recommend: React.FC<RecommendProps> = ({
   const [hasGenerated, setHasGenerated] = useState(false);
 
   // 팝업 상태 관리
-  const [popup, setPopup] = useState({ isOpen: false, message: "", type: "success" as const });
+  const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: "success" | "error" | "info" }>({ 
+    isOpen: false, 
+    message: "", 
+    type: "success" 
+  });
 
   const showPopup = (message: string, type: "success" | "error" | "info" = "success") => {
     setPopup({ isOpen: true, message, type });
