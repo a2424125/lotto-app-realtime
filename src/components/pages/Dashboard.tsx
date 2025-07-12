@@ -38,8 +38,32 @@ const Dashboard: React.FC<DashboardProps> = ({
   nextDrawInfo: propNextDrawInfo
 }) => {
   const totalRounds = pastWinningNumbers.length;
-  const actualLatestRound = roundRange?.latestRound || 1180; // 기본값을 1180으로 업데이트
+  const actualLatestRound = roundRange?.latestRound || calculateDefaultRound();
   const actualOldestRound = roundRange?.oldestRound || Math.max(1, actualLatestRound - totalRounds + 1);
+
+  // 기본 회차 계산 함수
+  function calculateDefaultRound(): number {
+    const referenceDate = new Date('2025-07-05');
+    const referenceRound = 1179;
+    const now = new Date();
+    
+    const koreaOffset = 9 * 60;
+    const koreaTime = new Date(now.getTime() + koreaOffset * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000);
+    
+    const timeDiff = now.getTime() - referenceDate.getTime();
+    let weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
+    
+    const koreaDay = koreaTime.getDay();
+    const koreaHour = koreaTime.getHours();
+    const koreaMinute = koreaTime.getMinutes();
+    const isBeforeDraw = koreaDay === 6 && (koreaHour < 20 || (koreaHour === 20 && koreaMinute < 35));
+    
+    if (koreaDay === 0 || (koreaDay >= 1 && koreaDay <= 5) || isBeforeDraw) {
+      if (isBeforeDraw && weeksPassed > 0) weeksPassed--;
+    }
+    
+    return referenceRound + weeksPassed;
+  }
 
   const [latestResult, setLatestResult] = useState<LottoDrawResult | null>(null);
   const [isLoadingLatest, setIsLoadingLatest] = useState(false);
@@ -128,28 +152,27 @@ const Dashboard: React.FC<DashboardProps> = ({
         return;
       }
 
-      // 2순위: 1180회 실제 당첨번호
-      if (actualLatestRound === 1180) {
+      // 2순위: 최근 3회차 실제 당첨번호 중 현재 회차 확인
+      const recentVerifiedResults: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
+        1180: { numbers: [4, 6, 8, 14, 34, 43], bonus: 7, date: '2025-07-12' },
+        1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
+        1178: { numbers: [1, 7, 17, 28, 29, 40], bonus: 33, date: '2025-06-28' },
+      };
+      
+      if (recentVerifiedResults[actualLatestRound]) {
+        const data = recentVerifiedResults[actualLatestRound];
         const fallbackResult: LottoDrawResult = {
-          round: 1180,
-          date: '2025-07-12',
-          numbers: [4, 6, 8, 14, 34, 43],
-          bonusNumber: 7,
+          round: actualLatestRound,
+          date: data.date,
+          numbers: data.numbers,
+          bonusNumber: data.bonus,
           crawledAt: new Date().toISOString(),
           source: "safe_fallback",
         };
         setLatestResult(fallbackResult);
       } else {
-        // 3순위: 1179회 당첨번호
-        const fallbackResult: LottoDrawResult = {
-          round: 1179,
-          date: '2025-07-05',
-          numbers: [3, 16, 18, 24, 40, 44],
-          bonusNumber: 21,
-          crawledAt: new Date().toISOString(),
-          source: "safe_fallback",
-        };
-        setLatestResult(fallbackResult);
+        // 3순위: 자동 생성 표시
+        setLatestResult(null); // 로딩 상태로 표시
       }
 
     } catch (error) {
@@ -204,15 +227,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   // 안전한 당첨번호 표시
   const getDisplayNumbers = (): { numbers: number[]; bonusNumber: number; round: number } => {
-    // 1180회차면 실제 당첨번호 사용
-    if (actualLatestRound === 1180) {
-      return {
-        numbers: [4, 6, 8, 14, 34, 43],
-        bonusNumber: 7,
-        round: 1180
-      };
-    }
-
+    // 최신 회차가 pastWinningNumbers에 있으면 그것을 사용
     if (pastWinningNumbers.length > 0 && pastWinningNumbers[0].length >= 7) {
       return {
         numbers: pastWinningNumbers[0].slice(0, 6),
@@ -221,6 +236,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       };
     }
 
+    // latestResult가 있으면 사용
     if (latestResult && latestResult.numbers && latestResult.bonusNumber) {
       return {
         numbers: latestResult.numbers,
@@ -229,11 +245,27 @@ const Dashboard: React.FC<DashboardProps> = ({
       };
     }
 
-    // 기본값 (1179회)
+    // 최근 3회차 실제 데이터 (fallback)
+    const recentResults: { [key: number]: { numbers: number[], bonus: number } } = {
+      1180: { numbers: [4, 6, 8, 14, 34, 43], bonus: 7 },
+      1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21 },
+      1178: { numbers: [1, 7, 17, 28, 29, 40], bonus: 33 },
+    };
+
+    // 현재 회차의 실제 데이터가 있으면 사용
+    if (recentResults[actualLatestRound]) {
+      return {
+        numbers: recentResults[actualLatestRound].numbers,
+        bonusNumber: recentResults[actualLatestRound].bonus,
+        round: actualLatestRound
+      };
+    }
+
+    // 없으면 자동 생성된 번호 표시 (또는 로딩 상태)
     return {
-      numbers: [3, 16, 18, 24, 40, 44],
-      bonusNumber: 21,
-      round: 1179
+      numbers: [],
+      bonusNumber: 0,
+      round: actualLatestRound
     };
   };
 
