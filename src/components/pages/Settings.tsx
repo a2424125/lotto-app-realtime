@@ -814,7 +814,7 @@ const Settings: React.FC<SettingsProps> = ({
             <span
               style={{ fontSize: "14px", color: currentColors.textSecondary }}
             >
-              Hyung.j
+              개발자
             </span>
             <span
               style={{
