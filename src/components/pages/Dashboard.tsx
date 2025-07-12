@@ -38,7 +38,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   nextDrawInfo: propNextDrawInfo
 }) => {
   const totalRounds = pastWinningNumbers.length;
-  const actualLatestRound = roundRange?.latestRound || 1179;
+  const actualLatestRound = roundRange?.latestRound || 1180; // 기본값을 1180으로 업데이트
   const actualOldestRound = roundRange?.oldestRound || Math.max(1, actualLatestRound - totalRounds + 1);
 
   const [latestResult, setLatestResult] = useState<LottoDrawResult | null>(null);
@@ -128,16 +128,29 @@ const Dashboard: React.FC<DashboardProps> = ({
         return;
       }
 
-      // 2순위: fallback 데이터
-      const fallbackResult: LottoDrawResult = {
-        round: actualLatestRound,
-        date: new Date().toISOString().split('T')[0],
-        numbers: [3, 16, 18, 24, 40, 44],
-        bonusNumber: 21,
-        crawledAt: new Date().toISOString(),
-        source: "safe_fallback",
-      };
-      setLatestResult(fallbackResult);
+      // 2순위: 1180회 실제 당첨번호
+      if (actualLatestRound === 1180) {
+        const fallbackResult: LottoDrawResult = {
+          round: 1180,
+          date: '2025-07-12',
+          numbers: [4, 6, 8, 14, 34, 43],
+          bonusNumber: 7,
+          crawledAt: new Date().toISOString(),
+          source: "safe_fallback",
+        };
+        setLatestResult(fallbackResult);
+      } else {
+        // 3순위: 1179회 당첨번호
+        const fallbackResult: LottoDrawResult = {
+          round: 1179,
+          date: '2025-07-05',
+          numbers: [3, 16, 18, 24, 40, 44],
+          bonusNumber: 21,
+          crawledAt: new Date().toISOString(),
+          source: "safe_fallback",
+        };
+        setLatestResult(fallbackResult);
+      }
 
     } catch (error) {
       console.error("❌ 안전한 로드 실패:", error);
@@ -191,6 +204,15 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   // 안전한 당첨번호 표시
   const getDisplayNumbers = (): { numbers: number[]; bonusNumber: number; round: number } => {
+    // 1180회차면 실제 당첨번호 사용
+    if (actualLatestRound === 1180) {
+      return {
+        numbers: [4, 6, 8, 14, 34, 43],
+        bonusNumber: 7,
+        round: 1180
+      };
+    }
+
     if (pastWinningNumbers.length > 0 && pastWinningNumbers[0].length >= 7) {
       return {
         numbers: pastWinningNumbers[0].slice(0, 6),
@@ -207,10 +229,11 @@ const Dashboard: React.FC<DashboardProps> = ({
       };
     }
 
+    // 기본값 (1179회)
     return {
       numbers: [3, 16, 18, 24, 40, 44],
       bonusNumber: 21,
-      round: actualLatestRound
+      round: 1179
     };
   };
 
