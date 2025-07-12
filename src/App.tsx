@@ -26,7 +26,6 @@ const LottoApp = () => {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [autoSave, setAutoSave] = useState<boolean>(false);
   const [exitConfirmCount, setExitConfirmCount] = useState(0);
-  const [currentSystemTime, setCurrentSystemTime] = useState(new Date());
 
   const [pastWinningNumbers, setPastWinningNumbers] = useState<number[][]>([]);
   
@@ -96,15 +95,6 @@ const LottoApp = () => {
     { id: "minigame", name: "🎮 미니게임" },
     { id: "settings", name: "⚙️ 설정" },
   ];
-
-  // 시스템 시간 업데이트
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSystemTime(new Date());
-    }, 1000); // 1초마다 업데이트
-
-    return () => clearInterval(timer);
-  }, []);
 
   // 🔧 메뉴 변경 함수 - 히스토리 관리 추가
   const handleMenuChange = (newMenu: string, shouldPushState: boolean = true) => {
@@ -781,46 +771,33 @@ const LottoApp = () => {
     <div
       style={{
         width: "100%",
+        height: "100vh",
         backgroundColor: currentColors.background,
-        minHeight: "100vh",
-        position: "relative",
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         color: currentColors.text,
         transition: "all 0.3s ease",
+        display: "flex",
+        flexDirection: "column",
+        /* Edge-to-Edge 스타일 적용 (상태바는 시스템 표시) */
+        paddingLeft: "env(safe-area-inset-left)",
+        paddingRight: "env(safe-area-inset-right)",
+        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      {/* 모바일 상태바 */}
-      <div
-        style={{
-          backgroundColor: currentColors.primary,
-          color: "white",
-          padding: "4px 16px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          fontSize: "12px",
-          fontWeight: "500",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <span>{currentSystemTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ fontSize: "10px" }}>📶</span>
-          <span style={{ fontSize: "10px" }}>📳</span>
-          <span style={{ fontSize: "10px" }}>🔋</span>
-          <span style={{ fontSize: "11px" }}>100%</span>
-        </div>
-      </div>
-
       {/* 전체 화면 컨테이너 */}
       <div
         style={{
-          maxWidth: "100%",
-          margin: "0 auto",
+          flex: 1,
           backgroundColor: currentColors.background,
-          minHeight: "calc(100vh - 28px)", // 상태바 높이 제외
           position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
         }}
       >
         {/* 헤더 */}
@@ -832,6 +809,8 @@ const LottoApp = () => {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            position: "relative",
+            zIndex: 40,
           }}
         >
           <button
@@ -892,6 +871,7 @@ const LottoApp = () => {
                 backgroundColor: currentColors.surface,
                 boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
                 color: currentColors.text,
+                paddingBottom: "env(safe-area-inset-bottom)",
               }}
             >
               <div
@@ -1036,7 +1016,14 @@ const LottoApp = () => {
         )}
 
         {/* 메인 콘텐츠 */}
-        <div style={{ paddingBottom: "56px" }}>
+        <div 
+          style={{ 
+            flex: 1,
+            overflow: "auto",
+            paddingBottom: "calc(56px + env(safe-area-inset-bottom))",
+            position: "relative",
+          }}
+        >
           {isDataLoading && (
             <div
               style={{
@@ -1058,34 +1045,47 @@ const LottoApp = () => {
           {renderContent()}
         </div>
 
-        {/* 푸터 */}
+        {/* 푸터 - 하단 안전 영역 고려 */}
         <div
           style={{
             position: "fixed",
             bottom: 0,
             left: 0,
-            width: "100%",
+            right: 0,
+            height: "calc(56px + env(safe-area-inset-bottom))",
             backgroundColor: currentColors.surface,
             borderTop: `1px solid ${currentColors.border}`,
-            padding: "8px 12px",
-            textAlign: "center",
-            fontSize: "10px",
-            color: currentColors.textSecondary,
+            paddingBottom: "env(safe-area-inset-bottom)",
+            zIndex: 30,
           }}
         >
-          로또는 확률게임입니다. 과도한 구매는 가계에 부담이 됩니다.
-          <span style={{ color: "#10b981", marginLeft: "8px" }}>
-           ({pastWinningNumbers.length}회차)
-          </span>
-          {nextDrawInfo && (
-            <div style={{ color: "#dc2626", marginLeft: "8px", fontWeight: "bold", textAlign: "center" }}>
-              • 다음 추첨{" "}
-              {nextDrawInfo.isToday ? "오늘!" :
-               nextDrawInfo.daysUntilDraw === 1 ? "내일!" :
-               nextDrawInfo.daysUntilDraw === 0 ? "오늘!" :
-               `${nextDrawInfo.daysUntilDraw}일 후`} ({nextDrawInfo.round}회차)
-            </div>
-          )}
+          <div
+            style={{
+              height: "56px",
+              padding: "8px 12px",
+              textAlign: "center",
+              fontSize: "10px",
+              color: currentColors.textSecondary,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            로또는 확률게임입니다. 과도한 구매는 가계에 부담이 됩니다.
+            <span style={{ color: "#10b981", marginLeft: "8px" }}>
+             ({pastWinningNumbers.length}회차)
+            </span>
+            {nextDrawInfo && (
+              <div style={{ color: "#dc2626", marginLeft: "8px", fontWeight: "bold", textAlign: "center" }}>
+                • 다음 추첨{" "}
+                {nextDrawInfo.isToday ? "오늘!" :
+                 nextDrawInfo.daysUntilDraw === 1 ? "내일!" :
+                 nextDrawInfo.daysUntilDraw === 0 ? "오늘!" :
+                 `${nextDrawInfo.daysUntilDraw}일 후`} ({nextDrawInfo.round}회차)
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1105,7 +1105,25 @@ const LottoApp = () => {
           body {
             margin: 0;
             padding: 0;
-            overflow-x: hidden;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+          }
+          #root {
+            width: 100%;
+            height: 100%;
+          }
+          /* 스크롤바 스타일 */
+          ::-webkit-scrollbar {
+            width: 4px;
+          }
+          ::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 2px;
           }
         `}
       </style>
