@@ -14,17 +14,40 @@ interface LottoDrawResult {
   source?: string;
 }
 
-// 🔧 현재 회차 계산
+// 🔧 현재 회차 계산 (토요일 20:35 추첨 시간 고려)
 function calculateCurrentRound(): number {
   const referenceDate = new Date('2025-07-05');
   const referenceRound = 1179;
   const now = new Date();
   
+  // 한국 시간으로 변환
+  const koreaOffset = 9 * 60; // UTC+9
+  const koreaTime = new Date(now.getTime() + koreaOffset * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000);
+  
+  const koreaDay = koreaTime.getDay();
+  const koreaHour = koreaTime.getHours();
+  const koreaMinute = koreaTime.getMinutes();
+  
+  // 기준일부터 현재까지의 주 수 계산
   const timeDiff = now.getTime() - referenceDate.getTime();
-  const weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
+  let weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
+  
+  // 토요일이고 20:35 이전이면 아직 이번 주 추첨이 안 된 것
+  const isBeforeDraw = koreaDay === 6 && (koreaHour < 20 || (koreaHour === 20 && koreaMinute < 35));
+  
+  // 일요일~금요일이면 지난 토요일 추첨이 최신
+  // 토요일이면서 추첨 전이면 지난 주 토요일이 최신
+  if (koreaDay === 0 || (koreaDay >= 1 && koreaDay <= 5)) {
+    // 일요일~금요일: 이번 주 토요일 추첨은 아직 안 됨
+    // weeksPassed 그대로 사용
+  } else if (isBeforeDraw) {
+    // 토요일 추첨 전: 지난 주가 최신
+    weeksPassed = weeksPassed - 1;
+  }
+  // 토요일 추첨 후는 weeksPassed 그대로 사용
   
   const currentRound = referenceRound + weeksPassed;
-  console.log(`📊 현재 회차: ${currentRound}회차`);
+  console.log(`📊 현재 회차: ${currentRound}회차 (한국시간: ${koreaTime.toLocaleString('ko-KR')}, 추첨 전: ${isBeforeDraw})`);
   return currentRound;
 }
 
@@ -37,8 +60,9 @@ function generateEmergencyData(): LottoDrawResult[] {
   
   const startDate = new Date('2002-12-07');
   
-  // 🔧 검증된 실제 데이터들
+  // 🔧 검증된 실제 데이터들 (1180회 추가)
   const verifiedResults: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
+    1180: { numbers: [4, 6, 8, 14, 34, 43], bonus: 7, date: '2025-07-12' }, // 1180회 실제 당첨번호
     1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
     1178: { numbers: [1, 7, 17, 28, 29, 40], bonus: 33, date: '2025-06-28' },
     1177: { numbers: [4, 11, 15, 28, 34, 42], bonus: 45, date: '2025-06-21' },
@@ -339,4 +363,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 }
-  
