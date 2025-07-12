@@ -779,7 +779,7 @@ const Settings: React.FC<SettingsProps> = ({
                 color: currentColors.text,
               }}
             >
-              2.0.0
+              2.3.0
             </span>
           </div>
           <div
@@ -801,7 +801,7 @@ const Settings: React.FC<SettingsProps> = ({
                 color: currentColors.text,
               }}
             >
-              2025.07.02
+              2025.07.13
             </span>
           </div>
           <div
@@ -814,7 +814,7 @@ const Settings: React.FC<SettingsProps> = ({
             <span
               style={{ fontSize: "14px", color: currentColors.textSecondary }}
             >
-              개발자
+              Hyung.j
             </span>
             <span
               style={{
