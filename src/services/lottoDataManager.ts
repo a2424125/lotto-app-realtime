@@ -50,17 +50,61 @@ class EmergencyLottoDataManager {
     }
   }
 
-  // 🔧 현재 회차 계산
+  // 🔧 현재 회차 계산 (토요일 20:35 추첨 시간 고려)
   private calculateCurrentRound(): number {
     const referenceDate = new Date(this.REFERENCE_DATE);
     const referenceRound = this.REFERENCE_ROUND;
     const now = new Date();
     
+    // 한국 시간으로 변환
+    const koreaOffset = 9 * 60; // UTC+9
+    const koreaTime = new Date(now.getTime() + koreaOffset * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000);
+    
+    const koreaDay = koreaTime.getDay();
+    const koreaHour = koreaTime.getHours();
+    const koreaMinute = koreaTime.getMinutes();
+    
+    // 기준일부터 현재까지의 주 수 계산
     const timeDiff = now.getTime() - referenceDate.getTime();
-    const weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
+    let weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
+    
+    // 토요일이고 20:35 이전이면 아직 이번 주 추첨이 안 된 것
+    const isBeforeDraw = koreaDay === 6 && (koreaHour < 20 || (koreaHour === 20 && koreaMinute < 35));
+    
+    // 일요일~금요일이면 지난 토요일 추첨이 최신
+    // 토요일이면서 추첨 전이면 지난 주 토요일이 최신
+    if (koreaDay === 0 || (koreaDay >= 1 && koreaDay <= 5)) {
+      // 일요일~금요일: 이번 주 토요일 추첨은 아직 안 됨
+      // weeksPassed 그대로 사용
+    } else if (isBeforeDraw) {
+      // 토요일 추첨 전: 지난 주가 최신
+      weeksPassed = weeksPassed - 1;
+    }
+    // 토요일 추첨 후는 weeksPassed 그대로 사용
     
     const currentRound = referenceRound + weeksPassed;
+    console.log(`📊 현재 회차: ${currentRound}회차 (한국시간: ${koreaTime.toLocaleString('ko-KR')}, 추첨 전: ${isBeforeDraw})`);
     return currentRound;
+  }
+
+  // 🔧 추첨 완료 여부 확인
+  private hasDrawCompleted(): boolean {
+    const now = new Date();
+    const koreaOffset = 9 * 60; // UTC+9
+    const koreaTime = new Date(now.getTime() + koreaOffset * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000);
+    
+    const koreaDay = koreaTime.getDay();
+    const koreaHour = koreaTime.getHours();
+    const koreaMinute = koreaTime.getMinutes();
+    
+    // 토요일 20:35 이후이거나 일요일 이후면 추첨 완료
+    if (koreaDay === 6) {
+      return koreaHour > 20 || (koreaHour === 20 && koreaMinute >= 35);
+    } else if (koreaDay === 0) {
+      return true; // 일요일은 항상 추첨 완료
+    } else {
+      return true; // 월~금도 추첨 완료
+    }
   }
 
   private getApiBaseUrl(): string {
@@ -82,8 +126,9 @@ class EmergencyLottoDataManager {
     const emergencyData: LottoDrawResult[] = [];
     const startDate = new Date('2002-12-07');
     
-    // 🔧 검증된 실제 데이터들 (더 많이 추가)
+    // 🔧 검증된 실제 데이터들 (1180회 추가)
     const verifiedResults: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
+      1180: { numbers: [4, 6, 8, 14, 34, 43], bonus: 7, date: '2025-07-12' }, // 1180회 실제 당첨번호 추가
       1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
       1178: { numbers: [1, 7, 17, 28, 29, 40], bonus: 33, date: '2025-06-28' },
       1177: { numbers: [4, 11, 15, 28, 34, 42], bonus: 45, date: '2025-06-21' },
@@ -94,7 +139,6 @@ class EmergencyLottoDataManager {
       1172: { numbers: [8, 15, 24, 31, 38, 44], bonus: 20, date: '2025-05-17' },
       1171: { numbers: [9, 16, 25, 32, 39, 45], bonus: 1, date: '2025-05-10' },
       1170: { numbers: [10, 17, 26, 33, 40, 1], bonus: 2, date: '2025-05-03' },
-      // 추가 데이터들
       1169: { numbers: [2, 9, 18, 27, 35, 41], bonus: 15, date: '2025-04-26' },
       1168: { numbers: [4, 13, 21, 29, 38, 42], bonus: 7, date: '2025-04-19' },
       1167: { numbers: [1, 11, 19, 31, 39, 44], bonus: 23, date: '2025-04-12' },
@@ -142,10 +186,10 @@ class EmergencyLottoDataManager {
 
     console.log(`✅ 안전한 응급 데이터 생성 완료: ${this.cachedData.length}회차 (1~${currentRound})`);
     
-    // 1179회차 검증
-    const round1179 = this.cachedData.find(data => data.round === 1179);
-    if (round1179) {
-      console.log(`✅ 1179회차 검증: [${round1179.numbers.join(', ')}] + ${round1179.bonusNumber}`);
+    // 최신 회차 검증
+    const latestRound = this.cachedData.find(data => data.round === currentRound);
+    if (latestRound) {
+      console.log(`✅ ${currentRound}회차 검증: [${latestRound.numbers.join(', ')}] + ${latestRound.bonusNumber}`);
     }
   }
 
@@ -154,16 +198,26 @@ class EmergencyLottoDataManager {
     const currentRound = this.calculateCurrentRound();
     console.log("🛡️ 최소한의 안전 데이터 생성...");
     
-    this.cachedData = [
-      {
-        round: currentRound,
-        date: new Date().toISOString().split('T')[0],
-        numbers: [3, 16, 18, 24, 40, 44],
-        bonusNumber: 21,
-        crawledAt: new Date().toISOString(),
-        source: "minimal_safe_emergency",
-      }
-    ];
+    // 현재 회차가 1180이면 실제 당첨번호 사용
+    const round1180Data = {
+      round: 1180,
+      date: '2025-07-12',
+      numbers: [4, 6, 8, 14, 34, 43],
+      bonusNumber: 7,
+      crawledAt: new Date().toISOString(),
+      source: "minimal_safe_emergency",
+    };
+    
+    const round1179Data = {
+      round: 1179,
+      date: '2025-07-05',
+      numbers: [3, 16, 18, 24, 40, 44],
+      bonusNumber: 21,
+      crawledAt: new Date().toISOString(),
+      source: "minimal_safe_emergency",
+    };
+    
+    this.cachedData = currentRound === 1180 ? [round1180Data, round1179Data] : [round1179Data];
     
     this.isDataLoaded = true;
     this.lastUpdateTime = new Date();
@@ -338,26 +392,66 @@ class EmergencyLottoDataManager {
     date: string;
     estimatedJackpot: number;
     daysUntilDraw: number;
+    isToday: boolean;
+    timeUntilDraw: string;
+    hasDrawPassed: boolean;
   }> {
     try {
       const currentRound = this.calculateCurrentRound();
-      const nextRound = currentRound + 1;
+      const hasDrawCompleted = this.hasDrawCompleted();
+      
+      // 추첨이 완료되었으면 다음 회차, 아니면 현재 회차가 다음 추첨
+      const nextRound = hasDrawCompleted ? currentRound + 1 : currentRound;
 
       // 다음 토요일 계산
       const now = new Date();
-      const nextSaturday = new Date(now);
-      const daysUntilSaturday = (6 - now.getDay() + 7) % 7;
-      if (daysUntilSaturday === 0) {
-        nextSaturday.setDate(now.getDate() + 7);
+      const koreaOffset = 9 * 60; // UTC+9
+      const koreaTime = new Date(now.getTime() + koreaOffset * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000);
+      
+      const nextSaturday = new Date(koreaTime);
+      const currentDay = koreaTime.getDay();
+      const daysUntilSaturday = (6 - currentDay + 7) % 7;
+      
+      // 토요일이지만 추첨 전이면 오늘이 추첨일
+      if (currentDay === 6 && !hasDrawCompleted) {
+        // 오늘이 추첨일
+      } else if (daysUntilSaturday === 0) {
+        // 토요일이고 추첨 후면 다음 주 토요일
+        nextSaturday.setDate(koreaTime.getDate() + 7);
       } else {
-        nextSaturday.setDate(now.getDate() + daysUntilSaturday);
+        // 다른 요일이면 이번 주 토요일
+        nextSaturday.setDate(koreaTime.getDate() + daysUntilSaturday);
       }
+      
+      // 추첨 시간 설정 (20:35)
+      nextSaturday.setHours(20, 35, 0, 0);
+      
+      const msUntilDraw = nextSaturday.getTime() - koreaTime.getTime();
+      const hoursUntilDraw = Math.floor(msUntilDraw / (1000 * 60 * 60));
+      const minutesUntilDraw = Math.floor((msUntilDraw % (1000 * 60 * 60)) / (1000 * 60));
+      
+      let timeUntilDraw = "";
+      if (hoursUntilDraw > 24) {
+        const daysUntil = Math.floor(hoursUntilDraw / 24);
+        timeUntilDraw = `${daysUntil}일 ${hoursUntilDraw % 24}시간 후`;
+      } else if (hoursUntilDraw > 0) {
+        timeUntilDraw = `${hoursUntilDraw}시간 ${minutesUntilDraw}분 후`;
+      } else if (minutesUntilDraw > 0) {
+        timeUntilDraw = `${minutesUntilDraw}분 후`;
+      } else {
+        timeUntilDraw = "곧 추첨 시작!";
+      }
+      
+      const isToday = currentDay === 6 && !hasDrawCompleted;
 
       return {
         round: nextRound,
         date: nextSaturday.toISOString().split("T")[0],
         estimatedJackpot: 3500000000,
-        daysUntilDraw: Math.max(0, Math.ceil((nextSaturday.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))),
+        daysUntilDraw: Math.max(0, Math.ceil(msUntilDraw / (1000 * 60 * 60 * 24))),
+        isToday,
+        timeUntilDraw,
+        hasDrawPassed: false,
       };
     } catch (error) {
       console.error("❌ 다음 추첨 정보 오류:", error);
@@ -367,6 +461,9 @@ class EmergencyLottoDataManager {
         date: new Date().toISOString().split("T")[0],
         estimatedJackpot: 3500000000,
         daysUntilDraw: 7,
+        isToday: false,
+        timeUntilDraw: "7일 후",
+        hasDrawPassed: false,
       };
     }
   }
@@ -451,6 +548,19 @@ class EmergencyLottoDataManager {
 
   private getDynamicFallbackData(): LottoDrawResult {
     const round = this.calculateCurrentRound();
+    
+    // 1180회차면 실제 당첨번호 사용
+    if (round === 1180) {
+      return {
+        round: 1180,
+        date: '2025-07-12',
+        numbers: [4, 6, 8, 14, 34, 43],
+        bonusNumber: 7,
+        crawledAt: new Date().toISOString(),
+        source: "dynamic_fallback",
+      };
+    }
+    
     const seed = round * 7919;
     const numbers = this.generateSafeNumbers(seed, 6);
     const bonusNumber = (seed % 45) + 1;
