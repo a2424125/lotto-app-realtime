@@ -4,15 +4,18 @@
   "description": "로또 번호 추천, QR코드 당첨확인, 과거 당첨번호 조회 서비스",
   "start_url": "/",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "fullscreen"],
+  "display_override": ["window-controls-overlay", "fullscreen", "minimal-ui"],
   "orientation": "portrait",
-  "theme_color": "#3b82f6",
+  "theme_color": "#2563eb",
   "background_color": "#ffffff",
   "scope": "/",
   "lang": "ko",
   "categories": ["entertainment", "utilities"],
-  "edge_side_panel": {
-    "preferred_width": 412
+  "edge_to_edge": {
+    "enabled": true
+  },
+  "viewport": {
+    "viewport_fit": "cover"
   },
   "launch_handler": {
     "client_mode": "navigate-existing"
