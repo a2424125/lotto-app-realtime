@@ -12,6 +12,47 @@ interface LottoDrawResult {
   jackpotPrize?: number;
   crawledAt?: string;
   source?: string;
+  isWaitingPeriod?: boolean;
+}
+
+// 🔧 추첨 대기 시간 확인 함수
+function isInWaitingPeriod(): boolean {
+  const now = new Date();
+  const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+  const koreaDay = koreaTime.getDay();
+  const koreaHour = koreaTime.getHours();
+  const koreaMinute = koreaTime.getMinutes();
+  
+  // 토요일 20:35 ~ 20:50 사이인지 확인
+  if (koreaDay === 6) {
+    const totalMinutes = koreaHour * 60 + koreaMinute;
+    const drawStartMinutes = 20 * 60 + 35; // 20:35
+    const drawEndMinutes = 20 * 60 + 50; // 20:50
+    
+    return totalMinutes >= drawStartMinutes && totalMinutes <= drawEndMinutes;
+  }
+  
+  return false;
+}
+
+// 🔧 추첨 후 2시간 이내인지 확인
+function isWithinTwoHoursAfterDraw(): boolean {
+  const now = new Date();
+  const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+  const koreaDay = koreaTime.getDay();
+  const koreaHour = koreaTime.getHours();
+  const koreaMinute = koreaTime.getMinutes();
+  
+  // 토요일 20:35 ~ 22:35 사이인지 확인
+  if (koreaDay === 6) {
+    const totalMinutes = koreaHour * 60 + koreaMinute;
+    const drawStartMinutes = 20 * 60 + 35; // 20:35
+    const twoHoursAfterMinutes = 22 * 60 + 35; // 22:35
+    
+    return totalMinutes >= drawStartMinutes && totalMinutes <= twoHoursAfterMinutes;
+  }
+  
+  return false;
 }
 
 // 🔧 수정된 현재 회차 계산 함수 - 추첨 시간 고려
@@ -54,9 +95,10 @@ function generateSafeEmergencyData(): LottoDrawResult[] {
   
   const startDate = new Date('2002-12-07');
   
-  // 🔧 최근 검증된 실제 데이터들 (최근 3회차만 유지 - 자동 업데이트를 위해)
+  // 🔧 최근 검증된 실제 데이터들 (1181회차 추가!)
   const verifiedResults: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
-    // 최신 회차부터 3개만 하드코딩 (나머지는 크롤링 또는 자동 생성)
+    // 최신 회차 데이터
+    1181: { numbers: [7, 14, 16, 20, 26, 37], bonus: 22, date: '2025-07-19' },
     1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3, date: '2025-07-12' },
     1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
     1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17, date: '2025-06-28' },
@@ -237,6 +279,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     console.log(`📊 ${targetRounds}회차 요청 처리 중 (현재 회차: ${currentRound})...`);
 
+    // 추첨 대기 시간 확인
+    if (isInWaitingPeriod()) {
+      console.log("⏳ 추첨 직후 대기 시간입니다");
+      
+      const emergencyData = generateSafeEmergencyData();
+      // 현재 회차 데이터는 제외하고 이전 회차까지만 반환
+      const filteredData = emergencyData.filter(data => data.round < currentRound + 1);
+      
+      return res.status(200).json({
+        success: true,
+        data: filteredData.slice(0, targetRounds),
+        message: `추첨 결과 집계중입니다 (${currentRound}회차까지 제공)`,
+        isWaitingPeriod: true,
+        crawledAt: new Date().toISOString(),
+        source: "waiting_period_data",
+        totalCount: filteredData.length,
+        metadata: {
+          responseTime: Date.now() - startTime,
+          requestedRounds: targetRounds,
+          actualRounds: Math.min(filteredData.length, targetRounds),
+          currentRound: currentRound,
+          isWaitingPeriod: true,
+          nextRetryIn: "5분 후",
+        }
+      });
+    }
+
     let lottoData: LottoDrawResult[] = [];
     let dataSource = "emergency_safe";
 
@@ -269,9 +338,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch (crawlingError) {
       console.warn("⚠️ 크롤링 실패, 응급 데이터 사용:", crawlingError);
       
+      // 추첨 후 2시간 이내이면 재시도 정보 포함
+      if (isWithinTwoHoursAfterDraw()) {
+        console.log("🔄 추첨 후 2시간 이내, 재시도 예정");
+        dataSource = "emergency_data_retry_scheduled";
+      } else {
+        dataSource = "emergency_safe_data";
+      }
+      
       // 🛡️ 크롤링 실패시 응급 데이터 사용
       lottoData = generateSafeEmergencyData();
-      dataSource = "emergency_safe_data";
     }
 
     // 요청된 수만큼 제한
@@ -313,6 +389,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         coverage: `${Math.round((lottoData.length / currentRound) * 100)}%`,
         currentRound: currentRound,
         emergencyDataActive: true,
+        isWithinTwoHoursAfterDraw: isWithinTwoHoursAfterDraw(),
+        nextRetryIn: isWithinTwoHoursAfterDraw() ? "5분 후" : null,
       }
     });
 
