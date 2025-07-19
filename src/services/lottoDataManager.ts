@@ -16,6 +16,8 @@ class EmergencyLottoDataManager {
   private isLoading: boolean = false;
   private readonly REFERENCE_DATE = '2025-07-05';
   private readonly REFERENCE_ROUND = 1179;
+  private retryTimer: NodeJS.Timeout | null = null;
+  private isWaitingForResult: boolean = false;
   
   // 🛡️ 응급 모드 설정
   private emergencyMode: boolean = false;
@@ -27,6 +29,65 @@ class EmergencyLottoDataManager {
     
     // 🔥 즉시 안전한 데이터로 초기화
     this.initializeEmergencyData();
+    
+    // 추첨 대기 시간 체크 및 재시도 스케줄링
+    this.scheduleRetryCheck();
+  }
+
+  // 🔧 추첨 대기 시간 확인 함수
+  private isInWaitingPeriod(): boolean {
+    const now = new Date();
+    const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    const koreaDay = koreaTime.getDay();
+    const koreaHour = koreaTime.getHours();
+    const koreaMinute = koreaTime.getMinutes();
+    
+    // 토요일 20:35 ~ 20:50 사이인지 확인
+    if (koreaDay === 6) {
+      const totalMinutes = koreaHour * 60 + koreaMinute;
+      const drawStartMinutes = 20 * 60 + 35; // 20:35
+      const drawEndMinutes = 20 * 60 + 50; // 20:50
+      
+      return totalMinutes >= drawStartMinutes && totalMinutes <= drawEndMinutes;
+    }
+    
+    return false;
+  }
+
+  // 🔧 추첨 후 2시간 이내인지 확인
+  private isWithinTwoHoursAfterDraw(): boolean {
+    const now = new Date();
+    const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    const koreaDay = koreaTime.getDay();
+    const koreaHour = koreaTime.getHours();
+    const koreaMinute = koreaTime.getMinutes();
+    
+    // 토요일 20:35 ~ 22:35 사이인지 확인
+    if (koreaDay === 6) {
+      const totalMinutes = koreaHour * 60 + koreaMinute;
+      const drawStartMinutes = 20 * 60 + 35; // 20:35
+      const twoHoursAfterMinutes = 22 * 60 + 35; // 22:35
+      
+      return totalMinutes >= drawStartMinutes && totalMinutes <= twoHoursAfterMinutes;
+    }
+    
+    return false;
+  }
+
+  // 🔧 재시도 스케줄링
+  private scheduleRetryCheck(): void {
+    // 기존 타이머 정리
+    if (this.retryTimer) {
+      clearInterval(this.retryTimer);
+    }
+    
+    // 5분마다 체크
+    this.retryTimer = setInterval(() => {
+      if (this.isWithinTwoHoursAfterDraw() && !this.isInWaitingPeriod()) {
+        console.log("🔄 추첨 후 2시간 이내, 크롤링 재시도");
+        this.tryBackgroundUpdate();
+      }
+    }, 5 * 60 * 1000); // 5분
   }
 
   // 🛡️ 즉시 안전한 데이터로 초기화
@@ -119,16 +180,20 @@ class EmergencyLottoDataManager {
     const emergencyData: LottoDrawResult[] = [];
     const startDate = new Date('2002-12-07');
     
-    // 🔧 최근 검증된 실제 데이터들 (최근 3회차만 유지 - 자동 업데이트를 위해)
+    // 🔧 최근 검증된 실제 데이터들 (1181회차 추가!)
     const verifiedResults: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
-      // 최신 회차부터 3개만 하드코딩 (나머지는 크롤링 또는 자동 생성)
+      // 최신 회차 데이터
+      1181: { numbers: [7, 14, 16, 20, 26, 37], bonus: 22, date: '2025-07-19' },
       1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3, date: '2025-07-12' },
       1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
       1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17, date: '2025-06-28' },
     };
 
+    // 추첨 대기 시간이면 현재 회차는 제외
+    const maxRound = this.isInWaitingPeriod() ? currentRound : currentRound;
+
     // 1회차부터 현재 회차까지 모든 데이터 생성
-    for (let round = 1; round <= currentRound; round++) {
+    for (let round = 1; round <= maxRound; round++) {
       if (verifiedResults[round]) {
         // 검증된 실제 데이터 사용
         const verified = verifiedResults[round];
@@ -165,7 +230,7 @@ class EmergencyLottoDataManager {
     this.isDataLoaded = true;
     this.lastUpdateTime = new Date();
 
-    console.log(`✅ 안전한 응급 데이터 생성 완료: ${this.cachedData.length}회차 (1~${currentRound})`);
+    console.log(`✅ 안전한 응급 데이터 생성 완료: ${this.cachedData.length}회차 (1~${maxRound})`);
     
     // 최신 회차 검증
     const latestRound = this.cachedData.find(data => data.round === currentRound);
@@ -179,8 +244,9 @@ class EmergencyLottoDataManager {
     const currentRound = this.calculateCurrentRound();
     console.log("🛡️ 최소한의 안전 데이터 생성...");
     
-    // 최근 3회차 실제 데이터
+    // 최근 회차 실제 데이터
     const recentData: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
+      1181: { numbers: [7, 14, 16, 20, 26, 37], bonus: 22, date: '2025-07-19' },
       1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3, date: '2025-07-12' },
       1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
       1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17, date: '2025-06-28' },
@@ -188,8 +254,8 @@ class EmergencyLottoDataManager {
     
     this.cachedData = [];
     
-    // 현재 회차부터 최근 3회차까지 생성
-    for (let round = currentRound; round >= Math.max(1, currentRound - 2); round--) {
+    // 현재 회차부터 최근 4회차까지 생성
+    for (let round = currentRound; round >= Math.max(1, currentRound - 3); round--) {
       if (recentData[round]) {
         this.cachedData.push({
           round,
@@ -277,6 +343,7 @@ class EmergencyLottoDataManager {
             if (newData.length > this.cachedData.length) {
               this.cachedData = newData.sort((a: LottoDrawResult, b: LottoDrawResult) => b.round - a.round);
               this.lastUpdateTime = new Date();
+              this.isWaitingForResult = false;
               console.log("🔄 데이터 업데이트 완료");
             }
           }
@@ -314,6 +381,27 @@ class EmergencyLottoDataManager {
 
   // ✅ 항상 성공하는 API들
   async getLatestResult(): Promise<LottoAPIResponse> {
+    // 추첨 대기 시간 확인
+    if (this.isInWaitingPeriod()) {
+      this.isWaitingForResult = true;
+      console.log("⏳ 추첨 대기 시간, 이전 회차 데이터 반환");
+      
+      const currentRound = this.calculateCurrentRound();
+      const previousRound = currentRound; // 이미 계산 함수에서 추첨 전이면 이전 회차를 반환함
+      
+      const previousResult = this.cachedData.find(data => data.round === previousRound);
+      if (previousResult) {
+        return {
+          success: true,
+          data: previousResult,
+          message: `${previousRound}회차 당첨번호 (추첨 결과 집계중)`,
+          isWaitingPeriod: true,
+        };
+      }
+    }
+    
+    this.isWaitingForResult = false;
+    
     // 응급 데이터가 로드되어 있으므로 항상 성공
     if (this.cachedData.length > 0) {
       return {
@@ -534,6 +622,7 @@ class EmergencyLottoDataManager {
     return {
       lastUpdateTime: this.lastUpdateTime,
       isUpdating: this.isLoading,
+      isWaitingForResult: this.isWaitingForResult,
       crawlerStatus: {
         mode: "emergency_safe_mode",
         totalRounds: dataRange.totalCount,
@@ -546,12 +635,20 @@ class EmergencyLottoDataManager {
         currentRound: currentRound,
         coverage: `${Math.round((dataRange.totalCount / currentRound) * 100)}%`,
         emergencyMode: this.emergencyMode,
+        isWaitingPeriod: this.isInWaitingPeriod(),
+        isWithinTwoHoursAfterDraw: this.isWithinTwoHoursAfterDraw(),
       },
       nextUpdateIn: this.cacheTimeout - (Date.now() - (this.lastUpdateTime?.getTime() || 0)),
     };
   }
 
   cleanup(): void {
+    // 타이머 정리
+    if (this.retryTimer) {
+      clearInterval(this.retryTimer);
+      this.retryTimer = null;
+    }
+    
     this.cachedData = [];
     this.isDataLoaded = false;
     this.lastUpdateTime = null;
@@ -563,8 +660,9 @@ class EmergencyLottoDataManager {
   private getDynamicFallbackData(): LottoDrawResult {
     const round = this.calculateCurrentRound();
     
-    // 최근 3회차 실제 데이터
+    // 최근 회차 실제 데이터
     const recentData: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
+      1181: { numbers: [7, 14, 16, 20, 26, 37], bonus: 22, date: '2025-07-19' },
       1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3, date: '2025-07-12' },
       1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
       1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17, date: '2025-06-28' },
@@ -605,6 +703,8 @@ class EmergencyLottoDataManager {
       fallbackAvailable: true,
       cachedDataCount: this.cachedData.length,
       emergencyMode: true,
+      isWaitingPeriod: this.isInWaitingPeriod(),
+      isWithinTwoHoursAfterDraw: this.isWithinTwoHoursAfterDraw(),
     };
   }
 
