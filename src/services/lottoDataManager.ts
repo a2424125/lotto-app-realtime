@@ -25,10 +25,10 @@ class EmergencyLottoDataManager {
 
   constructor() {
     this.apiBaseUrl = this.getApiBaseUrl();
-    console.log(`🛡️ 응급 안전 로또 데이터 매니저 초기화`);
+    console.log(`🛡️ 로또 데이터 매니저 초기화`);
     
-    // 🔥 즉시 안전한 데이터로 초기화
-    this.initializeEmergencyData();
+    // 🔥 즉시 초기 데이터 로드 시도
+    this.initializeData();
     
     // 추첨 대기 시간 체크 및 재시도 스케줄링
     this.scheduleRetryCheck();
@@ -90,24 +90,23 @@ class EmergencyLottoDataManager {
     }, 5 * 60 * 1000); // 5분
   }
 
-  // 🛡️ 즉시 안전한 데이터로 초기화
-  private initializeEmergencyData(): void {
-    console.log("🛡️ 응급 안전 데이터 즉시 생성...");
+  // 🛡️ 초기 데이터 로드
+  private async initializeData(): Promise<void> {
+    console.log("🛡️ 초기 데이터 로드 시작...");
     
     try {
-      this.generateSafeEmergencyData();
-      this.isDataLoaded = true;
-      this.lastUpdateTime = new Date();
-      console.log(`✅ 응급 데이터 즉시 로드 완료: ${this.cachedData.length}개 회차`);
+      // 먼저 크롤링 시도
+      await this.tryBackgroundUpdate();
       
-      // 백그라운드에서 실제 데이터 로드 시도
-      setTimeout(() => {
-        this.tryBackgroundUpdate();
-      }, 2000);
+      // 데이터가 없으면 자동 생성
+      if (this.cachedData.length === 0) {
+        console.log("🤖 크롤링 실패, 자동 생성 데이터 사용");
+        this.generateAutoData();
+      }
       
     } catch (error) {
-      console.error("❌ 응급 데이터 생성 실패:", error);
-      this.generateMinimalSafeData();
+      console.error("❌ 초기 데이터 로드 실패:", error);
+      this.generateAutoData();
     }
   }
 
@@ -172,121 +171,41 @@ class EmergencyLottoDataManager {
     return "/api";
   }
 
-  // 🛡️ 안전한 응급 데이터 생성 (전체 회차)
-  private generateSafeEmergencyData(): void {
+  // 🛡️ 자동 데이터 생성 (크롤링 실패시 사용)
+  private generateAutoData(): void {
     const currentRound = this.calculateCurrentRound();
-    console.log(`🛡️ 안전한 응급 데이터 생성: 1~${currentRound}회차`);
+    console.log(`🤖 자동 데이터 생성: 최근 100회차`);
     
-    const emergencyData: LottoDrawResult[] = [];
+    const autoData: LottoDrawResult[] = [];
     const startDate = new Date('2002-12-07');
     
-    // 🔧 최근 검증된 실제 데이터들 (1181회차 추가!)
-    const verifiedResults: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
-      // 최신 회차 데이터
-      1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3, date: '2025-07-12' },
-      1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
-      1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17, date: '2025-06-28' },
-    };
+    // 최근 100회차만 생성 (메모리 절약)
+    const startRound = Math.max(1, currentRound - 99);
+    
+    for (let round = currentRound; round >= startRound; round--) {
+      const seed = round * 7919 + (round % 23) * 1103 + (round % 7) * 503;
+      const numbers = this.generateSafeNumbers(seed, 6);
+      const bonusNumber = ((seed * 17) % 45) + 1;
 
-    // 추첨 대기 시간이면 현재 회차는 제외
-    const maxRound = this.isInWaitingPeriod() ? currentRound : currentRound;
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + (round - 1) * 7);
 
-    // 1회차부터 현재 회차까지 모든 데이터 생성
-    for (let round = 1; round <= maxRound; round++) {
-      if (verifiedResults[round]) {
-        // 검증된 실제 데이터 사용
-        const verified = verifiedResults[round];
-        emergencyData.push({
-          round,
-          date: verified.date,
-          numbers: verified.numbers.sort((a, b) => a - b),
-          bonusNumber: verified.bonus,
-          crawledAt: new Date().toISOString(),
-          source: "verified_emergency_data",
-        });
-      } else {
-        // 안전한 생성 데이터
-        const seed = round * 7919 + (round % 23) * 1103 + (round % 7) * 503;
-        const numbers = this.generateSafeNumbers(seed, 6);
-        const bonusNumber = ((seed * 17) % 45) + 1;
-
-        const date = new Date(startDate);
-        date.setDate(date.getDate() + (round - 1) * 7);
-
-        emergencyData.push({
-          round,
-          date: date.toISOString().split('T')[0],
-          numbers: numbers.sort((a, b) => a - b),
-          bonusNumber,
-          crawledAt: new Date().toISOString(),
-          source: "safe_emergency_generated",
-        });
-      }
+      autoData.push({
+        round,
+        date: date.toISOString().split('T')[0],
+        numbers: numbers.sort((a, b) => a - b),
+        bonusNumber,
+        crawledAt: new Date().toISOString(),
+        source: "auto_generated",
+      });
     }
 
-    // 최신순으로 정렬
-    this.cachedData = emergencyData.sort((a, b) => b.round - a.round);
+    this.cachedData = autoData;
     this.isDataLoaded = true;
     this.lastUpdateTime = new Date();
+    this.emergencyMode = true;
 
-    console.log(`✅ 안전한 응급 데이터 생성 완료: ${this.cachedData.length}회차 (1~${maxRound})`);
-    
-    // 최신 회차 검증
-    const latestRound = this.cachedData.find(data => data.round === currentRound);
-    if (latestRound) {
-      console.log(`✅ ${currentRound}회차 검증: [${latestRound.numbers.join(', ')}] + ${latestRound.bonusNumber}`);
-    }
-  }
-
-  // 🛡️ 최소한의 안전 데이터
-  private generateMinimalSafeData(): void {
-    const currentRound = this.calculateCurrentRound();
-    console.log("🛡️ 최소한의 안전 데이터 생성...");
-    
-    // 최근 회차 실제 데이터
-    const recentData: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
-      1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3, date: '2025-07-12' },
-      1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
-      1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17, date: '2025-06-28' },
-    };
-    
-    this.cachedData = [];
-    
-    // 현재 회차부터 최근 4회차까지 생성
-    for (let round = currentRound; round >= Math.max(1, currentRound - 3); round--) {
-      if (recentData[round]) {
-        this.cachedData.push({
-          round,
-          date: recentData[round].date,
-          numbers: recentData[round].numbers,
-          bonusNumber: recentData[round].bonus,
-          crawledAt: new Date().toISOString(),
-          source: "minimal_safe_emergency",
-        });
-      } else {
-        // 실제 데이터가 없으면 자동 생성
-        const seed = round * 7919;
-        const numbers = this.generateSafeNumbers(seed, 6);
-        const bonusNumber = (seed % 45) + 1;
-        
-        const startDate = new Date('2002-12-07');
-        const drawDate = new Date(startDate);
-        drawDate.setDate(startDate.getDate() + (round - 1) * 7);
-        
-        this.cachedData.push({
-          round,
-          date: drawDate.toISOString().split('T')[0],
-          numbers: numbers.sort((a, b) => a - b),
-          bonusNumber,
-          crawledAt: new Date().toISOString(),
-          source: "minimal_safe_generated",
-        });
-      }
-    }
-    
-    this.isDataLoaded = true;
-    this.lastUpdateTime = new Date();
-    console.log("✅ 최소한의 안전 데이터 생성 완료");
+    console.log(`✅ 자동 데이터 생성 완료: ${autoData.length}회차`);
   }
 
   private generateSafeNumbers(seed: number, count: number): number[] {
@@ -318,7 +237,7 @@ class EmergencyLottoDataManager {
 
       try {
         const response = await fetch(
-          `${this.apiBaseUrl}/lotto-crawler?rounds=${currentRound}`,
+          `${this.apiBaseUrl}/lotto-crawler?rounds=100`,
           {
             method: "GET",
             headers: {
@@ -336,14 +255,20 @@ class EmergencyLottoDataManager {
           if (result.success && result.data && result.data.length > 0) {
             console.log(`✅ 백그라운드 업데이트 성공: ${result.data.length}개 회차`);
             
-            // 기존 응급 데이터와 병합
             const newData = result.data.filter((item: any) => this.isValidLottoResult(item));
-            if (newData.length > this.cachedData.length) {
+            if (newData.length > 0) {
               this.cachedData = newData.sort((a: LottoDrawResult, b: LottoDrawResult) => b.round - a.round);
               this.lastUpdateTime = new Date();
               this.isWaitingForResult = false;
-              console.log("🔄 데이터 업데이트 완료");
+              this.emergencyMode = false;
+              this.isDataLoaded = true;
+              console.log("🔄 실제 데이터로 업데이트 완료");
             }
+          } else if (result.isWaitingPeriod) {
+            this.isWaitingForResult = true;
+            console.log("⏳ 추첨 대기 시간");
+          } else if (result.isUpdating) {
+            console.log("🔄 데이터 업데이트 중");
           }
         }
       } catch (updateError) {
@@ -377,30 +302,25 @@ class EmergencyLottoDataManager {
     return Date.now() - this.lastUpdateTime.getTime() > this.cacheTimeout;
   }
 
-  // ✅ 항상 성공하는 API들 - 수정된 부분
+  // ✅ 최신 결과 조회
   async getLatestResult(): Promise<LottoAPIResponse> {
     // 추첨 대기 시간 확인
     if (this.isInWaitingPeriod()) {
       this.isWaitingForResult = true;
-      console.log("⏳ 추첨 대기 시간, 이전 회차 데이터 반환");
+      console.log("⏳ 추첨 대기 시간");
       
-      const currentRound = this.calculateCurrentRound();
-      const previousRound = currentRound; // 이미 계산 함수에서 추첨 전이면 이전 회차를 반환함
-      
-      const previousResult = this.cachedData.find(data => data.round === previousRound);
-      if (previousResult) {
-        return {
-          success: true,
-          data: previousResult,
-          message: `${previousRound}회차 당첨번호 (추첨 결과 집계중)`,
-          // isWaitingPeriod: true, // 이 부분을 제거했습니다!
-        };
-      }
+      return {
+        success: false,
+        error: "추첨 결과 집계중입니다",
+      };
     }
     
-    this.isWaitingForResult = false;
+    // 캐시 만료시 업데이트 시도
+    if (this.isCacheExpired()) {
+      await this.tryBackgroundUpdate();
+    }
     
-    // 응급 데이터가 로드되어 있으므로 항상 성공
+    // 캐시된 데이터가 있으면 반환
     if (this.cachedData.length > 0) {
       return {
         success: true,
@@ -409,12 +329,17 @@ class EmergencyLottoDataManager {
       };
     }
 
-    // 혹시 모를 상황을 위한 최후 수단
-    const fallbackData = this.getDynamicFallbackData();
+    // 데이터가 없는 경우
+    if (this.isWithinTwoHoursAfterDraw()) {
+      return {
+        success: false,
+        error: "결과 업데이트 중입니다. 잠시 후 다시 확인해주세요",
+      };
+    }
+    
     return {
-      success: true,
-      data: fallbackData,
-      message: `${fallbackData.round}회차 당첨번호 (응급)`,
+      success: false,
+      error: "데이터를 불러올 수 없습니다",
     };
   }
 
@@ -435,22 +360,29 @@ class EmergencyLottoDataManager {
     }
   }
 
-  // ✅ 항상 데이터를 반환하는 히스토리
+  // ✅ 히스토리 조회
   async getHistory(count: number): Promise<LottoHistoryAPIResponse> {
     try {
-      // 응급 데이터가 이미 로드되어 있으므로 즉시 반환
+      // 캐시 만료시 업데이트 시도
+      if (this.isCacheExpired()) {
+        await this.tryBackgroundUpdate();
+      }
+      
+      // 데이터가 없는 경우
+      if (this.cachedData.length === 0) {
+        if (this.isWithinTwoHoursAfterDraw()) {
+          return {
+            success: false,
+            error: "데이터 업데이트 중입니다",
+          };
+        }
+        
+        // 자동 생성 데이터 사용
+        this.generateAutoData();
+      }
+      
       const results = this.cachedData.slice(0, Math.min(count, this.cachedData.length));
       
-      if (results.length === 0) {
-        // 혹시 모를 상황을 위한 최후 수단
-        this.generateMinimalSafeData();
-        return {
-          success: true,
-          data: this.cachedData,
-          message: "응급 데이터 제공",
-        };
-      }
-
       const latest = results[0];
       const oldest = results[results.length - 1];
 
@@ -464,12 +396,9 @@ class EmergencyLottoDataManager {
     } catch (error) {
       console.error("❌ 히스토리 조회 실패:", error);
       
-      // 에러시에도 응급 데이터 제공
-      this.generateMinimalSafeData();
       return {
-        success: true,
-        data: this.cachedData,
-        message: "응급 히스토리 데이터",
+        success: false,
+        error: "히스토리 데이터를 불러올 수 없습니다",
       };
     }
   }
@@ -568,26 +497,34 @@ class EmergencyLottoDataManager {
     }
   }
 
-  // ✅ 안전한 강제 업데이트
+  // ✅ 강제 업데이트
   async forceUpdate(): Promise<{ success: boolean; message: string }> {
     try {
-      console.log("🔄 안전한 강제 업데이트 시작...");
+      console.log("🔄 강제 업데이트 시작...");
       
-      // 백그라운드에서 업데이트 시도 (실패해도 계속 진행)
-      this.tryBackgroundUpdate();
+      // 캐시 클리어
+      this.lastUpdateTime = null;
+      
+      // 업데이트 시도
+      await this.tryBackgroundUpdate();
 
-      // 항상 성공으로 응답 (응급 데이터가 있으므로)
-      return {
-        success: true,
-        message: `안전한 데이터 업데이트 완료: ${this.cachedData.length}회차 데이터 제공 중`,
-      };
+      if (this.cachedData.length > 0 && !this.emergencyMode) {
+        return {
+          success: true,
+          message: `데이터 업데이트 완료: ${this.cachedData.length}회차`,
+        };
+      } else {
+        return {
+          success: false,
+          message: `데이터 업데이트 실패. 자동 생성 데이터 사용 중`,
+        };
+      }
     } catch (error) {
       console.error("❌ 강제 업데이트 오류:", error);
       
-      // 에러시에도 응급 데이터로 성공 응답
       return {
-        success: true,
-        message: `응급 데이터로 계속 서비스: ${this.cachedData.length}회차`,
+        success: false,
+        message: `업데이트 중 오류가 발생했습니다`,
       };
     }
   }
@@ -601,8 +538,8 @@ class EmergencyLottoDataManager {
       const currentRound = this.calculateCurrentRound();
       return {
         latestRound: currentRound,
-        oldestRound: 1,
-        totalCount: currentRound,
+        oldestRound: currentRound,
+        totalCount: 0,
       };
     }
 
@@ -622,16 +559,16 @@ class EmergencyLottoDataManager {
       isUpdating: this.isLoading,
       isWaitingForResult: this.isWaitingForResult,
       crawlerStatus: {
-        mode: "emergency_safe_mode",
+        mode: this.emergencyMode ? "auto_generated" : "crawling",
         totalRounds: dataRange.totalCount,
         isDataLoaded: this.isDataLoaded,
         latestRound: dataRange.latestRound,
         oldestRound: dataRange.oldestRound,
         dataRange: `${dataRange.latestRound}~${dataRange.oldestRound}회차`,
         lastCrawl: this.lastUpdateTime?.toISOString() || null,
-        source: "emergency_safe_data",
+        source: this.emergencyMode ? "auto_generated" : "crawling",
         currentRound: currentRound,
-        coverage: `${Math.round((dataRange.totalCount / currentRound) * 100)}%`,
+        coverage: dataRange.totalCount > 0 ? `${Math.round((dataRange.totalCount / currentRound) * 100)}%` : "0%",
         emergencyMode: this.emergencyMode,
         isWaitingPeriod: this.isInWaitingPeriod(),
         isWithinTwoHoursAfterDraw: this.isWithinTwoHoursAfterDraw(),
@@ -652,60 +589,22 @@ class EmergencyLottoDataManager {
     this.lastUpdateTime = null;
     this.isLoading = false;
     this.loadingPromise = null;
-    console.log("🧹 응급 안전 데이터 매니저 정리 완료");
-  }
-
-  private getDynamicFallbackData(): LottoDrawResult {
-    const round = this.calculateCurrentRound();
-    
-    // 최근 회차 실제 데이터
-    const recentData: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
-      1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3, date: '2025-07-12' },
-      1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
-      1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17, date: '2025-06-28' },
-    };
-    
-    // 실제 데이터가 있으면 사용
-    if (recentData[round]) {
-      return {
-        round,
-        date: recentData[round].date,
-        numbers: recentData[round].numbers,
-        bonusNumber: recentData[round].bonus,
-        crawledAt: new Date().toISOString(),
-        source: "dynamic_fallback",
-      };
-    }
-    
-    // 없으면 자동 생성
-    const seed = round * 7919;
-    const numbers = this.generateSafeNumbers(seed, 6);
-    const bonusNumber = (seed % 45) + 1;
-
-    return {
-      round,
-      date: new Date().toISOString().split('T')[0],
-      numbers: numbers.sort((a, b) => a - b),
-      bonusNumber,
-      crawledAt: new Date().toISOString(),
-      source: "dynamic_fallback",
-    };
+    console.log("🧹 데이터 매니저 정리 완료");
   }
 
   async checkHealth(): Promise<any> {
-    // 항상 건강한 상태로 응답 (응급 데이터가 있으므로)
     return {
-      status: "healthy",
-      message: "응급 안전 모드로 동작 중",
-      fallbackAvailable: true,
+      status: this.isDataLoaded ? "healthy" : "unhealthy",
+      message: this.emergencyMode ? "자동 생성 모드로 동작 중" : "정상 동작 중",
+      dataLoaded: this.isDataLoaded,
       cachedDataCount: this.cachedData.length,
-      emergencyMode: true,
+      emergencyMode: this.emergencyMode,
       isWaitingPeriod: this.isInWaitingPeriod(),
       isWithinTwoHoursAfterDraw: this.isWithinTwoHoursAfterDraw(),
     };
   }
 
-  // ✅ 항상 성공하는 전체 데이터 상태
+  // ✅ 전체 데이터 상태
   getFullDataStatus(): {
     isFullDataLoaded: boolean;
     expectedCount: number;
@@ -714,23 +613,22 @@ class EmergencyLottoDataManager {
     missingRounds: number[];
   } {
     const currentRound = this.calculateCurrentRound();
-    const expectedCount = currentRound;
     const actualCount = this.cachedData.length;
-    const coverage = Math.round((actualCount / expectedCount) * 100);
+    const coverage = actualCount > 0 ? Math.round((actualCount / currentRound) * 100) : 0;
 
     return {
-      isFullDataLoaded: coverage >= 95,
-      expectedCount,
+      isFullDataLoaded: actualCount > 0,
+      expectedCount: 100, // 최근 100회차만 관리
       actualCount,
       coverage,
       missingRounds: [],
     };
   }
 
-  // ✅ 안전한 누락 데이터 보완
+  // ✅ 누락 데이터 보완은 자동으로 처리됨
   async fillMissingData(): Promise<void> {
-    console.log("✅ 응급 모드에서는 누락 데이터 보완 불필요");
-    return;
+    console.log("✅ 누락 데이터 자동 보완 중...");
+    await this.tryBackgroundUpdate();
   }
 }
 
