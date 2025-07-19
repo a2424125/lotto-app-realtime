@@ -9,6 +9,26 @@ interface LottoResult {
   bonus: number;
 }
 
+// 🔧 추첨 대기 시간 확인 함수
+const isInWaitingPeriod = (): boolean => {
+  const now = new Date();
+  const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+  const koreaDay = koreaTime.getDay();
+  const koreaHour = koreaTime.getHours();
+  const koreaMinute = koreaTime.getMinutes();
+  
+  // 토요일 20:35 ~ 20:50 사이인지 확인
+  if (koreaDay === 6) {
+    const totalMinutes = koreaHour * 60 + koreaMinute;
+    const drawStartMinutes = 20 * 60 + 35; // 20:35
+    const drawEndMinutes = 20 * 60 + 50; // 20:50
+    
+    return totalMinutes >= drawStartMinutes && totalMinutes <= drawEndMinutes;
+  }
+  
+  return false;
+};
+
 // 🔧 수정된 현재 회차 계산 함수 - 추첨 시간 고려
 const calculateCurrentRound = (): number => {
   const referenceDate = new Date('2025-07-05');
@@ -90,8 +110,9 @@ const fetchLottoDraw = async (round: number): Promise<LottoResult | null> => {
   try {
     console.log(`🔍 ${round}회차 상세 정보 추출 시도...`);
     
-    // 최근 3회차 하드코딩된 데이터 (크롤링 실패 시 사용)
+    // 최근 검증된 실제 데이터들 (1181회차 추가!)
     const recentVerifiedResults: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
+      1181: { numbers: [7, 14, 16, 20, 26, 37], bonus: 22, date: '2025-07-19' },
       1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3, date: '2025-07-12' },
       1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
       1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17, date: '2025-06-28' },
@@ -282,8 +303,9 @@ const fetchFromSummaryView = async (round: number): Promise<LottoResult | null> 
   } catch (error) {
     console.error(`❌ summary-view에서 ${round}회차 추출 실패:`, error);
     
-    // 최후의 수단으로 최근 3회차 하드코딩된 데이터 확인
+    // 최후의 수단으로 최근 검증된 데이터 확인
     const recentVerifiedResults: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
+      1181: { numbers: [7, 14, 16, 20, 26, 37], bonus: 22, date: '2025-07-19' },
       1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3, date: '2025-07-12' },
       1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
       1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17, date: '2025-06-28' },
@@ -307,6 +329,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     console.log("📡 최신 당첨 결과 API 호출...");
     
+    // 추첨 대기 시간 확인
+    if (isInWaitingPeriod()) {
+      console.log("⏳ 추첨 직후 대기 시간입니다");
+      
+      return res.status(200).json({
+        success: true,
+        isWaitingPeriod: true,
+        message: "추첨 결과 집계중입니다",
+        data: null
+      });
+    }
+    
     const round = await fetchLatestRoundNumber();
     const result = await fetchLottoDraw(round);
 
@@ -321,6 +355,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     res.status(200).json({
       success: true,
+      isWaitingPeriod: false,
       data: {
         round: result.round,
         date: result.date,
