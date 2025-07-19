@@ -20,9 +20,8 @@ function calculateCurrentRound(): number {
   const referenceRound = 1179;
   const now = new Date();
   
-  // 한국 시간으로 변환
-  const koreaOffset = 9 * 60; // UTC+9
-  const koreaTime = new Date(now.getTime() + koreaOffset * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000);
+  // 한국 시간으로 변환 (UTC+9)
+  const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
   
   const koreaDay = koreaTime.getDay();
   const koreaHour = koreaTime.getHours();
@@ -42,9 +41,13 @@ function calculateCurrentRound(): number {
     // weeksPassed 그대로 사용
   } else if (isBeforeDraw) {
     // 토요일 추첨 전: 지난 주가 최신
-    weeksPassed = weeksPassed - 1;
+    // weeksPassed = weeksPassed - 1; // 이 부분을 제거해야 함
+    // weeksPassed는 그대로 유지
   }
-  // 토요일 추첨 후는 weeksPassed 그대로 사용
+  // 토요일 추첨 후는 weeksPassed + 1
+  else if (koreaDay === 6 && !isBeforeDraw) {
+    weeksPassed = weeksPassed + 1;
+  }
   
   const currentRound = referenceRound + weeksPassed;
   console.log(`📊 현재 회차: ${currentRound}회차 (한국시간: ${koreaTime.toLocaleString('ko-KR')}, 추첨 전: ${isBeforeDraw})`);
