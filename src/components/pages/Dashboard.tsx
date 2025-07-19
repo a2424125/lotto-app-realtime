@@ -340,15 +340,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       };
     }
 
-    // 최근 회차 실제 데이터 (fallback)
-    const recentResults: { [key: number]: { numbers: number[], bonus: number } } = {
-      1181: { numbers: [7, 14, 16, 20, 26, 37], bonus: 22 },
-      1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3 },
-      1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21 },
-      1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17 },
-    };
-
-    // 현재 회차의 실제 데이터가 있으면 사용
+      // 현재 회차의 실제 데이터가 있으면 사용
     if (recentResults[actualLatestRound]) {
       return {
         numbers: recentResults[actualLatestRound].numbers,
