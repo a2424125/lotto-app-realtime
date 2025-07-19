@@ -233,20 +233,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         return;
       }
 
-         
-      if (recentVerifiedResults[actualLatestRound]) {
-        const data = recentVerifiedResults[actualLatestRound];
-        const fallbackResult: LottoDrawResult = {
-          round: actualLatestRound,
-          date: data.date,
-          numbers: data.numbers,
-          bonusNumber: data.bonus,
-          crawledAt: new Date().toISOString(),
-          source: "safe_fallback",
-        };
-        setLatestResult(fallbackResult);
-      } else {
-        // 3순위: 자동 생성 표시
+      // 3순위: 자동 생성 표시
         setLatestResult(null); // 로딩 상태로 표시
       }
 
@@ -340,15 +327,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       };
     }
 
-      // 현재 회차의 실제 데이터가 있으면 사용
-    if (recentResults[actualLatestRound]) {
-      return {
-        numbers: recentResults[actualLatestRound].numbers,
-        bonusNumber: recentResults[actualLatestRound].bonus,
-        round: actualLatestRound
-      };
-    }
-
+  
     // 없으면 자동 생성된 번호 표시 (또는 로딩 상태)
     return {
       numbers: [],
