@@ -50,21 +50,33 @@ class EmergencyLottoDataManager {
     }
   }
 
-  // 🔧 수정된 현재 회차 계산 함수
+  // 🔧 수정된 현재 회차 계산 함수 - 추첨 시간 고려
   private calculateCurrentRound(): number {
     const referenceDate = new Date(this.REFERENCE_DATE);
     const referenceRound = this.REFERENCE_ROUND;
     const now = new Date();
+    
+    // 한국 시간으로 변환
+    const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    const koreaDay = koreaTime.getDay();
+    const koreaHour = koreaTime.getHours();
+    const koreaMinute = koreaTime.getMinutes();
     
     // 기준일부터 현재까지의 주 수 계산
     const timeDiff = now.getTime() - referenceDate.getTime();
     const weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
     
     // 기본 계산: 기준 회차 + 경과 주수
-    const currentRound = referenceRound + weeksPassed;
+    let currentRound = referenceRound + weeksPassed;
     
-    console.log(`📊 현재 회차 계산: ${referenceRound} + ${weeksPassed} = ${currentRound}회차`);
-    console.log(`📊 기준일: ${this.REFERENCE_DATE}, 현재: ${now.toISOString().split('T')[0]}`);
+    // 토요일이고 추첨 시간(20:35) 전이면 아직 이번 주 추첨이 안 됨
+    if (koreaDay === 6 && (koreaHour < 20 || (koreaHour === 20 && koreaMinute < 35))) {
+      // 아직 추첨 전이므로 현재 회차는 이전 회차
+      currentRound = currentRound - 1;
+    }
+    
+    console.log(`📊 현재 완료된 회차 계산: ${currentRound}회차`);
+    console.log(`📊 한국시간: ${koreaTime.toLocaleString('ko-KR')}, 요일: ${koreaDay}, 시간: ${koreaHour}:${koreaMinute}`);
     
     return currentRound;
   }
@@ -404,7 +416,7 @@ class EmergencyLottoDataManager {
         nextRound = currentRound + 1;
       } else {
         // 토요일 추첨 후 또는 다른 요일이면 다음 토요일이 추첨일
-        nextRound = hasDrawCompleted ? currentRound + 2 : currentRound + 1;
+        nextRound = currentRound + 1;
       }
 
       // 다음 토요일 계산
