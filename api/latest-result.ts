@@ -29,6 +29,26 @@ const isInWaitingPeriod = (): boolean => {
   return false;
 };
 
+// 🔧 추첨 후 2시간 이내인지 확인
+const isWithinTwoHoursAfterDraw = (): boolean => {
+  const now = new Date();
+  const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+  const koreaDay = koreaTime.getDay();
+  const koreaHour = koreaTime.getHours();
+  const koreaMinute = koreaTime.getMinutes();
+  
+  // 토요일 20:35 ~ 22:35 사이인지 확인
+  if (koreaDay === 6) {
+    const totalMinutes = koreaHour * 60 + koreaMinute;
+    const drawStartMinutes = 20 * 60 + 35; // 20:35
+    const twoHoursAfterMinutes = 22 * 60 + 35; // 22:35
+    
+    return totalMinutes >= drawStartMinutes && totalMinutes <= twoHoursAfterMinutes;
+  }
+  
+  return false;
+};
+
 // 🔧 수정된 현재 회차 계산 함수 - 추첨 시간 고려
 const calculateCurrentRound = (): number => {
   const referenceDate = new Date('2025-07-05');
@@ -105,28 +125,10 @@ const fetchLatestRoundNumber = async (): Promise<number> => {
   }
 };
 
-// 🆕 개선된 로또 추첨 결과 추출
+// 🆕 개선된 로또 추첨 결과 추출 (하드코딩 제거)
 const fetchLottoDraw = async (round: number): Promise<LottoResult | null> => {
   try {
     console.log(`🔍 ${round}회차 상세 정보 추출 시도...`);
-    
-    // 최근 검증된 실제 데이터들 (1181회차 추가!)
-    const recentVerifiedResults: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
-      1181: { numbers: [7, 14, 16, 20, 26, 37], bonus: 22, date: '2025-07-19' },
-      1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3, date: '2025-07-12' },
-      1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
-      1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17, date: '2025-06-28' },
-    };
-    
-    if (recentVerifiedResults[round]) {
-      const data = recentVerifiedResults[round];
-      return {
-        round,
-        date: data.date,
-        numbers: data.numbers,
-        bonus: data.bonus,
-      };
-    }
     
     // 1. number-view 페이지 시도
     const url = `https://en.lottolyzer.com/home/south-korea/6_slash_45-lotto/number-view/draw/${round}`;
@@ -303,24 +305,7 @@ const fetchFromSummaryView = async (round: number): Promise<LottoResult | null> 
   } catch (error) {
     console.error(`❌ summary-view에서 ${round}회차 추출 실패:`, error);
     
-    // 최후의 수단으로 최근 검증된 데이터 확인
-    const recentVerifiedResults: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
-      1181: { numbers: [7, 14, 16, 20, 26, 37], bonus: 22, date: '2025-07-19' },
-      1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3, date: '2025-07-12' },
-      1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
-      1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17, date: '2025-06-28' },
-    };
-    
-    if (recentVerifiedResults[round]) {
-      const data = recentVerifiedResults[round];
-      return {
-        round,
-        date: data.date,
-        numbers: data.numbers,
-        bonus: data.bonus,
-      };
-    }
-    
+    // 하드코딩 없이 null 반환
     return null;
   }
 };
@@ -345,9 +330,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const result = await fetchLottoDraw(round);
 
     if (!result) {
-      return res.status(500).json({ 
+      // 추첨 후 2시간 이내인지 확인
+      if (isWithinTwoHoursAfterDraw()) {
+        return res.status(200).json({
+          success: false,
+          isUpdating: true,
+          message: "결과 업데이트 중입니다. 잠시 후 다시 확인해주세요",
+          data: null
+        });
+      }
+      
+      // 2시간 이후
+      return res.status(200).json({
         success: false,
-        error: "Failed to fetch lotto result" 
+        error: "데이터 업데이트가 지연되고 있습니다",
+        data: null
       });
     }
 
