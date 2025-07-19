@@ -86,58 +86,35 @@ function calculateCurrentRound(): number {
   return currentRound;
 }
 
-// 🛡️ 안전한 응급 데이터 생성 (전체 회차)
-function generateSafeEmergencyData(): LottoDrawResult[] {
+// 🛡️ 자동 생성 데이터 (크롤링 실패시 사용)
+function generateAutoData(rounds: number): LottoDrawResult[] {
   const results: LottoDrawResult[] = [];
   const currentRound = calculateCurrentRound();
-  
-  console.log(`🛡️ 응급 데이터 생성: 1~${currentRound}회차 전체`);
-  
   const startDate = new Date('2002-12-07');
   
-  // 🔧 최근 검증된 실제 데이터들 (1181회차 추가!)
-  const verifiedResults: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
-    // 최신 회차 데이터
-    1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3, date: '2025-07-12' },
-    1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
-    1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17, date: '2025-06-28' },
-  };
-
-  // 1회차부터 현재 회차까지 모든 데이터 생성
-  for (let round = 1; round <= currentRound; round++) {
-    if (verifiedResults[round]) {
-      // 검증된 실제 데이터 사용
-      const verified = verifiedResults[round];
-      results.push({
-        round,
-        date: verified.date,
-        numbers: verified.numbers,
-        bonusNumber: verified.bonus,
-        crawledAt: new Date().toISOString(),
-        source: "verified_emergency_data",
-      });
-    } else {
-      // 안전한 생성 데이터
-      const seed = round * 7919 + (round % 23) * 1103 + (round % 7) * 503;
-      const numbers = generateSafeNumbers(seed);
-      const bonusNumber = ((seed * 17) % 45) + 1;
-      
-      const drawDate = new Date(startDate);
-      drawDate.setDate(startDate.getDate() + (round - 1) * 7);
-      
-      results.push({
-        round,
-        date: drawDate.toISOString().split('T')[0],
-        numbers: numbers.slice(0, 6).sort((a, b) => a - b),
-        bonusNumber,
-        crawledAt: new Date().toISOString(),
-        source: "safe_emergency_generated",
-      });
-    }
+  console.log(`🛡️ 자동 데이터 생성: ${Math.max(1, currentRound - rounds + 1)}~${currentRound}회차`);
+  
+  // 요청된 수만큼 최근 회차부터 생성
+  for (let i = 0; i < rounds && currentRound - i > 0; i++) {
+    const round = currentRound - i;
+    const seed = round * 7919 + (round % 23) * 1103 + (round % 7) * 503;
+    const numbers = generateSafeNumbers(seed);
+    const bonusNumber = ((seed * 17) % 45) + 1;
+    
+    const drawDate = new Date(startDate);
+    drawDate.setDate(startDate.getDate() + (round - 1) * 7);
+    
+    results.push({
+      round,
+      date: drawDate.toISOString().split('T')[0],
+      numbers: numbers.slice(0, 6).sort((a, b) => a - b),
+      bonusNumber,
+      crawledAt: new Date().toISOString(),
+      source: "auto_generated",
+    });
   }
   
-  // 최신순으로 정렬
-  return results.sort((a, b) => b.round - a.round);
+  return results;
 }
 
 function generateSafeNumbers(seed: number): number[] {
@@ -257,7 +234,7 @@ function parseSimpleRow(rowHtml: string): LottoDrawResult | null {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log("🛡️ 응급 안전 크롤러 API 호출...");
+  console.log("🛡️ 로또 크롤러 API 호출...");
 
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
@@ -274,7 +251,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const roundsParam = req.query.rounds as string;
     const currentRound = calculateCurrentRound();
-    const targetRounds = roundsParam ? parseInt(roundsParam, 10) : currentRound;
+    const targetRounds = roundsParam ? parseInt(roundsParam, 10) : 100;
     
     console.log(`📊 ${targetRounds}회차 요청 처리 중 (현재 회차: ${currentRound})...`);
 
@@ -282,22 +259,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (isInWaitingPeriod()) {
       console.log("⏳ 추첨 직후 대기 시간입니다");
       
-      const emergencyData = generateSafeEmergencyData();
-      // 현재 회차 데이터는 제외하고 이전 회차까지만 반환
-      const filteredData = emergencyData.filter(data => data.round < currentRound + 1);
-      
       return res.status(200).json({
-        success: true,
-        data: filteredData.slice(0, targetRounds),
-        message: `추첨 결과 집계중입니다 (${currentRound}회차까지 제공)`,
+        success: false,
+        data: [],
+        message: `추첨 결과 집계중입니다`,
         isWaitingPeriod: true,
         crawledAt: new Date().toISOString(),
-        source: "waiting_period_data",
-        totalCount: filteredData.length,
+        source: "waiting_period",
+        totalCount: 0,
         metadata: {
           responseTime: Date.now() - startTime,
           requestedRounds: targetRounds,
-          actualRounds: Math.min(filteredData.length, targetRounds),
+          actualRounds: 0,
           currentRound: currentRound,
           isWaitingPeriod: true,
           nextRetryIn: "5분 후",
@@ -306,52 +279,51 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     let lottoData: LottoDrawResult[] = [];
-    let dataSource = "emergency_safe";
+    let dataSource = "none";
 
-    // 🔄 먼저 간단한 크롤링 시도 (실패해도 계속 진행)
+    // 🔄 먼저 간단한 크롤링 시도
     try {
       console.log("🔄 간단한 크롤링 시도...");
       const crawledData = await trySimpleCrawling();
       
       if (crawledData.length >= 50) { // 최소 50개 이상이면 사용
         console.log(`✅ 크롤링 성공: ${crawledData.length}개 회차`);
-        
-        // 응급 데이터와 병합
-        const emergencyData = generateSafeEmergencyData();
-        
-        // 크롤링된 데이터를 우선으로 병합
-        const mergedData = [...crawledData];
-        emergencyData.forEach(emergency => {
-          const exists = mergedData.find(crawled => crawled.round === emergency.round);
-          if (!exists) {
-            mergedData.push(emergency);
-          }
-        });
-        
-        lottoData = mergedData.sort((a, b) => b.round - a.round);
-        dataSource = "crawling_with_emergency_backup";
+        lottoData = crawledData.slice(0, targetRounds);
+        dataSource = "crawling_success";
       } else {
         throw new Error("크롤링 데이터 부족");
       }
       
     } catch (crawlingError) {
-      console.warn("⚠️ 크롤링 실패, 응급 데이터 사용:", crawlingError);
+      console.warn("⚠️ 크롤링 실패:", crawlingError);
       
-      // 추첨 후 2시간 이내이면 재시도 정보 포함
+      // 추첨 후 2시간 이내이면 업데이트 중 메시지
       if (isWithinTwoHoursAfterDraw()) {
-        console.log("🔄 추첨 후 2시간 이내, 재시도 예정");
-        dataSource = "emergency_data_retry_scheduled";
-      } else {
-        dataSource = "emergency_safe_data";
+        console.log("🔄 추첨 후 2시간 이내, 업데이트 중");
+        
+        return res.status(200).json({
+          success: false,
+          data: [],
+          message: "결과 업데이트 중입니다. 잠시 후 다시 확인해주세요",
+          isUpdating: true,
+          crawledAt: new Date().toISOString(),
+          source: "updating",
+          totalCount: 0,
+          metadata: {
+            responseTime: Date.now() - startTime,
+            requestedRounds: targetRounds,
+            actualRounds: 0,
+            currentRound: currentRound,
+            isWithinTwoHoursAfterDraw: true,
+            nextRetryIn: "5분 후",
+          }
+        });
       }
       
-      // 🛡️ 크롤링 실패시 응급 데이터 사용
-      lottoData = generateSafeEmergencyData();
-    }
-
-    // 요청된 수만큼 제한
-    if (lottoData.length > targetRounds) {
-      lottoData = lottoData.slice(0, targetRounds);
+      // 그 외의 경우 자동 생성 데이터 사용
+      console.log("🤖 자동 생성 데이터 사용");
+      lottoData = generateAutoData(targetRounds);
+      dataSource = "auto_generated";
     }
 
     const crawledAt = new Date().toISOString();
@@ -364,13 +336,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const latestRound = lottoData.length > 0 ? lottoData[0].round : 0;
     const oldestRound = lottoData.length > 0 ? lottoData[lottoData.length - 1].round : 0;
 
-    console.log(`✅ 응급 안전 크롤링 완료: ${lottoData.length}회차 (${latestRound}~${oldestRound}회차) - ${dataSource}`);
+    console.log(`✅ 크롤링 완료: ${lottoData.length}회차 (${latestRound}~${oldestRound}회차) - ${dataSource}`);
 
-    // ✅ 항상 성공 응답
     res.status(200).json({
       success: true,
       data: lottoData,
-      message: `응급 안전 ${lottoData.length}회차 데이터 제공 (${latestRound}~${oldestRound}회차)`,
+      message: `${lottoData.length}회차 데이터 제공 (${latestRound}~${oldestRound}회차)`,
       crawledAt: crawledAt,
       source: dataSource,
       totalCount: lottoData.length,
@@ -379,45 +350,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         requestedRounds: targetRounds,
         actualRounds: lottoData.length,
         dataRange: `${latestRound}~${oldestRound}회차`,
-        dataQuality: dataSource.includes("emergency") ? "safe" : "high",
+        dataQuality: dataSource === "crawling_success" ? "high" : "auto",
         lastValidated: crawledAt,
-        apiVersion: "6.0.0-emergency",
+        apiVersion: "7.0.0-no-hardcoding",
         crawlingMethod: dataSource,
-        isEmergencyMode: true,
-        isSafeData: true,
-        coverage: `${Math.round((lottoData.length / currentRound) * 100)}%`,
+        isAutoGenerated: dataSource === "auto_generated",
         currentRound: currentRound,
-        emergencyDataActive: true,
-        isWithinTwoHoursAfterDraw: isWithinTwoHoursAfterDraw(),
-        nextRetryIn: isWithinTwoHoursAfterDraw() ? "5분 후" : null,
+        coverage: `${Math.round((lottoData.length / currentRound) * 100)}%`,
       }
     });
 
   } catch (error) {
-    console.error("❌ 응급 크롤링 프로세스 실패:", error);
+    console.error("❌ 크롤링 프로세스 실패:", error);
 
-    // 🛡️ 완전한 에러시에도 응급 데이터 제공
-    const emergencyData = generateSafeEmergencyData();
-    const responseTime = Date.now() - startTime;
-
-    res.status(200).json({
-      success: true, // 항상 성공으로 응답 (응급 데이터가 있으므로)
-      data: emergencyData,
-      message: "완전한 응급 안전 데이터 제공",
+    res.status(500).json({
+      success: false,
+      data: [],
+      message: "데이터를 불러올 수 없습니다",
+      error: error instanceof Error ? error.message : "Unknown error",
       crawledAt: new Date().toISOString(),
-      source: "complete_emergency_fallback",
-      totalCount: emergencyData.length,
+      source: "error",
+      totalCount: 0,
       metadata: {
-        responseTime: responseTime,
-        dataQuality: "safe",
-        apiVersion: "6.0.0-emergency",
-        errorInfo: "크롤링 실패, 응급 데이터로 서비스 계속",
-        crawlingMethod: "complete_emergency_fallback",
-        isEmergencyMode: true,
-        isSafeData: true,
-        coverage: "100%",
+        responseTime: Date.now() - startTime,
+        apiVersion: "7.0.0-no-hardcoding",
         currentRound: calculateCurrentRound(),
-        emergencyDataActive: true,
       }
     });
   }
