@@ -41,28 +41,29 @@ const Dashboard: React.FC<DashboardProps> = ({
   const actualLatestRound = roundRange?.latestRound || calculateDefaultRound();
   const actualOldestRound = roundRange?.oldestRound || Math.max(1, actualLatestRound - totalRounds + 1);
 
-  // 기본 회차 계산 함수
+  // 기본 회차 계산 함수 (수정됨)
   function calculateDefaultRound(): number {
     const referenceDate = new Date('2025-07-05');
     const referenceRound = 1179;
     const now = new Date();
     
-    const koreaOffset = 9 * 60;
-    const koreaTime = new Date(now.getTime() + koreaOffset * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000);
-    
-    const timeDiff = now.getTime() - referenceDate.getTime();
-    let weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
-    
+    // 한국 시간으로 변환
+    const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
     const koreaDay = koreaTime.getDay();
     const koreaHour = koreaTime.getHours();
     const koreaMinute = koreaTime.getMinutes();
-    const isBeforeDraw = koreaDay === 6 && (koreaHour < 20 || (koreaHour === 20 && koreaMinute < 35));
     
-    if (koreaDay === 0 || (koreaDay >= 1 && koreaDay <= 5) || isBeforeDraw) {
-      if (isBeforeDraw && weeksPassed > 0) weeksPassed--;
+    const timeDiff = now.getTime() - referenceDate.getTime();
+    const weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
+    
+    let currentRound = referenceRound + weeksPassed;
+    
+    // 토요일 추첨 후인 경우에만 현재 회차를 1 증가
+    if (koreaDay === 6 && (koreaHour > 20 || (koreaHour === 20 && koreaMinute >= 35))) {
+      currentRound = currentRound + 1;
     }
     
-    return referenceRound + weeksPassed;
+    return currentRound;
   }
 
   const [latestResult, setLatestResult] = useState<LottoDrawResult | null>(null);
