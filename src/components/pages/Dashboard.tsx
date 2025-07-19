@@ -41,27 +41,20 @@ const Dashboard: React.FC<DashboardProps> = ({
   const actualLatestRound = roundRange?.latestRound || calculateDefaultRound();
   const actualOldestRound = roundRange?.oldestRound || Math.max(1, actualLatestRound - totalRounds + 1);
 
-  // 기본 회차 계산 함수 (수정됨)
+  // 🔧 수정된 기본 회차 계산 함수
   function calculateDefaultRound(): number {
     const referenceDate = new Date('2025-07-05');
     const referenceRound = 1179;
     const now = new Date();
     
-    // 한국 시간으로 변환
-    const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-    const koreaDay = koreaTime.getDay();
-    const koreaHour = koreaTime.getHours();
-    const koreaMinute = koreaTime.getMinutes();
-    
+    // 기준일부터 현재까지의 주 수 계산
     const timeDiff = now.getTime() - referenceDate.getTime();
     const weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
     
-    let currentRound = referenceRound + weeksPassed;
+    // 기본 계산: 기준 회차 + 경과 주수
+    const currentRound = referenceRound + weeksPassed;
     
-    // 토요일 추첨 후인 경우에만 현재 회차를 1 증가
-    if (koreaDay === 6 && (koreaHour > 20 || (koreaHour === 20 && koreaMinute >= 35))) {
-      currentRound = currentRound + 1;
-    }
+    console.log(`📊 Dashboard 현재 회차 계산: ${referenceRound} + ${weeksPassed} = ${currentRound}회차`);
     
     return currentRound;
   }
