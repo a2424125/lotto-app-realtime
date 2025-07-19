@@ -14,48 +14,27 @@ interface LottoDrawResult {
   source?: string;
 }
 
-// 🔧 현재 회차 계산 (토요일 20:35 추첨 시간 고려)
+// 🔧 수정된 현재 회차 계산 함수
 function calculateCurrentRound(): number {
   const referenceDate = new Date('2025-07-05');
   const referenceRound = 1179;
   const now = new Date();
   
-  // 한국 시간으로 변환 (UTC+9)
-  const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-  
-  const koreaDay = koreaTime.getDay();
-  const koreaHour = koreaTime.getHours();
-  const koreaMinute = koreaTime.getMinutes();
-  
   // 기준일부터 현재까지의 주 수 계산
   const timeDiff = now.getTime() - referenceDate.getTime();
-  let weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
+  const weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
   
-  // 토요일이고 20:35 이전이면 아직 이번 주 추첨이 안 된 것
-  const isBeforeDraw = koreaDay === 6 && (koreaHour < 20 || (koreaHour === 20 && koreaMinute < 35));
-  
-  // 일요일~금요일이면 지난 토요일 추첨이 최신
-  // 토요일이면서 추첨 전이면 지난 주 토요일이 최신
-  if (koreaDay === 0 || (koreaDay >= 1 && koreaDay <= 5)) {
-    // 일요일~금요일: 이번 주 토요일 추첨은 아직 안 됨
-    // weeksPassed 그대로 사용
-  } else if (isBeforeDraw) {
-    // 토요일 추첨 전: 지난 주가 최신
-    // weeksPassed = weeksPassed - 1; // 이 부분을 제거해야 함
-    // weeksPassed는 그대로 유지
-  }
-  // 토요일 추첨 후는 weeksPassed + 1
-  else if (koreaDay === 6 && !isBeforeDraw) {
-    weeksPassed = weeksPassed + 1;
-  }
-  
+  // 기본 계산: 기준 회차 + 경과 주수
   const currentRound = referenceRound + weeksPassed;
-  console.log(`📊 현재 회차: ${currentRound}회차 (한국시간: ${koreaTime.toLocaleString('ko-KR')}, 추첨 전: ${isBeforeDraw})`);
+  
+  console.log(`📊 현재 회차 계산: ${referenceRound} + ${weeksPassed} = ${currentRound}회차`);
+  console.log(`📊 기준일: 2025-07-05, 현재: ${now.toISOString().split('T')[0]}`);
+  
   return currentRound;
 }
 
 // 🛡️ 안전한 응급 데이터 생성 (전체 회차)
-function generateEmergencyData(): LottoDrawResult[] {
+function generateSafeEmergencyData(): LottoDrawResult[] {
   const results: LottoDrawResult[] = [];
   const currentRound = calculateCurrentRound();
   
@@ -91,7 +70,7 @@ function generateEmergencyData(): LottoDrawResult[] {
       const bonusNumber = ((seed * 17) % 45) + 1;
       
       const drawDate = new Date(startDate);
-      drawDate.setDate(drawDate.getDate() + (round - 1) * 7);
+      drawDate.setDate(startDate.getDate() + (round - 1) * 7);
       
       results.push({
         round,
@@ -258,7 +237,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.log(`✅ 크롤링 성공: ${crawledData.length}개 회차`);
         
         // 응급 데이터와 병합
-        const emergencyData = generateEmergencyData();
+        const emergencyData = generateSafeEmergencyData();
         
         // 크롤링된 데이터를 우선으로 병합
         const mergedData = [...crawledData];
@@ -279,7 +258,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.warn("⚠️ 크롤링 실패, 응급 데이터 사용:", crawlingError);
       
       // 🛡️ 크롤링 실패시 응급 데이터 사용
-      lottoData = generateEmergencyData();
+      lottoData = generateSafeEmergencyData();
       dataSource = "emergency_safe_data";
     }
 
@@ -329,7 +308,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error("❌ 응급 크롤링 프로세스 실패:", error);
 
     // 🛡️ 완전한 에러시에도 응급 데이터 제공
-    const emergencyData = generateEmergencyData();
+    const emergencyData = generateSafeEmergencyData();
     const responseTime = Date.now() - startTime;
 
     res.status(200).json({
