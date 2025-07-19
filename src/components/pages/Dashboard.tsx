@@ -233,7 +233,26 @@ const Dashboard: React.FC<DashboardProps> = ({
         return;
       }
 
-       // 3순위: 자동 생성 표시
+      // 2순위: 최근 회차 실제 당첨번호 중 현재 회차 확인
+      const recentVerifiedResults: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
+        1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3, date: '2025-07-12' },
+        1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
+        1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17, date: '2025-06-28' },
+      };
+      
+      if (recentVerifiedResults[actualLatestRound]) {
+        const data = recentVerifiedResults[actualLatestRound];
+        const fallbackResult: LottoDrawResult = {
+          round: actualLatestRound,
+          date: data.date,
+          numbers: data.numbers,
+          bonusNumber: data.bonus,
+          crawledAt: new Date().toISOString(),
+          source: "safe_fallback",
+        };
+        setLatestResult(fallbackResult);
+      } else {
+        // 3순위: 자동 생성 표시
         setLatestResult(null); // 로딩 상태로 표시
       }
 
