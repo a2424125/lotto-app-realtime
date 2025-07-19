@@ -50,16 +50,14 @@ class EmergencyLottoDataManager {
     }
   }
 
-  // 🔧 현재 회차 계산 (토요일 20:35 추첨 시간 고려)
+  // 🔧 현재 회차 계산 (토요일 20:35 추첨 시간 고려) - 수정됨
   private calculateCurrentRound(): number {
     const referenceDate = new Date(this.REFERENCE_DATE);
     const referenceRound = this.REFERENCE_ROUND;
     const now = new Date();
     
     // 한국 시간으로 변환
-    const koreaOffset = 9 * 60; // UTC+9
-    const koreaTime = new Date(now.getTime() + koreaOffset * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000);
-    
+    const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
     const koreaDay = koreaTime.getDay();
     const koreaHour = koreaTime.getHours();
     const koreaMinute = koreaTime.getMinutes();
@@ -71,16 +69,10 @@ class EmergencyLottoDataManager {
     // 토요일이고 20:35 이전이면 아직 이번 주 추첨이 안 된 것
     const isBeforeDraw = koreaDay === 6 && (koreaHour < 20 || (koreaHour === 20 && koreaMinute < 35));
     
-    // 일요일~금요일이면 지난 토요일 추첨이 최신
-    // 토요일이면서 추첨 전이면 지난 주 토요일이 최신
-    if (koreaDay === 0 || (koreaDay >= 1 && koreaDay <= 5)) {
-      // 일요일~금요일: 이번 주 토요일 추첨은 아직 안 됨
-      // weeksPassed 그대로 사용
-    } else if (isBeforeDraw) {
-      // 토요일 추첨 전: 지난 주가 최신
+    // 토요일 추첨 전이면 이전 주가 최신
+    if (isBeforeDraw && weeksPassed > 0) {
       weeksPassed = weeksPassed - 1;
     }
-    // 토요일 추첨 후는 weeksPassed 그대로 사용
     
     const currentRound = referenceRound + weeksPassed;
     console.log(`📊 현재 회차: ${currentRound}회차 (한국시간: ${koreaTime.toLocaleString('ko-KR')}, 추첨 전: ${isBeforeDraw})`);
@@ -90,8 +82,7 @@ class EmergencyLottoDataManager {
   // 🔧 추첨 완료 여부 확인
   private hasDrawCompleted(): boolean {
     const now = new Date();
-    const koreaOffset = 9 * 60; // UTC+9
-    const koreaTime = new Date(now.getTime() + koreaOffset * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000);
+    const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
     
     const koreaDay = koreaTime.getDay();
     const koreaHour = koreaTime.getHours();
@@ -413,8 +404,7 @@ class EmergencyLottoDataManager {
 
       // 다음 토요일 계산
       const now = new Date();
-      const koreaOffset = 9 * 60; // UTC+9
-      const koreaTime = new Date(now.getTime() + koreaOffset * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000);
+      const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
       
       const nextSaturday = new Date(koreaTime);
       const currentDay = koreaTime.getDay();
