@@ -9,40 +9,22 @@ interface LottoResult {
   bonus: number;
 }
 
-// 🔧 현재 회차 계산 (토요일 20:35 추첨 시간 고려)
+// 🔧 수정된 현재 회차 계산 함수
 const calculateCurrentRound = (): number => {
   const referenceDate = new Date('2025-07-05');
   const referenceRound = 1179;
   const now = new Date();
   
-  // 한국 시간으로 변환
-  const koreaOffset = 9 * 60; // UTC+9
-  const koreaTime = new Date(now.getTime() + koreaOffset * 60 * 1000 - now.getTimezoneOffset() * 60 * 1000);
-  
-  const koreaDay = koreaTime.getDay();
-  const koreaHour = koreaTime.getHours();
-  const koreaMinute = koreaTime.getMinutes();
-  
   // 기준일부터 현재까지의 주 수 계산
   const timeDiff = now.getTime() - referenceDate.getTime();
-  let weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
+  const weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
   
-  // 토요일이고 20:35 이전이면 아직 이번 주 추첨이 안 된 것
-  const isBeforeDraw = koreaDay === 6 && (koreaHour < 20 || (koreaHour === 20 && koreaMinute < 35));
-  
-  // 일요일~금요일이면 지난 토요일 추첨이 최신
-  // 토요일이면서 추첨 전이면 지난 주 토요일이 최신
-  if (koreaDay === 0 || (koreaDay >= 1 && koreaDay <= 5)) {
-    // 일요일~금요일: 이번 주 토요일 추첨은 아직 안 됨
-    // weeksPassed 그대로 사용
-  } else if (isBeforeDraw) {
-    // 토요일 추첨 전: 지난 주가 최신
-    weeksPassed = weeksPassed - 1;
-  }
-  // 토요일 추첨 후는 weeksPassed 그대로 사용
-  
+  // 기본 계산: 기준 회차 + 경과 주수
   const currentRound = referenceRound + weeksPassed;
-  console.log(`📊 현재 회차: ${currentRound}회차 (한국시간: ${koreaTime.toLocaleString('ko-KR')}, 추첨 전: ${isBeforeDraw})`);
+  
+  console.log(`📊 현재 회차 계산: ${referenceRound} + ${weeksPassed} = ${currentRound}회차`);
+  console.log(`📊 기준일: 2025-07-05, 현재: ${now.toISOString().split('T')[0]}`);
+  
   return currentRound;
 };
 
