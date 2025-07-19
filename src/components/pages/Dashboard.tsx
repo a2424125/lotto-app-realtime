@@ -61,6 +61,26 @@ const Dashboard: React.FC<DashboardProps> = ({
     return false;
   }
 
+  // 🔧 추첨 후 2시간 이내인지 확인
+  function isWithinTwoHoursAfterDraw(): boolean {
+    const now = new Date();
+    const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    const koreaDay = koreaTime.getDay();
+    const koreaHour = koreaTime.getHours();
+    const koreaMinute = koreaTime.getMinutes();
+    
+    // 토요일 20:35 ~ 22:35 사이인지 확인
+    if (koreaDay === 6) {
+      const totalMinutes = koreaHour * 60 + koreaMinute;
+      const drawStartMinutes = 20 * 60 + 35; // 20:35
+      const twoHoursAfterMinutes = 22 * 60 + 35; // 22:35
+      
+      return totalMinutes >= drawStartMinutes && totalMinutes <= twoHoursAfterMinutes;
+    }
+    
+    return false;
+  }
+
   // 🔧 수정된 기본 회차 계산 함수 - 추첨 시간 고려
   function calculateDefaultRound(): number {
     const referenceDate = new Date('2025-07-05');
@@ -96,6 +116,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [loadAttempts, setLoadAttempts] = useState(0);
   const [lastLoadTime, setLastLoadTime] = useState<number>(0);
   const [isWaitingForResult, setIsWaitingForResult] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState("");
 
   const colors = {
     light: {
@@ -119,6 +141,9 @@ const Dashboard: React.FC<DashboardProps> = ({
       waiting: "#fef3c7",
       waitingBorder: "#fbbf24",
       waitingText: "#92400e",
+      error: "#fef2f2",
+      errorBorder: "#fecaca",
+      errorText: "#991b1b",
     },
     dark: {
       background: "#0f172a",
@@ -141,6 +166,9 @@ const Dashboard: React.FC<DashboardProps> = ({
       waiting: "#78350f",
       waitingBorder: "#f59e0b",
       waitingText: "#fef3c7",
+      error: "#7f1d1d",
+      errorBorder: "#991b1b",
+      errorText: "#fecaca",
     },
   };
 
@@ -197,67 +225,47 @@ const Dashboard: React.FC<DashboardProps> = ({
       
       if (data.success && data.isWaitingPeriod) {
         setIsWaitingForResult(true);
-        // 이전 회차 데이터 유지
-        if (pastWinningNumbers.length > 0 && pastWinningNumbers[0].length >= 7) {
-          const previousRound = actualLatestRound - 1;
-          const safeResult: LottoDrawResult = {
-            round: previousRound,
-            date: new Date().toISOString().split('T')[0],
-            numbers: pastWinningNumbers[0].slice(0, 6),
-            bonusNumber: pastWinningNumbers[0][6],
-            crawledAt: new Date().toISOString(),
-            source: "previous_round",
-          };
-          setLatestResult(safeResult);
-        }
+        setUpdateMessage("추첨 결과 집계중입니다");
+        return;
+      }
+      
+      if (data.isUpdating) {
+        setIsUpdating(true);
+        setUpdateMessage(data.message || "결과 업데이트 중입니다");
         return;
       }
       
       if (data.success && data.data) {
         setLatestResult(data.data);
         setIsWaitingForResult(false);
+        setIsUpdating(false);
+        setUpdateMessage("");
         return;
       }
 
-      // 1순위: pastWinningNumbers 사용 (가장 안전)
-      if (pastWinningNumbers.length > 0 && pastWinningNumbers[0].length >= 7) {
-        const safeResult: LottoDrawResult = {
-          round: actualLatestRound,
-          date: new Date().toISOString().split('T')[0],
-          numbers: pastWinningNumbers[0].slice(0, 6),
-          bonusNumber: pastWinningNumbers[0][6],
-          crawledAt: new Date().toISOString(),
-          source: "safe_primary",
-        };
-        setLatestResult(safeResult);
-        return;
-      }
-
-      // 2순위: 최근 회차 실제 당첨번호 중 현재 회차 확인
-      const recentVerifiedResults: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
-        1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3, date: '2025-07-12' },
-        1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
-        1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17, date: '2025-06-28' },
-      };
-      
-      if (recentVerifiedResults[actualLatestRound]) {
-        const data = recentVerifiedResults[actualLatestRound];
-        const fallbackResult: LottoDrawResult = {
-          round: actualLatestRound,
-          date: data.date,
-          numbers: data.numbers,
-          bonusNumber: data.bonus,
-          crawledAt: new Date().toISOString(),
-          source: "safe_fallback",
-        };
-        setLatestResult(fallbackResult);
-      } else {
-        // 3순위: 자동 생성 표시
-        setLatestResult(null); // 로딩 상태로 표시
+      // 데이터가 없는 경우
+      if (!data.success) {
+        setIsUpdating(true);
+        setUpdateMessage(data.error || "데이터를 불러올 수 없습니다");
+        
+        // pastWinningNumbers 사용 (가장 안전)
+        if (pastWinningNumbers.length > 0 && pastWinningNumbers[0].length >= 7) {
+          const safeResult: LottoDrawResult = {
+            round: actualLatestRound,
+            date: new Date().toISOString().split('T')[0],
+            numbers: pastWinningNumbers[0].slice(0, 6),
+            bonusNumber: pastWinningNumbers[0][6],
+            crawledAt: new Date().toISOString(),
+            source: "cached_data",
+          };
+          setLatestResult(safeResult);
+        }
       }
 
     } catch (error) {
       console.error("❌ 안전한 로드 실패:", error);
+      setIsUpdating(true);
+      setUpdateMessage("데이터를 불러올 수 없습니다");
     } finally {
       setIsLoadingLatest(false);
     }
@@ -307,66 +315,33 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
 
   // 안전한 당첨번호 표시
-  const getDisplayNumbers = (): { numbers: number[]; bonusNumber: number; round: number } => {
-    // 대기 시간이면 이전 회차 표시
-    if (isWaitingForResult) {
-      const previousRound = actualLatestRound;
-      
-      // 이전 회차 실제 데이터
-      const previousResults: { [key: number]: { numbers: number[], bonus: number } } = {
-        1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3 },
-        1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21 },
-        1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17 },
-      };
-      
-      if (previousResults[previousRound]) {
-        return {
-          numbers: previousResults[previousRound].numbers,
-          bonusNumber: previousResults[previousRound].bonus,
-          round: previousRound
-        };
-      }
-    }
-    
-    // 최신 회차가 pastWinningNumbers에 있으면 그것을 사용
-    if (pastWinningNumbers.length > 0 && pastWinningNumbers[0].length >= 7) {
-      return {
-        numbers: pastWinningNumbers[0].slice(0, 6),
-        bonusNumber: pastWinningNumbers[0][6],
-        round: actualLatestRound
-      };
-    }
-
-    // latestResult가 있으면 사용
+  const getDisplayNumbers = (): { numbers: number[]; bonusNumber: number; round: number; isValid: boolean } => {
+    // 최신 결과가 있으면 사용
     if (latestResult && latestResult.numbers && latestResult.bonusNumber) {
       return {
         numbers: latestResult.numbers,
         bonusNumber: latestResult.bonusNumber,
-        round: latestResult.round
+        round: latestResult.round,
+        isValid: true
       };
     }
 
-    // 최근 회차 실제 데이터 (fallback)
-    const recentResults: { [key: number]: { numbers: number[], bonus: number } } = {
-      1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3 },
-      1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21 },
-      1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17 },
-    };
-
-    // 현재 회차의 실제 데이터가 있으면 사용
-    if (recentResults[actualLatestRound]) {
+    // pastWinningNumbers에서 가져오기
+    if (pastWinningNumbers.length > 0 && pastWinningNumbers[0].length >= 7) {
       return {
-        numbers: recentResults[actualLatestRound].numbers,
-        bonusNumber: recentResults[actualLatestRound].bonus,
-        round: actualLatestRound
+        numbers: pastWinningNumbers[0].slice(0, 6),
+        bonusNumber: pastWinningNumbers[0][6],
+        round: actualLatestRound,
+        isValid: true
       };
     }
 
-    // 없으면 자동 생성된 번호 표시 (또는 로딩 상태)
+    // 데이터가 없는 경우
     return {
       numbers: [],
       bonusNumber: 0,
-      round: actualLatestRound
+      round: actualLatestRound,
+      isValid: false
     };
   };
 
@@ -578,6 +553,43 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
+      {/* 업데이트 상태 표시 */}
+      {isUpdating && !isWaitingForResult && (
+        <div
+          style={{
+            backgroundColor: currentColors.error,
+            padding: "16px",
+            borderRadius: "8px",
+            border: `1px solid ${currentColors.errorBorder}`,
+            marginBottom: "12px",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "16px",
+              fontWeight: "bold",
+              color: currentColors.errorText,
+              marginBottom: "8px",
+            }}
+          >
+            ⚠️ {updateMessage}
+          </div>
+          {isWithinTwoHoursAfterDraw() && (
+            <p
+              style={{
+                fontSize: "12px",
+                color: currentColors.errorText,
+                margin: "0",
+                opacity: 0.8,
+              }}
+            >
+              5분마다 자동으로 재시도합니다
+            </p>
+          )}
+        </div>
+      )}
+
       {/* 최신 당첨결과 */}
       <div
         style={{
@@ -601,7 +613,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               gap: "8px",
             }}
           >
-            {isWaitingForResult ? `${displayData.round}회 당첨결과 (이전 회차)` : `${displayData.round}회 당첨결과`}
+            {displayData.round}회 당첨결과
             {isLoadingLatest && (
               <span
                 style={{
@@ -636,7 +648,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               flexWrap: "wrap",
             }}
           >
-            {displayData.numbers.length > 0 ? (
+            {displayData.isValid && displayData.numbers.length > 0 ? (
               <>
                 {displayData.numbers.map((num, i) => (
                   <LottoNumberBall key={i} number={num} size="md" theme={theme} />
