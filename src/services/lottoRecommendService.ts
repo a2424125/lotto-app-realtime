@@ -59,7 +59,7 @@ class LottoRecommendService {
     // 🔧 수정: 생성자에서 즉시 로드하지 않음
   }
 
-  // 🔧 수정: 현재 회차 동적 계산 (캐시 적용)
+  // 🔧 수정된 현재 회차 동적 계산 (캐시 적용)
   private _currentRoundCache: { round: number; timestamp: number } | null = null;
   private calculateCurrentRound(): number {
     // 캐시된 값이 있고 5분 이내라면 사용
@@ -71,9 +71,11 @@ class LottoRecommendService {
     const referenceRound = this.REFERENCE_ROUND;
     const now = new Date();
     
+    // 기준일부터 현재까지의 주 수 계산
     const timeDiff = now.getTime() - referenceDate.getTime();
     const weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
     
+    // 기본 계산: 기준 회차 + 경과 주수
     const currentRound = referenceRound + weeksPassed;
     
     // 캐시 저장
@@ -82,7 +84,7 @@ class LottoRecommendService {
       timestamp: Date.now()
     };
     
-    console.log(`📊 현재 회차: ${currentRound}회차 (기준: ${this.REFERENCE_DATE} = ${this.REFERENCE_ROUND}회차)`);
+    console.log(`📊 추천서비스 현재 회차: ${currentRound}회차 (기준: ${this.REFERENCE_DATE} = ${this.REFERENCE_ROUND}회차)`);
     return currentRound;
   }
 
