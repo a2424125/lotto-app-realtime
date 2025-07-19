@@ -379,7 +379,7 @@ class EmergencyLottoDataManager {
     return Date.now() - this.lastUpdateTime.getTime() > this.cacheTimeout;
   }
 
-  // ✅ 항상 성공하는 API들
+  // ✅ 항상 성공하는 API들 - 수정된 부분
   async getLatestResult(): Promise<LottoAPIResponse> {
     // 추첨 대기 시간 확인
     if (this.isInWaitingPeriod()) {
@@ -395,7 +395,7 @@ class EmergencyLottoDataManager {
           success: true,
           data: previousResult,
           message: `${previousRound}회차 당첨번호 (추첨 결과 집계중)`,
-          isWaitingPeriod: true,
+          // isWaitingPeriod: true, // 이 부분을 제거했습니다!
         };
       }
     }
