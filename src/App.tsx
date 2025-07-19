@@ -242,29 +242,38 @@ const LottoApp = () => {
     loadNextDrawInfo();
   }, [currentTime, roundRange]);
 
+  // 🔧 수정된 현재 회차 계산 함수
+  const calculateCurrentRound = (): number => {
+    const referenceDate = new Date('2025-07-05'); // 1179회 추첨일
+    const referenceRound = 1179;
+    const now = new Date();
+    
+    // 한국 시간으로 변환
+    const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    const koreaDay = koreaTime.getDay();
+    const koreaHour = koreaTime.getHours();
+    const koreaMinute = koreaTime.getMinutes();
+    
+    // 기준일부터 현재까지의 주 수 계산
+    const timeDiff = now.getTime() - referenceDate.getTime();
+    const weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
+    
+    // 기본 계산: 기준 회차 + 경과 주수
+    let currentRound = referenceRound + weeksPassed;
+    
+    console.log(`📊 현재 회차 계산: ${referenceRound} + ${weeksPassed} = ${currentRound}회차`);
+    console.log(`📊 한국시간: ${koreaTime.toLocaleString('ko-KR')}, 요일: ${koreaDay}, 시간: ${koreaHour}:${koreaMinute}`);
+    
+    return currentRound;
+  };
+
   // 🛡️ 응급 안전 데이터 로딩 (항상 성공)
   const loadEmergencyData = async () => {
     try {
       console.log("🛡️ 응급 안전 데이터 로딩 시작...");
 
       // 🎯 현재 회차 계산
-      const referenceDate = new Date('2025-07-05');
-      const referenceRound = 1179;
-      const now = new Date();
-      
-      // 한국 시간으로 변환
-      const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-      const koreaDay = koreaTime.getDay();
-      const koreaHour = koreaTime.getHours();
-      const koreaMinute = koreaTime.getMinutes();
-      
-      const weeksSince = Math.floor((now.getTime() - referenceDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-      let currentRound = referenceRound + weeksSince;
-      
-      // 토요일 추첨 후인 경우에만 현재 회차를 1 증가
-      if (koreaDay === 6 && (koreaHour > 20 || (koreaHour === 20 && koreaMinute >= 35))) {
-        currentRound = currentRound + 1;
-      }
+      const currentRound = calculateCurrentRound();
 
       console.log(`🎯 목표: 응급 안전 ${currentRound}회차 전체 로드`);
 
@@ -321,6 +330,7 @@ const LottoApp = () => {
         const emergencyData = generateLocalEmergencyData();
         
         setPastWinningNumbers(emergencyData);
+        const currentRound = calculateCurrentRound();
         setRoundRange({
           latestRound: currentRound,
           oldestRound: Math.max(1, currentRound - emergencyData.length + 1),
@@ -346,26 +356,12 @@ const LottoApp = () => {
 
       // 🛡️ 완전한 에러시에도 로컬 응급 데이터 제공
       const emergencyData = generateLocalEmergencyData();
-      
-      const referenceDate = new Date('2025-07-05');
-      const referenceRound = 1179;
-      const now = new Date();
-      const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-      const koreaDay = koreaTime.getDay();
-      const koreaHour = koreaTime.getHours();
-      const koreaMinute = koreaTime.getMinutes();
-      
-      const weeksSince = Math.floor((now.getTime() - referenceDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-      let estimatedRound = referenceRound + weeksSince;
-      
-      if (koreaDay === 6 && (koreaHour > 20 || (koreaHour === 20 && koreaMinute >= 35))) {
-        estimatedRound = estimatedRound + 1;
-      }
+      const currentRound = calculateCurrentRound();
       
       setPastWinningNumbers(emergencyData);
       setRoundRange({
-        latestRound: estimatedRound,
-        oldestRound: Math.max(1, estimatedRound - emergencyData.length + 1),
+        latestRound: currentRound,
+        oldestRound: Math.max(1, currentRound - emergencyData.length + 1),
       });
 
       setDataStatus({
@@ -375,13 +371,13 @@ const LottoApp = () => {
         crawlerHealth: "emergency",
         fullDataStatus: {
           isFullDataLoaded: true,
-          expectedCount: estimatedRound,
+          expectedCount: currentRound,
           actualCount: emergencyData.length,
-          coverage: Math.round((emergencyData.length / estimatedRound) * 100),
+          coverage: Math.round((emergencyData.length / currentRound) * 100),
         },
       });
 
-      console.warn(`⚠️ 완전한 응급 모드: ${estimatedRound}회 ~ ${Math.max(1, estimatedRound - emergencyData.length + 1)}회 (${emergencyData.length}회차)`);
+      console.warn(`⚠️ 완전한 응급 모드: ${currentRound}회 ~ ${Math.max(1, currentRound - emergencyData.length + 1)}회 (${emergencyData.length}회차)`);
     } finally {
       setIsDataLoading(false); // 항상 로딩 완료로 설정
     }
@@ -391,23 +387,7 @@ const LottoApp = () => {
   const generateLocalEmergencyData = (): number[][] => {
     const emergencyData: number[][] = [];
     
-    const referenceDate = new Date('2025-07-05');
-    const referenceRound = 1179;
-    const now = new Date();
-    
-    // 한국 시간으로 변환
-    const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-    const koreaDay = koreaTime.getDay();
-    const koreaHour = koreaTime.getHours();
-    const koreaMinute = koreaTime.getMinutes();
-    
-    const weeksSince = Math.floor((now.getTime() - referenceDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-    let currentRound = referenceRound + weeksSince;
-    
-    // 토요일 추첨 후인 경우에만 현재 회차를 1 증가
-    if (koreaDay === 6 && (koreaHour > 20 || (koreaHour === 20 && koreaMinute >= 35))) {
-      currentRound = currentRound + 1;
-    }
+    const currentRound = calculateCurrentRound();
     
     console.log(`🛡️ 로컬 응급 데이터 생성: 1~${currentRound}회차 전체`);
     
@@ -463,33 +443,34 @@ const LottoApp = () => {
     return Array.from(numbers);
   };
 
+  // 🔧 수정된 다음 추첨 정보 로딩
   const loadNextDrawInfo = () => {
     try {
       console.log("📅 다음 추첨 정보 로딩...");
       
       const now = new Date();
-      const drawInfo = calculateNextDrawInfo(now);
-      
-      const referenceDate = new Date('2025-07-05');
-      const referenceRound = 1179;
-      
-      // 한국 시간으로 변환
       const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
       const koreaDay = koreaTime.getDay();
       const koreaHour = koreaTime.getHours();
       const koreaMinute = koreaTime.getMinutes();
       
-      const timeDiff = now.getTime() - referenceDate.getTime();
-      const weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
+      // 현재 최신 완료 회차 계산
+      const currentLatestRound = calculateCurrentRound();
       
-      let currentLatestRound = referenceRound + weeksPassed;
+      // 추첨 완료 여부 확인
+      const hasDrawPassed = koreaDay === 6 && (koreaHour > 20 || (koreaHour === 20 && koreaMinute >= 35));
       
-      // 토요일 추첨 후인 경우에만 현재 회차를 1 증가
-      if (koreaDay === 6 && (koreaHour > 20 || (koreaHour === 20 && koreaMinute >= 35))) {
-        currentLatestRound = currentLatestRound + 1;
+      // 다음 추첨 회차 계산
+      let nextRound: number;
+      if (koreaDay === 6 && !hasDrawPassed) {
+        // 토요일 추첨 전이면 오늘이 추첨일
+        nextRound = currentLatestRound + 1;
+      } else {
+        // 토요일 추첨 후 또는 다른 요일이면 다음 토요일이 추첨일
+        nextRound = hasDrawPassed ? currentLatestRound + 2 : currentLatestRound + 1;
       }
       
-      const nextRound = currentLatestRound + 1;
+      const drawInfo = calculateNextDrawInfo(now);
       
       const nextInfo = {
         round: nextRound,
@@ -514,17 +495,18 @@ const LottoApp = () => {
     const DRAW_MINUTE = 35;
 
     const now = new Date(currentDate);
-    const currentDay = now.getDay();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
+    const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    const currentDay = koreaTime.getDay();
+    const currentHour = koreaTime.getHours();
+    const currentMinute = koreaTime.getMinutes();
 
-    const thisWeekSaturday = new Date(now);
+    const thisWeekSaturday = new Date(koreaTime);
     const daysToSaturday = (DRAW_DAY - currentDay + 7) % 7;
-    thisWeekSaturday.setDate(now.getDate() + daysToSaturday);
+    thisWeekSaturday.setDate(koreaTime.getDate() + daysToSaturday);
     thisWeekSaturday.setHours(DRAW_HOUR, DRAW_MINUTE, 0, 0);
 
     if (currentDay === DRAW_DAY) {
-      thisWeekSaturday.setDate(now.getDate());
+      thisWeekSaturday.setDate(koreaTime.getDate());
       thisWeekSaturday.setHours(DRAW_HOUR, DRAW_MINUTE, 0, 0);
     }
 
@@ -555,9 +537,9 @@ const LottoApp = () => {
       hasDrawPassed = false;
     }
 
-    const timeDiff = nextDrawDate.getTime() - now.getTime();
+    const timeDiff = nextDrawDate.getTime() - koreaTime.getTime();
     const exactDaysUntilDraw = timeDiff <= 0 ? 0 : 
-      nextDrawDate.toDateString() === now.toDateString() ? 0 : 
+      nextDrawDate.toDateString() === koreaTime.toDateString() ? 0 : 
       Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
 
     let timeUntilDraw = "";
