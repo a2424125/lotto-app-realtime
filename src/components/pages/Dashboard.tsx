@@ -41,6 +41,26 @@ const Dashboard: React.FC<DashboardProps> = ({
   const actualLatestRound = roundRange?.latestRound || calculateDefaultRound();
   const actualOldestRound = roundRange?.oldestRound || Math.max(1, actualLatestRound - totalRounds + 1);
 
+  // 🔧 추첨 대기 시간 확인 함수
+  function isInWaitingPeriod(): boolean {
+    const now = new Date();
+    const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    const koreaDay = koreaTime.getDay();
+    const koreaHour = koreaTime.getHours();
+    const koreaMinute = koreaTime.getMinutes();
+    
+    // 토요일 20:35 ~ 20:50 사이인지 확인
+    if (koreaDay === 6) {
+      const totalMinutes = koreaHour * 60 + koreaMinute;
+      const drawStartMinutes = 20 * 60 + 35; // 20:35
+      const drawEndMinutes = 20 * 60 + 50; // 20:50
+      
+      return totalMinutes >= drawStartMinutes && totalMinutes <= drawEndMinutes;
+    }
+    
+    return false;
+  }
+
   // 🔧 수정된 기본 회차 계산 함수 - 추첨 시간 고려
   function calculateDefaultRound(): number {
     const referenceDate = new Date('2025-07-05');
@@ -75,6 +95,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [isLoadingLatest, setIsLoadingLatest] = useState(false);
   const [loadAttempts, setLoadAttempts] = useState(0);
   const [lastLoadTime, setLastLoadTime] = useState<number>(0);
+  const [isWaitingForResult, setIsWaitingForResult] = useState(false);
 
   const colors = {
     light: {
@@ -95,6 +116,9 @@ const Dashboard: React.FC<DashboardProps> = ({
       realtime: "#f0fdf4",
       realtimeBorder: "#bbf7d0",
       realtimeText: "#166534",
+      waiting: "#fef3c7",
+      waitingBorder: "#fbbf24",
+      waitingText: "#92400e",
     },
     dark: {
       background: "#0f172a",
@@ -114,6 +138,9 @@ const Dashboard: React.FC<DashboardProps> = ({
       realtime: "#134e4a",
       realtimeBorder: "#047857",
       realtimeText: "#6ee7b7",
+      waiting: "#78350f",
+      waitingBorder: "#f59e0b",
+      waitingText: "#fef3c7",
     },
   };
 
@@ -127,6 +154,26 @@ const Dashboard: React.FC<DashboardProps> = ({
       loadLatestResultSafe();
     }
   }, [pastWinningNumbers]);
+
+  // 추첨 대기 시간 체크
+  useEffect(() => {
+    const checkWaitingPeriod = () => {
+      const isWaiting = isInWaitingPeriod();
+      setIsWaitingForResult(isWaiting);
+      
+      // 대기 시간이면 5분마다 재시도
+      if (isWaiting) {
+        setTimeout(() => {
+          loadLatestResultSafe();
+        }, 5 * 60 * 1000); // 5분
+      }
+    };
+    
+    checkWaitingPeriod();
+    const interval = setInterval(checkWaitingPeriod, 60000); // 1분마다 체크
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const loadLatestResultSafe = async () => {
     // 이미 로딩 중이거나 최근에 로드했으면 스킵
@@ -144,6 +191,34 @@ const Dashboard: React.FC<DashboardProps> = ({
       setLoadAttempts(prev => prev + 1);
       setLastLoadTime(now);
 
+      // API 호출하여 최신 결과 확인
+      const response = await fetch('/api/latest-result');
+      const data = await response.json();
+      
+      if (data.success && data.isWaitingPeriod) {
+        setIsWaitingForResult(true);
+        // 이전 회차 데이터 유지
+        if (pastWinningNumbers.length > 0 && pastWinningNumbers[0].length >= 7) {
+          const previousRound = actualLatestRound - 1;
+          const safeResult: LottoDrawResult = {
+            round: previousRound,
+            date: new Date().toISOString().split('T')[0],
+            numbers: pastWinningNumbers[0].slice(0, 6),
+            bonusNumber: pastWinningNumbers[0][6],
+            crawledAt: new Date().toISOString(),
+            source: "previous_round",
+          };
+          setLatestResult(safeResult);
+        }
+        return;
+      }
+      
+      if (data.success && data.data) {
+        setLatestResult(data.data);
+        setIsWaitingForResult(false);
+        return;
+      }
+
       // 1순위: pastWinningNumbers 사용 (가장 안전)
       if (pastWinningNumbers.length > 0 && pastWinningNumbers[0].length >= 7) {
         const safeResult: LottoDrawResult = {
@@ -158,8 +233,9 @@ const Dashboard: React.FC<DashboardProps> = ({
         return;
       }
 
-      // 2순위: 최근 3회차 실제 당첨번호 중 현재 회차 확인
+      // 2순위: 최근 회차 실제 당첨번호 중 현재 회차 확인
       const recentVerifiedResults: { [key: number]: { numbers: number[], bonus: number, date: string } } = {
+        1181: { numbers: [7, 14, 16, 20, 26, 37], bonus: 22, date: '2025-07-19' },
         1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3, date: '2025-07-12' },
         1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21, date: '2025-07-05' },
         1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17, date: '2025-06-28' },
@@ -233,6 +309,26 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   // 안전한 당첨번호 표시
   const getDisplayNumbers = (): { numbers: number[]; bonusNumber: number; round: number } => {
+    // 대기 시간이면 이전 회차 표시
+    if (isWaitingForResult) {
+      const previousRound = actualLatestRound;
+      
+      // 이전 회차 실제 데이터
+      const previousResults: { [key: number]: { numbers: number[], bonus: number } } = {
+        1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3 },
+        1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21 },
+        1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17 },
+      };
+      
+      if (previousResults[previousRound]) {
+        return {
+          numbers: previousResults[previousRound].numbers,
+          bonusNumber: previousResults[previousRound].bonus,
+          round: previousRound
+        };
+      }
+    }
+    
     // 최신 회차가 pastWinningNumbers에 있으면 그것을 사용
     if (pastWinningNumbers.length > 0 && pastWinningNumbers[0].length >= 7) {
       return {
@@ -251,8 +347,9 @@ const Dashboard: React.FC<DashboardProps> = ({
       };
     }
 
-    // 최근 3회차 실제 데이터 (fallback)
+    // 최근 회차 실제 데이터 (fallback)
     const recentResults: { [key: number]: { numbers: number[], bonus: number } } = {
+      1181: { numbers: [7, 14, 16, 20, 26, 37], bonus: 22 },
       1180: { numbers: [6, 12, 18, 37, 40, 41], bonus: 3 },
       1179: { numbers: [3, 16, 18, 24, 40, 44], bonus: 21 },
       1178: { numbers: [5, 6, 11, 27, 43, 44], bonus: 17 },
@@ -425,6 +522,64 @@ const Dashboard: React.FC<DashboardProps> = ({
         )}
       </div>
 
+      {/* 추첨 대기 상태 표시 */}
+      {isWaitingForResult && (
+        <div
+          style={{
+            backgroundColor: currentColors.waiting,
+            padding: "16px",
+            borderRadius: "8px",
+            border: `1px solid ${currentColors.waitingBorder}`,
+            marginBottom: "12px",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "18px",
+              fontWeight: "bold",
+              color: currentColors.waitingText,
+              marginBottom: "8px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+            }}
+          >
+            🔄 {actualLatestRound + 1}회 추첨 결과 집계중...
+            <div
+              style={{
+                width: "16px",
+                height: "16px",
+                border: `2px solid ${currentColors.waitingBorder}`,
+                borderTop: `2px solid ${currentColors.waitingText}`,
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite",
+              }}
+            />
+          </div>
+          <p
+            style={{
+              fontSize: "14px",
+              color: currentColors.waitingText,
+              margin: "0",
+            }}
+          >
+            잠시 후 다시 확인해주세요
+          </p>
+          <p
+            style={{
+              fontSize: "12px",
+              color: currentColors.waitingText,
+              margin: "4px 0 0 0",
+              opacity: 0.8,
+            }}
+          >
+            보통 추첨 후 10-15분 내에 결과가 발표됩니다
+          </p>
+        </div>
+      )}
+
       {/* 최신 당첨결과 */}
       <div
         style={{
@@ -448,7 +603,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               gap: "8px",
             }}
           >
-            {displayData.round}회 당첨결과
+            {isWaitingForResult ? `${displayData.round}회 당첨결과 (이전 회차)` : `${displayData.round}회 당첨결과`}
             {isLoadingLatest && (
               <span
                 style={{
