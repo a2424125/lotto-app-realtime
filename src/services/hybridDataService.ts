@@ -25,22 +25,37 @@ export async function fetchAllLottoData(): Promise<FullLottoData[]> {
       officialPromises.push(fetchOfficialLottoData(round));
     }
     
-    // 2. 나머지 과거 데이터 - Lottolyzer (여러 페이지)
-    const pastDataCount = officialStartRound - 1;
-    console.log(`📊 Lottolyzer: 1~${pastDataCount}회차 (여러 페이지로 나눠서)`);
+    // 2. 나머지 과거 데이터 - Lottolyzer
+    const pastDataCount = officialStartRound - 1; // 1회차부터 officialStartRound-1까지
+    console.log(`📊 Lottolyzer 목표: 1~${pastDataCount}회차 (총 ${pastDataCount}개)`);
     
     // 병렬 처리
     const [officialResults, lottolyzerResults] = await Promise.all([
       Promise.all(officialPromises),
-      fetchAllPagesFromLottolyzer(pastDataCount) // 수정된 함수 사용
+      fetchAllPagesFromLottolyzer(pastDataCount)
     ]);
     
     // 3. 데이터 합치기
     const allData: FullLottoData[] = [];
     
     // Lottolyzer 데이터 추가
+    console.log(`📊 Lottolyzer 실제 수집: ${lottolyzerResults.length}개`);
+    
+    // 누락된 회차 확인
+    const collectedRounds = new Set(lottolyzerResults.map(r => r.round));
+    const missingRounds = [];
+    for (let i = 1; i <= pastDataCount; i++) {
+      if (!collectedRounds.has(i)) {
+        missingRounds.push(i);
+      }
+    }
+    
+    if (missingRounds.length > 0) {
+      console.log(`⚠️ 누락된 회차: ${missingRounds.length}개`);
+      console.log(`📋 누락 회차 예시: ${missingRounds.slice(0, 10).join(', ')}...`);
+    }
+    
     lottolyzerResults.forEach(result => {
-      // 회차 범위 체크 (1 ~ pastDataCount)
       if (result.round >= 1 && result.round <= pastDataCount) {
         allData.push({
           ...result,
@@ -65,13 +80,14 @@ export async function fetchAllLottoData(): Promise<FullLottoData[]> {
     // 회차 순으로 정렬
     allData.sort((a, b) => a.round - b.round);
     
-    // 중복 제거 (혹시 겹치는 부분이 있을 경우)
+    // 중복 제거
     const uniqueData = Array.from(
       new Map(allData.map(item => [item.round, item])).values()
     );
     
     console.log(`✅ 전체 ${uniqueData.length}개 회차 데이터 수집 완료!`);
     console.log(`📊 데이터 범위: ${uniqueData[0]?.round}회 ~ ${uniqueData[uniqueData.length - 1]?.round}회`);
+    console.log(`📊 목표 대비 수집률: ${((uniqueData.length / currentRound) * 100).toFixed(1)}%`);
     
     return uniqueData;
     
@@ -83,6 +99,7 @@ export async function fetchAllLottoData(): Promise<FullLottoData[]> {
     
     const fallbackData: FullLottoData[] = [];
     
+    // 최근 100개만 가져오기
     for (let round = currentRound; round > Math.max(currentRound - 100, 1); round--) {
       try {
         const result = await fetchOfficialLottoData(round);
