@@ -1,15 +1,56 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
+import axios from 'axios';
 import { 
-  fetchOfficialLottoData, 
   calculateCurrentRound,
   isInWaitingPeriod 
 } from "../src/services/unifiedLottoService";
+
+// 서버 사이드용 동행복권 API 직접 호출
+async function fetchOfficialDataServer(round: number) {
+  try {
+    const { data } = await axios.get(
+      `https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo=${round}`,
+      {
+        timeout: 20000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'ko-KR,ko;q=0.9'
+        }
+      }
+    );
+    
+    if (data.returnValue === 'success') {
+      return {
+        round: data.drwNo,
+        date: data.drwNoDate,
+        numbers: [
+          data.drwtNo1,
+          data.drwtNo2,
+          data.drwtNo3,
+          data.drwtNo4,
+          data.drwtNo5,
+          data.drwtNo6
+        ].sort((a, b) => a - b),
+        bonusNumber: data.bnusNo,
+        firstWinAmount: data.firstWinamnt,
+        firstWinCount: data.firstPrzwnerCo
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`❌ ${round}회차 서버 API 에러:`, error);
+    return null;
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS 헤더 추가
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Cache-Control", "public, max-age=60"); // 1분 캐시
 
   if (req.method === "OPTIONS") {
     res.status(200).end();
@@ -35,23 +76,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const currentRound = calculateCurrentRound();
     console.log(`📊 현재 회차: ${currentRound}회차`);
     
-    // 동행복권 API에서 데이터 가져오기
-    const result = await fetchOfficialLottoData(currentRound);
+    // 서버에서 직접 동행복권 API 호출
+    const result = await fetchOfficialDataServer(currentRound);
     
     if (!result) {
       // 이전 회차 시도
       console.log("⚠️ 현재 회차 데이터 없음, 이전 회차 시도...");
-      const previousResult = await fetchOfficialLottoData(currentRound - 1);
+      const previousResult = await fetchOfficialDataServer(currentRound - 1);
       
       if (previousResult) {
         return res.status(200).json({
           success: true,
           isWaitingPeriod: false,
           data: {
-            round: previousResult.round,
-            date: previousResult.date,
-            numbers: previousResult.numbers,
-            bonusNumber: previousResult.bonusNumber,
+            ...previousResult,
             crawledAt: new Date().toISOString(),
             source: "dhlottery.co.kr"
           }
@@ -71,12 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       success: true,
       isWaitingPeriod: false,
       data: {
-        round: result.round,
-        date: result.date,
-        numbers: result.numbers,
-        bonusNumber: result.bonusNumber,
-        firstWinAmount: result.firstWinAmount,
-        firstWinCount: result.firstWinCount,
+        ...result,
         crawledAt: new Date().toISOString(),
         source: "dhlottery.co.kr"
       }
