@@ -6,6 +6,8 @@ import Purchase from "./components/pages/Purchase";
 import MiniGame from "./components/pages/MiniGame";
 import Settings from "./components/pages/Settings";
 import { lottoDataManager } from "./services/lottoDataManager";
+import { fetchAllLottoData } from "./services/hybridDataService";
+import { calculateCurrentRound } from "./services/unifiedLottoService";
 import { LottoDrawResult } from "./types/lotto";
 
 interface PurchaseItem {
@@ -37,18 +39,18 @@ const LottoApp = () => {
     oldestRound: 0,
   });
   
-  // 🛡️ 응급 모드 - 빠른 로딩
-  const [isDataLoading, setIsDataLoading] = useState(false); // false로 시작
+  // 🛡️ 데이터 로딩 상태
+  const [isDataLoading, setIsDataLoading] = useState(false);
   const [dataStatus, setDataStatus] = useState<{
     lastUpdate: Date | null;
     isRealTime: boolean;
-    source: "realtime_crawler" | "fallback" | "emergency";
+    source: "hybrid" | "fallback" | "emergency";
     crawlerHealth?: string;
     fullDataStatus?: any;
   }>({
     lastUpdate: new Date(),
     isRealTime: true,
-    source: "emergency",
+    source: "hybrid",
     crawlerHealth: "healthy",
   });
 
@@ -225,13 +227,13 @@ const LottoApp = () => {
   }, []);
 
   useEffect(() => {
-    // 🛡️ 응급 모드 - 즉시 로드
-    loadEmergencyData();
+    // 🚀 하이브리드 방식으로 전체 데이터 로드
+    loadHybridData();
     loadNextDrawInfo();
 
     const interval = setInterval(() => {
       console.log("🔄 자동 백그라운드 데이터 새로고침...");
-      loadEmergencyData();
+      loadHybridData();
       loadNextDrawInfo();
     }, 30 * 60 * 1000); // 30분마다 새로고침
 
@@ -242,154 +244,93 @@ const LottoApp = () => {
     loadNextDrawInfo();
   }, [currentTime, roundRange]);
 
-  // 🔧 수정된 현재 회차 계산 함수 - 추첨 시간 고려
-  const calculateCurrentRound = (): number => {
-    const referenceDate = new Date('2025-07-05'); // 1179회 추첨일
-    const referenceRound = 1179;
-    const now = new Date();
-    
-    // 한국 시간으로 변환
-    const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-    const koreaDay = koreaTime.getDay();
-    const koreaHour = koreaTime.getHours();
-    const koreaMinute = koreaTime.getMinutes();
-    
-    // 기준일부터 현재까지의 주 수 계산
-    const timeDiff = now.getTime() - referenceDate.getTime();
-    const weeksPassed = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000));
-    
-    // 기본 계산: 기준 회차 + 경과 주수
-    let currentRound = referenceRound + weeksPassed;
-    
-    // 토요일이고 추첨 시간(20:35) 전이면 아직 이번 주 추첨이 안 됨
-    if (koreaDay === 6 && (koreaHour < 20 || (koreaHour === 20 && koreaMinute < 35))) {
-      // 아직 추첨 전이므로 현재 회차는 이전 회차
-      currentRound = currentRound - 1;
-    }
-    
-    console.log(`📊 현재 완료된 회차 계산: ${currentRound}회차`);
-    console.log(`📊 한국시간: ${koreaTime.toLocaleString('ko-KR')}, 요일: ${koreaDay}, 시간: ${koreaHour}:${koreaMinute}`);
-    
-    return currentRound;
-  };
-
-  // 🛡️ 응급 안전 데이터 로딩 (항상 성공)
-  const loadEmergencyData = async () => {
+  // 🚀 하이브리드 전체 데이터 로딩 (수정된 함수)
+  const loadHybridData = async () => {
     try {
-      console.log("🛡️ 응급 안전 데이터 로딩 시작...");
+      console.log("🚀 하이브리드 방식으로 전체 데이터 로딩 시작...");
+      setIsDataLoading(true);
 
-      // 🎯 현재 회차 계산
-      const currentRound = calculateCurrentRound();
-
-      console.log(`🎯 목표: 응급 안전 ${currentRound}회차 전체 로드`);
-
-      // 🛡️ 응급 데이터 로드 (항상 성공)
-      const historyResponse = await lottoDataManager.getHistory(currentRound);
+      // 하이브리드 서비스로 전체 데이터 가져오기
+      const allData = await fetchAllLottoData();
       
-      if (historyResponse.success && historyResponse.data && historyResponse.data.length > 0) {
-        const historyData = historyResponse.data;
-        
-        console.log(`✅ 응급 안전 데이터 로드 성공: ${historyData.length}개 회차`);
+      if (allData && allData.length > 0) {
+        console.log(`✅ 하이브리드 데이터 로드 성공: ${allData.length}개 회차`);
         
         // 번호 배열로 변환
-        const numbersArray = historyData.map((draw: LottoDrawResult) => [
+        const numbersArray = allData.map((draw) => [
           ...draw.numbers,
           draw.bonusNumber
         ]);
 
         setPastWinningNumbers(numbersArray);
         
+        // 회차 범위 설정
+        const rounds = allData.map(d => d.round).sort((a, b) => b - a);
         setRoundRange({
-          latestRound: historyData[0].round,
-          oldestRound: historyData[historyData.length - 1].round,
+          latestRound: rounds[0],
+          oldestRound: rounds[rounds.length - 1],
         });
+
+        // 데이터 소스별 통계
+        const officialCount = allData.filter(d => d.source === 'official').length;
+        const lottolyzerCount = allData.filter(d => d.source === 'lottolyzer').length;
 
         setDataStatus({
           lastUpdate: new Date(),
           isRealTime: true,
-          source: "emergency",
+          source: "hybrid",
           crawlerHealth: "healthy",
           fullDataStatus: {
             isFullDataLoaded: true,
-            expectedCount: currentRound,
-            actualCount: historyData.length,
-            coverage: Math.round((historyData.length / currentRound) * 100),
+            totalCount: allData.length,
+            officialCount,
+            lottolyzerCount,
+            coverage: `${rounds[rounds.length - 1]}회 ~ ${rounds[0]}회`,
           },
         });
 
-        const coverage = Math.round((historyData.length / currentRound) * 100);
-        console.log(`✅ 데이터 설정 완료: ${historyData[0].round}~${historyData[historyData.length - 1].round}회차`);
-        console.log(`📈 전체 회차 커버리지: ${coverage}% (${historyData.length}/${currentRound})`);
+        console.log(`✅ 데이터 설정 완료: ${rounds[rounds.length - 1]}~${rounds[0]}회차`);
+        console.log(`📊 공식 API: ${officialCount}개, Lottolyzer: ${lottolyzerCount}개`);
         
-        // 🔧 1179회차 검증
-        const round1179 = historyData.find((d: LottoDrawResult) => d.round === 1179);
-        if (round1179) {
-          console.log(`✅ 1179회차 확인: [${round1179.numbers.join(', ')}] + ${round1179.bonusNumber}`);
-          const expected = [3, 16, 18, 24, 40, 44];
-          const isCorrect = JSON.stringify(round1179.numbers.sort((a: number, b: number) => a - b)) === JSON.stringify(expected) && round1179.bonusNumber === 21;
-          console.log(`   데이터 검증: ${isCorrect ? '✅ 정확' : '❌ 불일치'}`);
-        }
-
       } else {
-        // 🛡️ 최후 수단 - 로컬 응급 데이터
-        console.warn("⚠️ API 실패, 로컬 응급 데이터 사용");
-        const emergencyData = generateLocalEmergencyData();
-        
-        setPastWinningNumbers(emergencyData);
-        const currentRound = calculateCurrentRound();
-        setRoundRange({
-          latestRound: currentRound,
-          oldestRound: Math.max(1, currentRound - emergencyData.length + 1),
-        });
-
-        setDataStatus({
-          lastUpdate: new Date(),
-          isRealTime: false,
-          source: "emergency",
-          crawlerHealth: "emergency",
-          fullDataStatus: {
-            isFullDataLoaded: true,
-            expectedCount: currentRound,
-            actualCount: emergencyData.length,
-            coverage: Math.round((emergencyData.length / currentRound) * 100),
-          },
-        });
-
-        console.warn(`⚠️ 로컬 응급 모드: ${currentRound}회 ~ ${Math.max(1, currentRound - emergencyData.length + 1)}회 (${emergencyData.length}회차)`);
+        // 데이터가 없는 경우 로컬 비상 데이터 사용
+        console.warn("⚠️ 하이브리드 데이터 없음, 로컬 데이터 사용");
+        loadLocalEmergencyData();
       }
     } catch (error) {
-      console.error("❌ 응급 데이터 로드 실패:", error);
-
-      // 🛡️ 완전한 에러시에도 로컬 응급 데이터 제공
-      const emergencyData = generateLocalEmergencyData();
-      const currentRound = calculateCurrentRound();
-      
-      setPastWinningNumbers(emergencyData);
-      setRoundRange({
-        latestRound: currentRound,
-        oldestRound: Math.max(1, currentRound - emergencyData.length + 1),
-      });
-
-      setDataStatus({
-        lastUpdate: new Date(),
-        isRealTime: false,
-        source: "emergency",
-        crawlerHealth: "emergency",
-        fullDataStatus: {
-          isFullDataLoaded: true,
-          expectedCount: currentRound,
-          actualCount: emergencyData.length,
-          coverage: Math.round((emergencyData.length / currentRound) * 100),
-        },
-      });
-
-      console.warn(`⚠️ 완전한 응급 모드: ${currentRound}회 ~ ${Math.max(1, currentRound - emergencyData.length + 1)}회 (${emergencyData.length}회차)`);
+      console.error("❌ 하이브리드 데이터 로드 실패:", error);
+      // 실패 시 로컬 비상 데이터 사용
+      loadLocalEmergencyData();
     } finally {
-      setIsDataLoading(false); // 항상 로딩 완료로 설정
+      setIsDataLoading(false);
     }
   };
 
-  // 🛡️ 로컬 응급 데이터 생성 (항상 성공)
+  // 🛡️ 로컬 비상 데이터 로드
+  const loadLocalEmergencyData = () => {
+    const emergencyData = generateLocalEmergencyData();
+    const currentRound = calculateCurrentRound();
+    
+    setPastWinningNumbers(emergencyData);
+    setRoundRange({
+      latestRound: currentRound,
+      oldestRound: Math.max(1, currentRound - emergencyData.length + 1),
+    });
+
+    setDataStatus({
+      lastUpdate: new Date(),
+      isRealTime: false,
+      source: "emergency",
+      crawlerHealth: "emergency",
+      fullDataStatus: {
+        isFullDataLoaded: false,
+        totalCount: emergencyData.length,
+        coverage: `로컬 데이터 사용`,
+      },
+    });
+  };
+
+  // 🛡️ 로컬 응급 데이터 생성 (기존 함수 유지)
   const generateLocalEmergencyData = (): number[][] => {
     const emergencyData: number[][] = [];
     
@@ -398,6 +339,7 @@ const LottoApp = () => {
     console.log(`🛡️ 로컬 응급 데이터 생성: 1~${currentRound}회차 전체`);
     
     const knownResults: { [key: number]: number[] } = {
+      1181: [2, 4, 8, 21, 28, 41, 2],
       1180: [6, 12, 18, 37, 40, 41, 3],
       1179: [3, 16, 18, 24, 40, 44, 21],
       1178: [1, 7, 17, 28, 29, 40, 33],
@@ -576,28 +518,22 @@ const LottoApp = () => {
     };
   };
 
-  // 🛡️ 안전한 데이터 새로고침 (alert 제거)
+  // 🔄 데이터 새로고침 (수정)
   const refreshData = async () => {
     try {
-      console.log("🔄 안전한 데이터 강제 새로고침 시작...");
+      console.log("🔄 데이터 강제 새로고침 시작...");
       setIsDataLoading(true);
 
-      // 강제 업데이트
-      const result = await lottoDataManager.forceUpdate();
-      
-      // 응급 데이터 재로드
-      await loadEmergencyData();
+      // 하이브리드 방식으로 재로드
+      await loadHybridData();
       loadNextDrawInfo();
 
       const currentCount = pastWinningNumbers.length;
-      console.log(`✅ 안전한 데이터가 업데이트되었습니다! 현재 데이터: ${currentCount}개 회차`);
-      console.log(result.message);
+      console.log(`✅ 데이터가 업데이트되었습니다! 현재 데이터: ${currentCount}개 회차`);
       
-      // alert 대신 성공 상태 반환
       return { success: true, message: `현재 데이터: ${currentCount}개 회차` };
     } catch (error) {
-      console.error("❌ 안전한 데이터 새로고침 오류:", error);
-      // alert 대신 에러 상태 반환
+      console.error("❌ 데이터 새로고침 오류:", error);
       throw error;
     } finally {
       setIsDataLoading(false);
@@ -675,15 +611,15 @@ const LottoApp = () => {
         purchaseHistory,
         dataStatus: {
           ...dataStatus,
-          crawlerVersion: "6.0.0-emergency",
-          apiEndpoint: "emergency_safe_mode",
+          crawlerVersion: "9.0.0-hybrid",
+          apiEndpoint: "hybrid_mode",
         },
         roundRange,
         nextDrawInfo,
         theme,
         autoSave,
         exportDate: new Date().toISOString(),
-        version: "6.0.0-emergency",
+        version: "9.0.0-hybrid",
       };
 
       const blob = new Blob([JSON.stringify(data, null, 2)], {
@@ -692,7 +628,7 @@ const LottoApp = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `lotto_emergency_data_${new Date().toISOString().split("T")[0]}.json`;
+      a.download = `lotto_hybrid_data_${new Date().toISOString().split("T")[0]}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -731,14 +667,14 @@ const LottoApp = () => {
       roundRange,
       nextDrawInfo,
       crawlerInfo: {
-        version: "6.0.0-emergency",
-        source: "emergency_safe_mode",
+        version: "9.0.0-hybrid",
+        source: "hybrid_mode",
         updateInterval: "30분",
         health: dataStatus.crawlerHealth,
         dataCount: pastWinningNumbers.length,
-        targetCount: roundRange.latestRound || 1179,
-        coverage: `${Math.round((pastWinningNumbers.length / (roundRange.latestRound || 1179)) * 100)}%`,
-        emergencyMode: true,
+        targetCount: calculateCurrentRound(),
+        coverage: `${Math.round((pastWinningNumbers.length / calculateCurrentRound()) * 100)}%`,
+        hybridMode: true,
       },
     },
   };
@@ -982,7 +918,7 @@ const LottoApp = () => {
                 >
                
                   <div style={{ color: theme === "dark" ? "#6ee7b7" : "#166534", fontWeight: "500" }}>
-                    ✅ 서비스 정상 동작
+                    ✅ 하이브리드 모드
                   </div>
                   {dataStatus.lastUpdate && (
                     <div style={{ color: theme === "dark" ? "#6ee7b7" : "#166534", marginTop: "2px" }}>
@@ -1006,13 +942,20 @@ const LottoApp = () => {
                         fontSize: "11px",
                       }}
                     >
-                      📊 데이터 {roundRange.latestRound}~{roundRange.oldestRound}회차 ({pastWinningNumbers.length.toLocaleString()}개)
+                      📊 전체 {roundRange.oldestRound}~{roundRange.latestRound}회차 ({pastWinningNumbers.length.toLocaleString()}개)
                     </div>
+                    {dataStatus.fullDataStatus && (
+                      <>
+                        <div style={{ color: theme === "dark" ? "#38bdf8" : "#0277bd", fontSize: "10px" }}>
+                          공식 API: {dataStatus.fullDataStatus.officialCount}개
+                        </div>
+                        <div style={{ color: theme === "dark" ? "#38bdf8" : "#0277bd", fontSize: "10px" }}>
+                          Lottolyzer: {dataStatus.fullDataStatus.lottolyzerCount}개
+                        </div>
+                      </>
+                    )}
                     <div style={{ color: theme === "dark" ? "#38bdf8" : "#0277bd", fontSize: "10px" }}>
-                      커버리지: {Math.round((pastWinningNumbers.length / (roundRange.latestRound || 1179)) * 100)}%
-                    </div>
-                    <div style={{ color: theme === "dark" ? "#38bdf8" : "#0277bd", fontSize: "10px" }}>
-                      품질: ✅ 안전 보장
+                      커버리지: {Math.round((pastWinningNumbers.length / calculateCurrentRound()) * 100)}%
                     </div>
                   </div>
                   
@@ -1073,7 +1016,7 @@ const LottoApp = () => {
                 zIndex: 40,
               }}
             >
-              🛡️ 안전한 데이터 새로고침 중...
+              🚀 하이브리드 방식으로 전체 데이터 로딩 중...
             </div>
           )}
           {renderContent()}
@@ -1108,7 +1051,7 @@ const LottoApp = () => {
           >
             로또는 확률게임입니다. 과도한 구매는 가계에 부담이 됩니다.
             <span style={{ color: "#10b981", marginLeft: "8px" }}>
-             ({pastWinningNumbers.length}회차)
+              • 전체 {pastWinningNumbers.length}개 회차 분석 중
             </span>
             {nextDrawInfo && (
               <div style={{ color: "#dc2626", marginLeft: "8px", fontWeight: "bold", textAlign: "center" }}>
