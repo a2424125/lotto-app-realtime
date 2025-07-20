@@ -1,11 +1,21 @@
-import { NextApiRequest, NextApiResponse } from "next";
+import { VercelRequest, VercelResponse } from "@vercel/node";
 import { 
   fetchOfficialLottoData, 
   calculateCurrentRound,
   isInWaitingPeriod 
 } from "../src/services/unifiedLottoService";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS 헤더 추가
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
+
   try {
     console.log("📡 최신 당첨 결과 API 호출...");
     
