@@ -8,15 +8,15 @@ export interface LottolyzerResult {
   bonusNumber: number;
 }
 
-// Lottolyzer에서 대량 데이터 가져오기
-export async function fetchBulkFromLottolyzer(count: number, offset: number = 0): Promise<LottolyzerResult[]> {
+// 단일 페이지 크롤링
+async function fetchSinglePage(page: number, perPage: number = 50): Promise<LottolyzerResult[]> {
   try {
-    console.log(`🔍 Lottolyzer에서 ${count}개 데이터 가져오기 (offset: ${offset})...`);
+    console.log(`📄 Lottolyzer ${page}페이지 크롤링 중...`);
     
-    const url = `https://en.lottolyzer.com/history/south-korea/6_slash_45-lotto/page/1/per-page/${count}/summary-view`;
+    const url = `https://en.lottolyzer.com/history/south-korea/6_slash_45-lotto/page/${page}/per-page/${perPage}/summary-view`;
     
     const { data: html } = await axios.get(url, {
-      timeout: 15000,
+      timeout: 10000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
@@ -26,8 +26,6 @@ export async function fetchBulkFromLottolyzer(count: number, offset: number = 0)
     const results: LottolyzerResult[] = [];
     
     $("table tbody tr").each((i, row) => {
-      if (i < offset) return; // offset 적용
-      
       const cells = $(row).find("td");
       const roundText = cells.eq(0).text().trim();
       const round = parseInt(roundText);
@@ -69,11 +67,73 @@ export async function fetchBulkFromLottolyzer(count: number, offset: number = 0)
       }
     });
     
-    console.log(`✅ Lottolyzer에서 ${results.length}개 데이터 가져오기 완료`);
+    console.log(`✅ ${page}페이지: ${results.length}개 데이터 수집`);
     return results;
     
   } catch (error) {
-    console.error('❌ Lottolyzer 크롤링 실패:', error);
+    console.error(`❌ ${page}페이지 크롤링 실패:`, error);
     return [];
   }
+}
+
+// 전체 페이지 크롤링 (새로운 함수)
+export async function fetchAllPagesFromLottolyzer(targetCount: number): Promise<LottolyzerResult[]> {
+  try {
+    console.log(`🔍 Lottolyzer에서 ${targetCount}개 데이터를 여러 페이지로 나눠 가져오기...`);
+    
+    const perPage = 50; // 페이지당 최대 개수
+    const totalPages = Math.ceil(targetCount / perPage);
+    const allResults: LottolyzerResult[] = [];
+    
+    console.log(`📊 총 ${totalPages}개 페이지 크롤링 필요`);
+    
+    // 배치 처리 (3개씩 병렬 처리)
+    const batchSize = 3;
+    for (let i = 0; i < totalPages; i += batchSize) {
+      const promises = [];
+      
+      for (let j = 0; j < batchSize && i + j < totalPages; j++) {
+        const page = i + j + 1;
+        promises.push(fetchSinglePage(page, perPage));
+      }
+      
+      const batchResults = await Promise.all(promises);
+      
+      // 결과 합치기
+      batchResults.forEach(pageResults => {
+        allResults.push(...pageResults);
+      });
+      
+      console.log(`📈 진행률: ${allResults.length}/${targetCount}개 수집`);
+      
+      // API 부하 방지를 위한 짧은 대기
+      if (i + batchSize < totalPages) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      // 목표 개수에 도달하면 중단
+      if (allResults.length >= targetCount) {
+        break;
+      }
+    }
+    
+    // 중복 제거 및 정렬
+    const uniqueResults = Array.from(
+      new Map(allResults.map(item => [item.round, item])).values()
+    ).sort((a, b) => b.round - a.round);
+    
+    console.log(`✅ Lottolyzer 전체 크롤링 완료: ${uniqueResults.length}개`);
+    return uniqueResults.slice(0, targetCount);
+    
+  } catch (error) {
+    console.error('❌ Lottolyzer 전체 크롤링 실패:', error);
+    return [];
+  }
+}
+
+// 기존 함수 (단일 페이지용으로 유지)
+export async function fetchBulkFromLottolyzer(count: number, offset: number = 0): Promise<LottolyzerResult[]> {
+  // 단일 페이지 요청 (최대 50개)
+  const page = Math.floor(offset / 50) + 1;
+  return fetchSinglePage(page, Math.min(count, 50));
 }
