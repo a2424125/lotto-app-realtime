@@ -33,12 +33,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 하이브리드 방식으로 전체 데이터 가져오기
     const allData = await fetchAllLottoData();
     
-    // rounds 파라미터가 있으면 해당 개수만 반환
+    // rounds 파라미터 처리
     const roundsParam = req.query.rounds as string;
-    const requestedRounds = roundsParam ? parseInt(roundsParam, 10) : allData.length;
+    let requestedRounds: number;
+    let responseData = allData;
     
-    // 최신 회차부터 요청한 개수만큼 반환
-    const responseData = allData.slice(-requestedRounds).reverse();
+    // 🔥 수정된 부분: rounds 파라미터 처리
+    if (!roundsParam || roundsParam === 'all') {
+      // rounds 파라미터가 없거나 'all'이면 전체 데이터 반환
+      requestedRounds = allData.length;
+      console.log(`📊 전체 ${allData.length}개 데이터 반환`);
+    } else {
+      // 숫자가 지정되면 최신 회차부터 해당 개수만 반환
+      requestedRounds = parseInt(roundsParam, 10);
+      if (isNaN(requestedRounds) || requestedRounds <= 0) {
+        requestedRounds = allData.length; // 잘못된 값이면 전체 반환
+      } else {
+        // 최신 회차부터 요청한 개수만큼 반환
+        responseData = allData.slice(-requestedRounds).reverse();
+        console.log(`📊 최신 ${requestedRounds}개 데이터만 반환`);
+      }
+    }
     
     const responseTime = Date.now() - startTime;
     const currentRound = calculateCurrentRound();
@@ -68,6 +83,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         dataSources: {
           official: responseData.filter(d => d.source === 'official').length,
           lottolyzer: responseData.filter(d => d.source === 'lottolyzer').length
+        },
+        dataInfo: {
+          latestRound: responseData.length > 0 ? responseData[responseData.length - 1].round : 0,
+          oldestRound: responseData.length > 0 ? responseData[0].round : 0,
+          coverage: `${responseData.length > 0 ? responseData[0].round : 1}회 ~ ${currentRound}회`
         }
       }
     });
