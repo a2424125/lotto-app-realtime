@@ -6,6 +6,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Cache-Control", "public, max-age=300"); // 5분 캐시
 
   if (req.method === "OPTIONS") {
     res.status(200).end();
@@ -26,15 +27,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     const url = `https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo=${drwNo}`;
     
-    // 서버 사이드에서 API 호출
+    // 서버 사이드에서 API 호출 - 타임아웃 늘림
     const { data } = await axios.get(url, {
-      timeout: 10000,
+      timeout: 25000, // 25초로 늘림
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
+        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Referer': 'https://www.dhlottery.co.kr/',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      },
+      // 재시도 설정
+      maxRedirects: 5,
+      validateStatus: function (status) {
+        return status >= 200 && status < 500; // 4xx도 성공으로 처리
       }
     });
+    
+    // 응답 검증
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid response format');
+    }
     
     console.log(`✅ 동행복권 프록시: ${drwNo}회차 성공`);
     
@@ -43,6 +57,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
   } catch (error) {
     console.error("❌ 동행복권 프록시 에러:", error);
+    
+    // 타임아웃인 경우 재시도 안내
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      return res.status(504).json({
+        success: false,
+        message: "동행복권 서버 응답 시간 초과",
+        error: "서버가 일시적으로 느립니다. 잠시 후 다시 시도해주세요."
+      });
+    }
     
     res.status(500).json({
       success: false,
