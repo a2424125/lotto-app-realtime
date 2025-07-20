@@ -8,18 +8,18 @@ export interface LottolyzerResult {
   bonusNumber: number;
 }
 
-// 단일 페이지 크롤링
+// 단일 페이지 크롤링 - 프록시 API 사용으로 수정
 async function fetchSinglePage(page: number, perPage: number = 50): Promise<LottolyzerResult[]> {
   try {
     console.log(`📄 Lottolyzer ${page}페이지 크롤링 중...`);
     
-    const url = `https://en.lottolyzer.com/history/south-korea/6_slash_45-lotto/page/${page}/per-page/${perPage}/summary-view`;
-    
-    const { data: html } = await axios.get(url, {
-      timeout: 10000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
+    // 🔥 수정된 부분: 직접 외부 사이트 호출 대신 프록시 API 호출
+    const { data: html } = await axios.get(`/api/lottolyzer-proxy`, {
+      params: {
+        page: page,
+        perPage: perPage
+      },
+      timeout: 15000, // 타임아웃 약간 늘림
     });
     
     const $ = cheerio.load(html);
@@ -76,7 +76,7 @@ async function fetchSinglePage(page: number, perPage: number = 50): Promise<Lott
   }
 }
 
-// 전체 페이지 크롤링 (새로운 함수)
+// 전체 페이지 크롤링 (변경 없음)
 export async function fetchAllPagesFromLottolyzer(targetCount: number): Promise<LottolyzerResult[]> {
   try {
     console.log(`🔍 Lottolyzer에서 ${targetCount}개 데이터를 여러 페이지로 나눠 가져오기...`);
