@@ -56,20 +56,17 @@ export function isInWaitingPeriod(): boolean {
   return false;
 }
 
-// 동행복권 공식 API에서 데이터 가져오기
+// 동행복권 공식 API에서 데이터 가져오기 - 프록시 API 사용으로 수정
 export async function fetchOfficialLottoData(round: number): Promise<LottoResult | null> {
   try {
     console.log(`🎯 동행복권 API 호출: ${round}회차`);
     
-    const response = await fetch(
-      `https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo=${round}`,
-      {
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0'
-        }
+    // 🔥 수정된 부분: 직접 호출 대신 프록시 API 사용
+    const response = await fetch(`/api/dhlottery-proxy?drwNo=${round}`, {
+      headers: {
+        'Accept': 'application/json'
       }
-    );
+    });
     
     const data = await response.json();
     
