@@ -1,29 +1,14 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
-import { 
-  fetchMultipleRounds, 
-  calculateCurrentRound,
-  isInWaitingPeriod,
-  LottoResult 
-} from "../src/services/unifiedLottoService";
-
-interface LottoDrawResult {
-  round: number;
-  date: string;
-  numbers: number[];
-  bonusNumber: number;
-  jackpotWinners?: number;
-  jackpotPrize?: number;
-  crawledAt?: string;
-  source?: string;
-}
+import { fetchAllLottoData } from "../src/services/hybridDataService";
+import { isInWaitingPeriod, calculateCurrentRound } from "../src/services/unifiedLottoService";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log("🎰 로또 크롤러 API 호출...");
+  console.log("🎰 로또 전체 데이터 크롤러 API 호출...");
 
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Cache-Control", "public, max-age=300");
+  res.setHeader("Cache-Control", "public, max-age=3600"); // 1시간 캐시
 
   if (req.method === "OPTIONS") {
     res.status(200).end();
@@ -33,12 +18,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const startTime = Date.now();
 
   try {
-    const roundsParam = req.query.rounds as string;
-    const currentRound = calculateCurrentRound();
-    const targetRounds = roundsParam ? parseInt(roundsParam, 10) : 100;
-    
-    console.log(`📊 ${targetRounds}회차 요청 처리 중 (현재 회차: ${currentRound})...`);
-
     // 추첨 대기 시간 확인
     if (isInWaitingPeriod()) {
       console.log("⏳ 추첨 직후 대기 시간입니다");
@@ -47,77 +26,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         success: false,
         data: [],
         message: "추첨 결과 집계중입니다. 잠시 후 다시 확인해주세요.",
-        isWaitingPeriod: true,
-        crawledAt: new Date().toISOString(),
-        source: "waiting_period",
-        totalCount: 0,
-        metadata: {
-          responseTime: Date.now() - startTime,
-          requestedRounds: targetRounds,
-          actualRounds: 0,
-          currentRound: currentRound,
-          isWaitingPeriod: true
-        }
+        isWaitingPeriod: true
       });
     }
 
-    // 동행복권 API에서 여러 회차 데이터 가져오기
-    console.log("🔄 동행복권 공식 API에서 데이터 가져오는 중...");
-    const results = await fetchMultipleRounds(targetRounds);
+    // 하이브리드 방식으로 전체 데이터 가져오기
+    const allData = await fetchAllLottoData();
     
-    if (results.length === 0) {
-      return res.status(200).json({
-        success: false,
-        data: [],
-        message: "데이터를 가져올 수 없습니다",
-        crawledAt: new Date().toISOString(),
-        source: "error",
-        totalCount: 0,
-        metadata: {
-          responseTime: Date.now() - startTime,
-          requestedRounds: targetRounds,
-          actualRounds: 0,
-          currentRound: currentRound
-        }
-      });
-    }
-
-    // API 응답 형식에 맞게 변환
-    const lottoData: LottoDrawResult[] = results.map(result => ({
-      round: result.round,
-      date: result.date,
-      numbers: result.numbers,
-      bonusNumber: result.bonusNumber,
-      jackpotWinners: result.firstWinCount,
-      jackpotPrize: result.firstWinAmount,
-      crawledAt: new Date().toISOString(),
-      source: "dhlottery.co.kr"
-    }));
-
+    // rounds 파라미터가 있으면 해당 개수만 반환
+    const roundsParam = req.query.rounds as string;
+    const requestedRounds = roundsParam ? parseInt(roundsParam, 10) : allData.length;
+    
+    // 최신 회차부터 요청한 개수만큼 반환
+    const responseData = allData.slice(-requestedRounds).reverse();
+    
     const responseTime = Date.now() - startTime;
-    const latestRound = lottoData.length > 0 ? lottoData[0].round : 0;
-    const oldestRound = lottoData.length > 0 ? lottoData[lottoData.length - 1].round : 0;
+    const currentRound = calculateCurrentRound();
 
-    console.log(`✅ 크롤링 완료: ${lottoData.length}회차 (${latestRound}~${oldestRound}회차)`);
+    console.log(`✅ 데이터 반환: ${responseData.length}개 회차 (${responseTime}ms)`);
 
     res.status(200).json({
       success: true,
-      data: lottoData,
-      message: `${lottoData.length}회차 데이터 제공 (${latestRound}~${oldestRound}회차)`,
+      data: responseData.map(item => ({
+        round: item.round,
+        date: item.date,
+        numbers: item.numbers,
+        bonusNumber: item.bonusNumber,
+        crawledAt: new Date().toISOString(),
+        source: item.source
+      })),
+      message: `${responseData.length}개 회차 데이터 제공`,
       crawledAt: new Date().toISOString(),
-      source: "dhlottery.co.kr",
-      totalCount: lottoData.length,
+      totalCount: responseData.length,
       metadata: {
         responseTime: responseTime,
-        requestedRounds: targetRounds,
-        actualRounds: lottoData.length,
-        dataRange: `${latestRound}~${oldestRound}회차`,
-        dataQuality: "official",
-        lastValidated: new Date().toISOString(),
-        apiVersion: "8.0.0-official",
-        crawlingMethod: "official_api",
+        totalAvailable: allData.length,
+        requestedRounds: requestedRounds,
+        actualRounds: responseData.length,
         currentRound: currentRound,
-        coverage: `${Math.round((lottoData.length / currentRound) * 100)}%`
+        apiVersion: "9.0.0-hybrid",
+        dataSources: {
+          official: responseData.filter(d => d.source === 'official').length,
+          lottolyzer: responseData.filter(d => d.source === 'lottolyzer').length
+        }
       }
     });
 
@@ -128,15 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       success: false,
       data: [],
       message: "서버 오류가 발생했습니다",
-      error: error instanceof Error ? error.message : "Unknown error",
-      crawledAt: new Date().toISOString(),
-      source: "error",
-      totalCount: 0,
-      metadata: {
-        responseTime: Date.now() - startTime,
-        apiVersion: "8.0.0-official",
-        currentRound: calculateCurrentRound()
-      }
+      error: error instanceof Error ? error.message : "Unknown error"
     });
   }
 }
