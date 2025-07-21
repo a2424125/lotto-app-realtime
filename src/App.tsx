@@ -245,7 +245,7 @@ const LottoApp = () => {
     loadNextDrawInfo();
   }, [currentTime, roundRange]);
 
-  // 🚀 하이브리드 전체 데이터 로딩 (수정된 함수)
+  //  하이브리드 전체 데이터 로딩 (수정된 함수)
   const loadHybridData = async () => {
     try {
       console.log("🚀 하이브리드 방식으로 전체 데이터 로딩 시작...");
