@@ -560,17 +560,58 @@ const LottoApp = () => {
   };
 
   // ⭐️ 완전히 새로 수정된 generate1stGradeNumbers 함수
-  const generate1stGradeNumbers = async () => {
-    try {
-      // lottoRecommendService 사용해서 제대로 된 번호 생성
-      const recommendations = await lottoRecommendService.generate1stGradeRecommendations();
-      
-      if (recommendations && recommendations.length > 0) {
-        // 첫 번째 추천 번호를 반환
-        return recommendations[0].numbers;
+  const generate1stGradeNumbers = () => {
+    // 서비스가 이미 로드되어 있고 데이터가 있으면 사용
+    const loadStatus = lottoRecommendService.getLoadStatus();
+    
+    if (loadStatus.isLoaded && loadStatus.hasValidData) {
+      try {
+        // 서비스의 분석 통계 가져오기
+        const stats = lottoRecommendService.getAnalysisStats();
+        
+        if (stats.hotNumbers && stats.hotNumbers.length >= 6) {
+          // 핫넘버와 균형을 고려한 조합 생성
+          const numbers = new Set<number>();
+          
+          // 핫넘버에서 3-4개
+          const hotCount = 3 + Math.floor(Math.random() * 2);
+          for (let i = 0; i < hotCount && i < stats.hotNumbers.length && numbers.size < 6; i++) {
+            numbers.add(stats.hotNumbers[i]);
+          }
+          
+          // 나머지는 균형있게
+          const allNumbers = Array.from({length: 45}, (_, i) => i + 1);
+          const remainingNumbers = allNumbers.filter(n => !numbers.has(n));
+          
+          while (numbers.size < 6 && remainingNumbers.length > 0) {
+            const idx = Math.floor(Math.random() * remainingNumbers.length);
+            const num = remainingNumbers[idx];
+            
+            // 연속 번호 체크
+            const tempArray = [...Array.from(numbers), num].sort((a, b) => a - b);
+            let consecutive = 1;
+            let maxConsecutive = 1;
+            
+            for (let j = 1; j < tempArray.length; j++) {
+              if (tempArray[j] === tempArray[j-1] + 1) {
+                consecutive++;
+                maxConsecutive = Math.max(maxConsecutive, consecutive);
+              } else {
+                consecutive = 1;
+              }
+            }
+            
+            if (maxConsecutive <= 2) {
+              numbers.add(num);
+              remainingNumbers.splice(idx, 1);
+            }
+          }
+          
+          return Array.from(numbers).sort((a, b) => a - b);
+        }
+      } catch (error) {
+        console.log("서비스 데이터 사용 실패, 안전한 랜덤 생성 사용");
       }
-    } catch (error) {
-      console.log("서비스 사용 실패, 안전한 랜덤 생성 사용");
     }
 
     // 폴백: 서비스를 사용할 수 없는 경우 안전한 랜덤 생성
