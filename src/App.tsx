@@ -274,7 +274,8 @@ const LottoApp = () => {
 
         // 데이터 소스별 통계
         const officialCount = allData.filter(d => d.source === 'official').length;
-        const lottolyzerCount = allData.filter(d => d.source === 'lottolyzer').length;
+        const staticCount = allData.filter(d => d.source === 'static').length;
+        const realtimeCount = allData.filter(d => d.source === 'realtime').length;
 
         setDataStatus({
           lastUpdate: new Date(),
@@ -285,13 +286,14 @@ const LottoApp = () => {
             isFullDataLoaded: true,
             totalCount: allData.length,
             officialCount,
-            lottolyzerCount,
+            staticCount,
+            realtimeCount,
             coverage: `${rounds[rounds.length - 1]}회 ~ ${rounds[0]}회`,
           },
         });
 
         console.log(`✅ 데이터 설정 완료: ${rounds[rounds.length - 1]}~${rounds[0]}회차`);
-        console.log(`📊 공식 API: ${officialCount}개, Lottolyzer: ${lottolyzerCount}개`);
+        console.log(`📊 공식 API: ${officialCount}개, 정적 데이터: ${staticCount}개, 실시간: ${realtimeCount}개`);
         
       } else {
         // 데이터가 없는 경우 로컬 비상 데이터 사용
@@ -1058,7 +1060,10 @@ const LottoApp = () => {
                           공식 API: {dataStatus.fullDataStatus.officialCount}개
                         </div>
                         <div style={{ color: theme === "dark" ? "#38bdf8" : "#0277bd", fontSize: "10px" }}>
-                          Lottolyzer: {dataStatus.fullDataStatus.lottolyzerCount}개
+                          정적 데이터: {dataStatus.fullDataStatus.staticCount}개
+                        </div>
+                        <div style={{ color: theme === "dark" ? "#38bdf8" : "#0277bd", fontSize: "10px" }}>
+                          실시간: {dataStatus.fullDataStatus.realtimeCount}개
                         </div>
                       </>
                     )}
