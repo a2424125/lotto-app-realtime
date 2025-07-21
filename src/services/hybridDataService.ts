@@ -21,7 +21,7 @@ async function loadStaticData(): Promise<FullLottoData[]> {
     // 캐시가 있으면 재사용
     if (staticDataCache && staticDataCache.length > 0) {
       console.log('💾 캐시된 정적 데이터 사용');
-      return staticDataCache || [];
+      return staticDataCache;
     }
 
     console.log('📂 정적 데이터 파일 로딩...');
@@ -51,7 +51,8 @@ async function loadStaticData(): Promise<FullLottoData[]> {
       }
     }
 
-    return staticDataCache;
+    // null인 경우 빈 배열 반환
+    return staticDataCache || [];
   } catch (error) {
     console.error('❌ 정적 데이터 로드 실패:', error);
     return [];
