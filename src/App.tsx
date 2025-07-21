@@ -8,6 +8,7 @@ import Settings from "./components/pages/Settings";
 import { lottoDataManager } from "./services/lottoDataManager";
 import { fetchAllLottoData } from "./services/hybridDataService";
 import { calculateCurrentRound } from "./services/unifiedLottoService";
+import { lottoRecommendService } from "./services/lottoRecommendService"; // 추가!
 import { LottoDrawResult } from "./types/lotto";
 
 interface PurchaseItem {
@@ -558,25 +559,91 @@ const LottoApp = () => {
       .map(([num]) => parseInt(num));
   };
 
-  const generate1stGradeNumbers = () => {
-    const frequent = getMostFrequentNumbers().slice(0, 12);
-    const numbers = new Set<number>();
-
-    while (numbers.size < 4) {
-      numbers.add(frequent[Math.floor(Math.random() * 8)]);
+  // ⭐️ 완전히 새로 수정된 generate1stGradeNumbers 함수
+  const generate1stGradeNumbers = async () => {
+    try {
+      // lottoRecommendService 사용해서 제대로 된 번호 생성
+      const recommendations = await lottoRecommendService.generate1stGradeRecommendations();
+      
+      if (recommendations && recommendations.length > 0) {
+        // 첫 번째 추천 번호를 반환
+        return recommendations[0].numbers;
+      }
+    } catch (error) {
+      console.log("서비스 사용 실패, 안전한 랜덤 생성 사용");
     }
 
-    while (numbers.size < 6) {
-      const fibonacci = [1, 2, 3, 5, 8, 13, 21, 34];
-      const candidate = fibonacci[Math.floor(Math.random() * fibonacci.length)];
-      if (candidate <= 45) {
-        numbers.add(candidate);
-      } else {
-        numbers.add(Math.floor(Math.random() * 45) + 1);
+    // 폴백: 서비스를 사용할 수 없는 경우 안전한 랜덤 생성
+    return generateSafeRandomNumbers();
+  };
+
+  // 🎯 안전한 랜덤 번호 생성 헬퍼 함수 (새로 추가)
+  const generateSafeRandomNumbers = (): number[] => {
+    const numbers = new Set<number>();
+    let attempts = 0;
+    const maxAttempts = 100;
+
+    while (numbers.size < 6 && attempts < maxAttempts) {
+      attempts++;
+      numbers.clear();
+
+      // 구간별로 균형있게 선택
+      const ranges = [
+        { min: 1, max: 10, count: 1 },
+        { min: 11, max: 20, count: 1 },
+        { min: 21, max: 30, count: 1 },
+        { min: 31, max: 40, count: 2 },
+        { min: 41, max: 45, count: 1 }
+      ];
+
+      // 각 구간에서 번호 선택
+      for (const range of ranges) {
+        for (let i = 0; i < range.count && numbers.size < 6; i++) {
+          const num = Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
+          numbers.add(num);
+        }
+      }
+
+      // 연속 번호 체크
+      const numbersArray = Array.from(numbers).sort((a, b) => a - b);
+      let hasConsecutive = false;
+      let consecutiveCount = 1;
+      
+      for (let i = 1; i < numbersArray.length; i++) {
+        if (numbersArray[i] === numbersArray[i - 1] + 1) {
+          consecutiveCount++;
+          if (consecutiveCount >= 3) {
+            hasConsecutive = true;
+            break;
+          }
+        } else {
+          consecutiveCount = 1;
+        }
+      }
+
+      if (hasConsecutive) {
+        continue; // 3개 이상 연속이면 다시 생성
+      }
+
+      // 홀짝 균형 체크
+      const oddCount = numbersArray.filter(n => n % 2 === 1).length;
+      if (oddCount < 1 || oddCount > 5) {
+        continue; // 홀수가 너무 적거나 많으면 다시
+      }
+
+      // 번호가 충분하면 완료
+      if (numbers.size === 6) {
+        break;
       }
     }
 
-    return Array.from(numbers).sort((a: number, b: number) => a - b);
+    // 마지막으로 부족한 경우 채우기
+    while (numbers.size < 6) {
+      const num = Math.floor(Math.random() * 45) + 1;
+      numbers.add(num);
+    }
+
+    return Array.from(numbers).sort((a, b) => a - b);
   };
 
   const addToPurchaseHistory = (numbers: number[], strategy: string) => {
