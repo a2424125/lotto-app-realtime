@@ -43,10 +43,12 @@ async function loadStaticData(): Promise<FullLottoData[]> {
     }));
 
     // 마지막 정적 데이터 회차 기록
-    if (staticDataCache.length > 0) {
+    if (staticDataCache && staticDataCache.length > 0) {
       const rounds = staticDataCache.map(d => d.round);
-      lastUpdateRound = Math.max(...rounds);
-      console.log(`✅ 정적 데이터 로드 완료: ${staticDataCache.length}개 (1~${lastUpdateRound}회차)`);
+      if (rounds.length > 0) {
+        lastUpdateRound = Math.max(...rounds);
+        console.log(`✅ 정적 데이터 로드 완료: ${staticDataCache.length}개 (1~${lastUpdateRound}회차)`);
+      }
     }
 
     return staticDataCache;
@@ -118,12 +120,17 @@ export async function fetchAllLottoData(): Promise<FullLottoData[]> {
     const staticData = await loadStaticData();
     console.log(`⚡ 정적 데이터 로드: ${Date.now() - startTime}ms`);
 
+    // null 체크
+    if (!staticData || staticData.length === 0) {
+      console.warn('⚠️ 정적 데이터가 없습니다');
+    }
+
     // 2. 새로운 데이터만 확인 (최소한의 API 호출)
     const newData = await fetchNewDataOnly();
     console.log(`⚡ 새 데이터 확인: ${Date.now() - startTime}ms`);
 
     // 3. 데이터 병합
-    const allData = [...staticData, ...newData];
+    const allData = [...(staticData || []), ...newData];
     
     // 회차순 정렬 및 중복 제거
     const uniqueData = Array.from(
@@ -153,6 +160,17 @@ export async function fetchAllLottoData(): Promise<FullLottoData[]> {
 
 // 데이터 통계
 export function getDataStats(data: FullLottoData[]) {
+  if (!data || data.length === 0) {
+    return {
+      total: 0,
+      sources: {},
+      latestRound: 0,
+      oldestRound: 0,
+      lastStaticRound: lastUpdateRound,
+      currentRound: calculateCurrentRound()
+    };
+  }
+
   const sourceCount = data.reduce((acc, item) => {
     acc[item.source] = (acc[item.source] || 0) + 1;
     return acc;
@@ -163,8 +181,8 @@ export function getDataStats(data: FullLottoData[]) {
   return {
     total: data.length,
     sources: sourceCount,
-    latestRound: Math.max(...rounds),
-    oldestRound: Math.min(...rounds),
+    latestRound: rounds.length > 0 ? Math.max(...rounds) : 0,
+    oldestRound: rounds.length > 0 ? Math.min(...rounds) : 0,
     lastStaticRound: lastUpdateRound,
     currentRound: calculateCurrentRound()
   };
@@ -187,7 +205,10 @@ export async function checkForNewData(): Promise<{
   
   // 정적 데이터가 로드되지 않았으면 먼저 로드
   if (lastUpdateRound === 0) {
-    await loadStaticData();
+    const loadedData = await loadStaticData();
+    if (!loadedData || loadedData.length === 0) {
+      console.log('⚠️ 정적 데이터 없음');
+    }
   }
   
   const hasNewData = currentRound > lastUpdateRound;
@@ -205,10 +226,11 @@ export function saveLatestDataToLocal(data: FullLottoData[]): void {
   try {
     const latestData = data.filter(d => d.source === 'realtime');
     if (latestData.length > 0) {
+      const rounds = latestData.map(d => d.round);
       localStorage.setItem('lotto_latest_updates', JSON.stringify({
         data: latestData,
         updatedAt: new Date().toISOString(),
-        lastRound: Math.max(...latestData.map(d => d.round))
+        lastRound: rounds.length > 0 ? Math.max(...rounds) : 0
       }));
       console.log('💾 최신 데이터 로컬 저장 완료');
     }
