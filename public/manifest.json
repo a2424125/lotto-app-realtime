@@ -1,7 +1,7 @@
 {
-  "name": "로또번호추천 - 당첨확인 & 번호생성",
-  "short_name": "로또추천",
-  "description": "로또 번호 추천, QR코드 당첨확인, 과거 당첨번호 조회 서비스",
+  "name": "로또팡 6/45 - 스마트 번호추천",
+  "short_name": "로또팡",
+  "description": "AI 빅데이터 분석으로 로또 번호를 추천하고 당첨을 확인하는 스마트 앱",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -9,5 +9,111 @@
   "background_color": "#ffffff",
   "scope": "/",
   "lang": "ko",
-  "categories": ["entertainment", "utilities"]
-}
+  "categories": ["entertainment", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-mobile-1.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/screenshot-mobile-2.png",
+      "sizes": "390x844", 
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "shortcuts": [
+    {
+      "name": "번호 추천받기",
+      "short_name": "추천",
+      "description": "AI로 로또 번호를 추천받습니다",
+      "url": "/recommend",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "당첨번호 확인",
+      "short_name": "당첨확인", 
+      "description": "최신 당첨번호를 확인합니다",
+      "url": "/result",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "dir": "ltr",
+  "id": "com.lottopang645.app",
+  "launch
