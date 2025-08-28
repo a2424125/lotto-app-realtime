@@ -115,7 +115,7 @@ const LottoApp = () => {
     }
   };
 
-  // 🔧 뒤로가기 버튼 이벤트 처리
+  //  뒤로가기 버튼 이벤트 처리
   useEffect(() => {
     // 초기 상태 설정
     const initialMenu = window.location.hash.slice(1) || "dashboard";
