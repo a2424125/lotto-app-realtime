@@ -5,6 +5,7 @@ import Stats from "./components/pages/Stats";
 import Purchase from "./components/pages/Purchase";
 import MiniGame from "./components/pages/MiniGame";
 import Settings from "./components/pages/Settings";
+import BannerAd from "./components/ads/BannerAd";
 import { lottoDataManager } from "./services/lottoDataManager";
 import { fetchAllLottoData } from "./services/hybridDataService";
 import { calculateCurrentRound } from "./services/unifiedLottoService";
@@ -1110,7 +1111,7 @@ const LottoApp = () => {
           style={{ 
             flex: 1,
             overflow: "auto",
-            paddingBottom: "calc(56px + env(safe-area-inset-bottom))",
+            paddingBottom: "calc(116px + env(safe-area-inset-bottom))", // 배너 광고 높이(60px) + 푸터(56px) + safe area
             position: "relative",
           }}
         >
@@ -1135,46 +1136,62 @@ const LottoApp = () => {
           {renderContent()}
         </div>
 
-        {/* 푸터 - 하단 안전 영역 고려 */}
+        {/* 광고 + 푸터 컨테이너 */}
         <div
           style={{
             position: "fixed",
             bottom: 0,
             left: 0,
             right: 0,
-            height: "calc(56px + env(safe-area-inset-bottom))",
             backgroundColor: currentColors.surface,
-            borderTop: `1px solid ${currentColors.border}`,
-            paddingBottom: "env(safe-area-inset-bottom)",
             zIndex: 30,
           }}
         >
+          {/* 배너 광고 */}
+          <BannerAd
+            slot="5558036637"
+            theme={theme}
+            style={{
+              borderTop: `1px solid ${currentColors.border}`,
+            }}
+          />
+
+          {/* 푸터 - 하단 안전 영역 고려 */}
           <div
             style={{
-              height: "56px",
-              padding: "8px 12px",
-              textAlign: "center",
-              fontSize: "10px",
-              color: currentColors.textSecondary,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              alignItems: "center",
+              height: "calc(56px + env(safe-area-inset-bottom))",
+              backgroundColor: currentColors.surface,
+              borderTop: `1px solid ${currentColors.border}`,
+              paddingBottom: "env(safe-area-inset-bottom)",
             }}
           >
-            로또는 확률게임입니다. 과도한 구매는 가계에 부담이 됩니다.
-            <span style={{ color: "#10b981", marginLeft: "8px" }}>
-              • 전체 {pastWinningNumbers.length}개 회차 분석 중
-            </span>
-            {nextDrawInfo && (
-              <div style={{ color: "#dc2626", marginLeft: "8px", fontWeight: "bold", textAlign: "center" }}>
-                • 다음 추첨{" "}
-                {nextDrawInfo.isToday ? "오늘!" :
-                 nextDrawInfo.daysUntilDraw === 1 ? "내일!" :
-                 nextDrawInfo.daysUntilDraw === 0 ? "오늘!" :
-                 `${nextDrawInfo.daysUntilDraw}일 후`} ({nextDrawInfo.round}회차)
-              </div>
-            )}
+            <div
+              style={{
+                height: "56px",
+                padding: "8px 12px",
+                textAlign: "center",
+                fontSize: "10px",
+                color: currentColors.textSecondary,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              로또는 확률게임입니다. 과도한 구매는 가계에 부담이 됩니다.
+              <span style={{ color: "#10b981", marginLeft: "8px" }}>
+                • 전체 {pastWinningNumbers.length}개 회차 분석 중
+              </span>
+              {nextDrawInfo && (
+                <div style={{ color: "#dc2626", marginLeft: "8px", fontWeight: "bold", textAlign: "center" }}>
+                  • 다음 추첨{" "}
+                  {nextDrawInfo.isToday ? "오늘!" :
+                   nextDrawInfo.daysUntilDraw === 1 ? "내일!" :
+                   nextDrawInfo.daysUntilDraw === 0 ? "오늘!" :
+                   `${nextDrawInfo.daysUntilDraw}일 후`} ({nextDrawInfo.round}회차)
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
