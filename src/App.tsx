@@ -40,7 +40,7 @@ const LottoApp = () => {
     oldestRound: 0,
   });
   
-  // 🛡️ 데이터 로딩 상태
+  //  데이터 로딩 상태
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [dataStatus, setDataStatus] = useState<{
     lastUpdate: Date | null;
