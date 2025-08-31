@@ -107,208 +107,8 @@ const CustomPopup: React.FC<PopupProps> = ({ isOpen, onClose, message, type = "s
   );
 };
 
-// 광고 시청 모달 컴포넌트
-interface AdModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onComplete: () => void;
-  theme?: "light" | "dark";
-}
-
-const AdModal: React.FC<AdModalProps> = ({ isOpen, onClose, onComplete, theme = "light" }) => {
-  const [timeLeft, setTimeLeft] = useState(30);
-  const [isCompleted, setIsCompleted] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setTimeLeft(30);
-      setIsCompleted(false);
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          setIsCompleted(true);
-          setTimeout(() => {
-            onComplete();
-          }, 1000);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [isOpen, onComplete]);
-
-  if (!isOpen) return null;
-
-  const colors = {
-    light: {
-      overlay: "rgba(0, 0, 0, 0.8)",
-      background: "#ffffff",
-      text: "#1f2937",
-      border: "#e5e7eb",
-      primary: "#2563eb",
-    },
-    dark: {
-      overlay: "rgba(0, 0, 0, 0.9)",
-      background: "#1e293b",
-      text: "#f1f5f9",
-      border: "#334155",
-      primary: "#3b82f6",
-    },
-  };
-
-  const currentColors = colors[theme];
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: currentColors.overlay,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 10000,
-        animation: "fadeIn 0.3s ease-out",
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: currentColors.background,
-          borderRadius: "16px",
-          padding: "32px 24px",
-          maxWidth: "400px",
-          width: "90%",
-          textAlign: "center",
-          border: `2px solid ${currentColors.border}`,
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-        }}
-      >
-        {!isCompleted ? (
-          <>
-            <div style={{ fontSize: "64px", marginBottom: "16px" }}>📺</div>
-            <h3
-              style={{
-                fontSize: "20px",
-                fontWeight: "bold",
-                color: currentColors.text,
-                margin: "0 0 12px 0",
-              }}
-            >
-              광고 시청 중...
-            </h3>
-            <p
-              style={{
-                fontSize: "14px",
-                color: "#6b7280",
-                margin: "0 0 24px 0",
-                lineHeight: "1.5",
-              }}
-            >
-              1등 AI 빅데이터 분석을 위해{"\n"}
-              광고를 시청해주세요!
-            </p>
-            
-            {/* 원형 프로그레스 바 */}
-            <div
-              style={{
-                position: "relative",
-                width: "120px",
-                height: "120px",
-                margin: "0 auto 24px",
-              }}
-            >
-              <svg
-                width="120"
-                height="120"
-                style={{
-                  transform: "rotate(-90deg)",
-                }}
-              >
-                {/* 배경 원 */}
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="50"
-                  fill="none"
-                  stroke="#e5e7eb"
-                  strokeWidth="8"
-                />
-                {/* 프로그레스 원 */}
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="50"
-                  fill="none"
-                  stroke={currentColors.primary}
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                  strokeDasharray={`${(30 - timeLeft) * (314 / 30)} 314`}
-                  style={{
-                    transition: "stroke-dasharray 1s linear",
-                  }}
-                />
-              </svg>
-              <div
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  fontSize: "24px",
-                  fontWeight: "bold",
-                  color: currentColors.text,
-                }}
-              >
-                {timeLeft}
-              </div>
-            </div>
-
-            <p
-              style={{
-                fontSize: "12px",
-                color: "#9ca3af",
-                margin: "0",
-              }}
-            >
-              {timeLeft}초 후 AI 분석이 시작됩니다
-            </p>
-          </>
-        ) : (
-          <>
-            <div style={{ fontSize: "64px", marginBottom: "16px" }}>✅</div>
-            <h3
-              style={{
-                fontSize: "20px",
-                fontWeight: "bold",
-                color: "#059669",
-                margin: "0 0 12px 0",
-              }}
-            >
-              광고 시청 완료!
-            </h3>
-            <p
-              style={{
-                fontSize: "14px",
-                color: "#6b7280",
-                margin: "0",
-              }}
-            >
-              AI 빅데이터 분석을 시작합니다...
-            </p>
-          </>
-        )}
-      </div>
-    </div>
-  );
-};
+// 광고 시청 모달 컴포넌트 - AdSense 전면 광고로 대체됨
+// AdModal 컴포넌트는 더 이상 사용하지 않습니다
 
 interface RecommendProps {
   pastWinningNumbers: number[][];
@@ -341,8 +141,8 @@ const Recommend: React.FC<RecommendProps> = ({
   const [showAnalysisDetail, setShowAnalysisDetail] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
 
-  // 광고 관련 상태
-  const [showAdModal, setShowAdModal] = useState(false);
+  // 광고 관련 상태 (AdModal 제거)
+  // const [showAdModal, setShowAdModal] = useState(false);
 
   // 팝업 상태 관리
   const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: "success" | "error" | "info" }>({ 
@@ -616,11 +416,22 @@ const Recommend: React.FC<RecommendProps> = ({
     );
   };
 
-  // 광고 시청 후 1등급 추천 생성
-  const handleAdComplete = async () => {
-    setShowAdModal(false);
-    await generate1stGradeRecommendationsAfterAd();
-  };
+  // 광고 시청 완료 이벤트 리스너
+  useEffect(() => {
+    const handleAdReward = (event: any) => {
+      console.log("🎁 광고 시청 완료 이벤트 수신:", event.detail);
+      // 광고 시청 완료 후 AI 분석 시작
+      generate1stGradeRecommendationsAfterAd();
+    };
+
+    // 광고 완료 이벤트 리스너 등록
+    window.addEventListener('adRewardEarned', handleAdReward);
+
+    return () => {
+      // 컴포넌트 언마운트 시 이벤트 리스너 제거
+      window.removeEventListener('adRewardEarned', handleAdReward);
+    };
+  }, []);
 
   // 광고 시청 후 실제 1등급 추천 생성
   const generate1stGradeRecommendationsAfterAd = async () => {
@@ -668,27 +479,28 @@ const Recommend: React.FC<RecommendProps> = ({
     }
   };
 
-  // 수정된 1등급 추천 생성 - 광고 시청 먼저
+  // 수정된 1등급 추천 생성 - 실제 AdSense 전면 광고 사용
   const generate1stGradeRecommendations = async () => {
-    console.log("🎯 1등 추천 버튼 클릭됨 - 광고 모달 표시");
+    console.log("🎯 1등 추천 버튼 클릭됨 - AdSense 전면 광고 표시");
     
     try {
-      // 광고 로드 시도 (선택사항)
+      // 실제 전면 광고 표시
       const windowWithAds = window as any;
-      if (windowWithAds.loadRewardedAd) {
-        console.log("📺 광고 로드 함수 발견, 로드 시도...");
-        await windowWithAds.loadRewardedAd();
-        console.log("✅ 광고 로드 성공");
+      if (windowWithAds.showRewardedAd) {
+        console.log("📺 AdSense 전면 광고 표시 시작");
+        await windowWithAds.showRewardedAd();
+        console.log("✅ 광고 표시 성공");
       } else {
-        console.log("⚠️ 광고 로드 함수 없음, 기본 광고 모달 표시");
+        console.log("⚠️ 광고 시스템을 찾을 수 없음, AI 분석 바로 시작");
+        // 광고 시스템이 없으면 바로 분석 시작
+        generate1stGradeRecommendationsAfterAd();
       }
     } catch (error) {
-      console.error("❌ 광고 로드 실패:", error);
+      console.error("❌ 광고 표시 실패:", error);
+      showPopup("광고 표시에 실패했습니다.\n바로 AI 분석을 시작합니다.", "info");
+      // 광고 실패 시 바로 분석 시작
+      generate1stGradeRecommendationsAfterAd();
     }
-
-    // 광고 로드 성공/실패와 관계없이 무조건 광고 모달 표시
-    console.log("📺 광고 모달 표시 시작");
-    setShowAdModal(true);
   };
 
   // 개선된 기본 추천 생성 (2-5등급용) - 실제 데이터 분석
@@ -968,13 +780,13 @@ const Recommend: React.FC<RecommendProps> = ({
         theme={theme}
       />
 
-      {/* 광고 모달 */}
-      <AdModal
+      {/* 광고 모달 - AdSense 전면 광고로 대체됨 */}
+      {/* <AdModal
         isOpen={showAdModal}
         onClose={() => setShowAdModal(false)}
         onComplete={handleAdComplete}
         theme={theme}
-      />
+      /> */}
 
       {/* 빅데이터 분석 시스템 헤더 - 실제 회차 범위 표시 */}
       {analysisStats && (
@@ -1298,7 +1110,7 @@ const Recommend: React.FC<RecommendProps> = ({
                     }}
                   >
                     <IconWrapper size="sm">📺</IconWrapper>
-                    광고 후 AI 분석
+                    AdSense 광고 시청
                   </span>
                 )}
               </div>
@@ -1394,7 +1206,7 @@ const Recommend: React.FC<RecommendProps> = ({
                 <IconWrapper>{gradeInfo[activeGrade].emoji}</IconWrapper>
                 <span>
                   {activeGrade === "1"
-                    ? "📺 광고 시청 후 AI 분석!"
+                    ? "📺 AdSense 광고 시청 후 AI 분석!"
                     : `${gradeInfo[activeGrade].name} 추천 받기`}
                 </span>
               </>
@@ -1830,7 +1642,7 @@ const Recommend: React.FC<RecommendProps> = ({
                 }}
               >
                 {activeGrade === "1"
-                  ? "위의 버튼을 클릭하여 광고 시청 후 AI 분석을 시작하세요!"
+                  ? "위의 버튼을 클릭하여 AdSense 광고 시청 후 AI 분석을 시작하세요!"
                   : "위의 버튼을 클릭하여 AI 분석을 시작하세요!"}
               </p>
             </div>
