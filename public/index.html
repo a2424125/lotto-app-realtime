@@ -40,12 +40,74 @@
         width: 100%;
         height: 100%;
       }
+
+      /* 전면 광고 스타일 */
+      .interstitial-ad {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.9);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+      }
+
+      .interstitial-content {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        text-align: center;
+        max-width: 90%;
+        position: relative;
+      }
+
+      .close-ad-btn {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        background: #333;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+        font-size: 16px;
+        display: none; /* 처음에는 숨김 */
+      }
     </style>
   </head>
 
   <body>
     <noscript> 이 앱을 실행하려면 JavaScript를 활성화해야 합니다. </noscript>
     <div id="root"></div>
+
+    <!-- 전면 광고 HTML -->
+    <div id="interstitial-ad" class="interstitial-ad">
+      <div class="interstitial-content">
+        <button id="close-ad-btn" class="close-ad-btn" onclick="closeInterstitialAd()">&times;</button>
+        <div id="ad-content">
+          <!-- AdSense 광고가 여기에 로드됩니다 -->
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-app-pub-1789035686079773"
+               data-ad-slot="2283321824"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+          
+          <!-- 광고 로딩 중 표시될 내용 -->
+          <div id="ad-loading" style="padding: 40px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">📺</div>
+            <h3>광고를 로드하는 중...</h3>
+            <p>잠시만 기다려주세요!</p>
+            <div id="countdown-timer" style="font-size: 24px; font-weight: bold; color: #2563eb; margin-top: 20px;">30</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- 안드로이드 뒤로가기 버튼 처리 및 서비스 워커 제거 -->
     <script>
@@ -118,85 +180,153 @@
       }
 
       // 디버그 모드 비활성화 (프로덕션)
-      console.log = function() {};
-      console.warn = function() {};
-      console.error = function() {};
+      // console.log = function() {};
+      // console.warn = function() {};
+      // console.error = function() {};
 
       // 글로벌 광고 관련 변수
       window.rewardedAd = null;
       window.adLoaded = false;
       window.adWatching = false;
+      window.interstitialAdTimer = null;
     </script>
 
     <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-app-pub-1789035686079773"
          crossorigin="anonymous"></script>
 
-    <!-- 보상형 광고 스크립트 -->
+    <!-- 전면 광고 스크립트 -->
     <script>
+      // 전면 광고 표시 함수
+      window.showInterstitialAd = function() {
+        console.log("📺 전면 광고 표시 시작");
+        
+        const adElement = document.getElementById('interstitial-ad');
+        const loadingElement = document.getElementById('ad-loading');
+        const closeBtn = document.getElementById('close-ad-btn');
+        const countdownElement = document.getElementById('countdown-timer');
+        
+        // 광고 표시
+        adElement.style.display = 'flex';
+        loadingElement.style.display = 'block';
+        closeBtn.style.display = 'none';
+        
+        // 카운트다운 타이머 (30초)
+        let countdown = 30;
+        countdownElement.textContent = countdown;
+        
+        window.interstitialAdTimer = setInterval(() => {
+          countdown--;
+          countdownElement.textContent = countdown;
+          
+          if (countdown <= 0) {
+            clearInterval(window.interstitialAdTimer);
+            // 30초 후 닫기 버튼 표시
+            closeBtn.style.display = 'block';
+            countdownElement.textContent = "광고를 닫을 수 있습니다";
+            
+            // 광고 완료 이벤트 발송
+            const adCompleteEvent = new CustomEvent('adRewardEarned', {
+              detail: { reward: 'completed' }
+            });
+            window.dispatchEvent(adCompleteEvent);
+          }
+        }, 1000);
+        
+        // AdSense 광고 로드 시도
+        try {
+          if (typeof adsbygoogle !== 'undefined') {
+            (adsbygoogle = window.adsbygoogle || []).push({});
+            console.log("✅ AdSense 광고 로드 시도");
+          }
+        } catch (error) {
+          console.error("❌ AdSense 광고 로드 실패:", error);
+        }
+        
+        return Promise.resolve({ success: true });
+      };
+
+      // 전면 광고 닫기 함수
+      window.closeInterstitialAd = function() {
+        console.log("📺 전면 광고 닫기");
+        
+        const adElement = document.getElementById('interstitial-ad');
+        adElement.style.display = 'none';
+        
+        if (window.interstitialAdTimer) {
+          clearInterval(window.interstitialAdTimer);
+          window.interstitialAdTimer = null;
+        }
+        
+        // 광고 완료 이벤트 발송 (닫기 버튼으로 닫은 경우)
+        const adCompleteEvent = new CustomEvent('adRewardEarned', {
+          detail: { reward: 'closed' }
+        });
+        window.dispatchEvent(adCompleteEvent);
+      };
+
       window.addEventListener('load', function() {
         // 보상형 광고 초기화
         window.initRewardedAd = function() {
           try {
-            // AdSense 보상형 광고 설정
-            if (typeof adsbygoogle !== 'undefined') {
-              window.rewardedAd = {
-                adUnitId: 'ca-app-pub-1789035686079773/1965441835',
-                loaded: false,
-                showing: false
-              };
-              
-              // 광고 로드 함수
-              window.loadRewardedAd = function() {
-                return new Promise((resolve, reject) => {
-                  try {
-                    // 실제 AdSense 보상형 광고는 현재 웹에서 제한적이므로
-                    // 임시로 30초 카운트다운을 사용하되, 실제 광고 형태로 구현
-                    window.rewardedAd.loaded = true;
-                    resolve(true);
-                  } catch (error) {
-                    console.error('광고 로드 실패:', error);
-                    reject(error);
-                  }
+            console.log("🎯 보상형 광고 시스템 초기화");
+            
+            window.rewardedAd = {
+              adUnitId: 'ca-app-pub-1789035686079773/2283321824',
+              loaded: false,
+              showing: false
+            };
+            
+            // 광고 로드 함수
+            window.loadRewardedAd = function() {
+              return new Promise((resolve, reject) => {
+                try {
+                  console.log("📺 광고 로드 시도");
+                  window.rewardedAd.loaded = true;
+                  resolve(true);
+                } catch (error) {
+                  console.error('광고 로드 실패:', error);
+                  reject(error);
+                }
+              });
+            };
+
+            // 광고 표시 함수 (React 컴포넌트에서 호출)
+            window.showRewardedAd = function() {
+              return new Promise((resolve, reject) => {
+                if (window.rewardedAd.showing) {
+                  reject(new Error('이미 광고가 재생 중입니다'));
+                  return;
+                }
+
+                window.rewardedAd.showing = true;
+                window.adWatching = true;
+
+                // 전면 광고 표시
+                window.showInterstitialAd().then(() => {
+                  console.log("✅ 광고 표시 성공");
+                  resolve({ reward: 'completed' });
+                }).catch((error) => {
+                  console.error("❌ 광고 표시 실패:", error);
+                  window.rewardedAd.showing = false;
+                  window.adWatching = false;
+                  reject(error);
                 });
-              };
+              });
+            };
 
-              // 광고 표시 함수
-              window.showRewardedAd = function() {
-                return new Promise((resolve, reject) => {
-                  if (!window.rewardedAd.loaded) {
-                    reject(new Error('광고가 로드되지 않았습니다'));
-                    return;
-                  }
+            // 광고 완료 이벤트 리스너
+            window.addEventListener('adRewardEarned', function(event) {
+              console.log("🎁 광고 시청 완료:", event.detail);
+              window.rewardedAd.showing = false;
+              window.rewardedAd.loaded = false;
+              window.adWatching = false;
+            });
 
-                  if (window.rewardedAd.showing) {
-                    reject(new Error('이미 광고가 재생 중입니다'));
-                    return;
-                  }
-
-                  window.rewardedAd.showing = true;
-                  window.adWatching = true;
-
-                  // 광고 시청 완료 후 보상 지급 이벤트 발생
-                  setTimeout(() => {
-                    window.rewardedAd.showing = false;
-                    window.rewardedAd.loaded = false;
-                    window.adWatching = false;
-                    
-                    // 광고 완료 이벤트 발송
-                    const adCompleteEvent = new CustomEvent('adRewardEarned', {
-                      detail: { reward: 3000 }
-                    });
-                    window.dispatchEvent(adCompleteEvent);
-                    
-                    resolve({ reward: 3000 });
-                  }, 30000); // 30초 후 완료
-                });
-              };
-
-              // 초기 광고 로드
-              window.loadRewardedAd();
-            }
+            // 초기 광고 로드
+            window.loadRewardedAd();
+            console.log("✅ 보상형 광고 시스템 준비 완료");
+            
           } catch (error) {
             console.error('보상형 광고 초기화 실패:', error);
           }
