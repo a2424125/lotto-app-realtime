@@ -116,6 +116,8 @@ interface AdWatchState {
   adTitle: string;
   adProgress: number;
   canSkip: boolean;
+  isLoading: boolean;
+  loadingMessage: string;
 }
 
 interface PopupState {
@@ -164,7 +166,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
     adTitle: "",
     adProgress: 0,
     canSkip: false,
+    isLoading: false,
+    loadingMessage: "광고 로딩 중...",
   });
+
   const [guessGame, setGuessGame] = useState<GuessGameState>({
     secretNumbers: [],
     userGuess: [],
@@ -326,6 +331,21 @@ const MiniGame: React.FC<MiniGameProps> = ({
   const closePopup = () => {
     setPopup({ isOpen: false, message: '', type: 'info', isConfirm: false });
   };
+
+  // 보상형 광고 완료 이벤트 리스너 설정
+  useEffect(() => {
+    const handleAdRewardEarned = (event: any) => {
+      const reward = event.detail?.reward || 3000;
+      completeAdWatch(reward);
+    };
+
+    // 광고 완료 이벤트 리스너 추가
+    window.addEventListener('adRewardEarned', handleAdRewardEarned);
+
+    return () => {
+      window.removeEventListener('adRewardEarned', handleAdRewardEarned);
+    };
+  }, [gameStats]);
 
   const games = [
     {
@@ -676,35 +696,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }, 8000);
   };
 
-  // 광고 및 포인트 관련 함수들
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
-    if (adWatchState.isWatching && adWatchState.countdown > 0) {
-      interval = setInterval(() => {
-        setAdWatchState(prev => {
-          const newCountdown = prev.countdown - 1;
-          const newProgress = ((30 - newCountdown) / 30) * 100;
-          
-          return {
-            ...prev,
-            countdown: newCountdown,
-            adProgress: newProgress,
-            canSkip: newCountdown <= 5,
-          };
-        });
-      }, 1000);
-    }
-    
-    if (adWatchState.isWatching && adWatchState.countdown === 0) {
-      completeAdWatch();
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [adWatchState.isWatching, adWatchState.countdown]);
-
+  // 광고 및 포인트 관련 함수들 (수정된 부분)
   const checkDailyAdLimit = (): boolean => {
     const today = new Date().toDateString();
     const maxDailyAds = 10;
@@ -723,30 +715,82 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }
   };
 
-  const startAdWatch = () => {
+  // 실제 보상형 광고 시청 시작
+  const startAdWatch = async () => {
     if (!checkDailyAdLimit()) {
       showPopup("😅 오늘 광고 시청 횟수를 모두 사용했어요! 내일 다시 이용해주세요.", "warning");
       return;
     }
 
-    const adTitles = [
-      "🎮 신규 게임 출시! 지금 다운로드하세요!",
-      "🛒 쇼핑몰 할인 이벤트 진행중!",
-      "📱 최신 스마트폰 특가 세일!",
-      "🍔 맛있는 음식 배달 서비스!",
-    ];
+    try {
+      // 광고 로딩 상태 표시
+      setAdWatchState({
+        isWatching: false,
+        countdown: 30,
+        adTitle: "",
+        adProgress: 0,
+        canSkip: false,
+        isLoading: true,
+        loadingMessage: "보상형 광고 로딩 중...",
+      });
 
-    setAdWatchState({
-      isWatching: true,
-      countdown: 30,
-      adTitle: adTitles[Math.floor(Math.random() * adTitles.length)],
-      adProgress: 0,
-      canSkip: false,
-    });
+      // 광고 로드
+      if (typeof (window as any).loadRewardedAd === 'function') {
+        await (window as any).loadRewardedAd();
+      }
+
+      // 광고 표시
+      if (typeof (window as any).showRewardedAd === 'function') {
+        setAdWatchState({
+          isWatching: true,
+          countdown: 30,
+          adTitle: "🎁 보상형 광고",
+          adProgress: 0,
+          canSkip: false,
+          isLoading: false,
+          loadingMessage: "",
+        });
+
+        // 카운트다운 시작
+        let countdown = 30;
+        const countdownInterval = setInterval(() => {
+          countdown--;
+          setAdWatchState(prev => ({
+            ...prev,
+            countdown,
+            adProgress: ((30 - countdown) / 30) * 100,
+            canSkip: countdown <= 5,
+          }));
+
+          if (countdown <= 0) {
+            clearInterval(countdownInterval);
+          }
+        }, 1000);
+
+        // 실제 광고 표시
+        await (window as any).showRewardedAd();
+      } else {
+        throw new Error('광고 시스템을 사용할 수 없습니다.');
+      }
+    } catch (error) {
+      console.error('광고 로드/표시 실패:', error);
+      
+      setAdWatchState({
+        isWatching: false,
+        countdown: 30,
+        adTitle: "",
+        adProgress: 0,
+        canSkip: false,
+        isLoading: false,
+        loadingMessage: "",
+      });
+
+      showPopup("광고를 로드할 수 없습니다. 잠시 후 다시 시도해주세요.", "error");
+    }
   };
 
-  const completeAdWatch = () => {
-    const adPoints = 3000;
+  // 광고 시청 완료 (수정된 부분)
+  const completeAdWatch = (adPoints: number = 3000) => {
     const today = new Date().toDateString();
 
     setGameStats(prev => ({
@@ -764,12 +808,15 @@ const MiniGame: React.FC<MiniGameProps> = ({
       adTitle: "",
       adProgress: 0,
       canSkip: false,
+      isLoading: false,
+      loadingMessage: "",
     });
 
     const remaining = 10 - ((gameStats.dailyAdWatchDate === today ? gameStats.dailyAdWatchCount || 0 : 0) + 1);
     showPopup(`🎉 광고 시청 완료! ${safeFormatNumber(adPoints)}P 획득! 오늘 ${remaining}번 더 시청 가능합니다.`, "success");
   };
 
+  // 광고 건너뛰기
   const skipAd = () => {
     setAdWatchState({
       isWatching: false,
@@ -777,6 +824,8 @@ const MiniGame: React.FC<MiniGameProps> = ({
       adTitle: "",
       adProgress: 0,
       canSkip: false,
+      isLoading: false,
+      loadingMessage: "",
     });
   };
 
@@ -786,7 +835,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     
     if (checkDailyAdLimit()) {
       showConfirmPopup(
-        `포인트가 ${safeFormatNumber(shortage)}P 부족합니다. 광고를 시청하여 3,000P를 받으시겠습니까?`,
+        `포인트가 ${safeFormatNumber(shortage)}P 부족합니다. 보상형 광고를 시청하여 3,000P를 받으시겠습니까?`,
         () => {
           startAdWatch();
         }
@@ -1111,14 +1160,15 @@ const MiniGame: React.FC<MiniGameProps> = ({
         </div>
       )}
 
-      {adWatchState.isWatching && (
+      {/* 보상형 광고 시청 모달 (수정된 부분) */}
+      {(adWatchState.isWatching || adWatchState.isLoading) && (
         <div style={{
           position: "fixed",
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: "rgba(0, 0, 0, 0.8)",
+          backgroundColor: "rgba(0, 0, 0, 0.9)",
           zIndex: 1000,
           display: "flex",
           alignItems: "center",
@@ -1133,53 +1183,100 @@ const MiniGame: React.FC<MiniGameProps> = ({
             border: `2px solid ${currentColors.adBorder}`,
             textAlign: "center",
           }}>
-            <h3 style={{
-              fontSize: "16px",
-              fontWeight: "bold",
-              color: currentColors.adText,
-              margin: "0 0 8px 0",
-            }}>
-              📺 광고 시청 중...
-            </h3>
-            <p style={{
-              fontSize: "12px",
-              color: currentColors.adText,
-              margin: "0 0 16px 0",
-            }}>
-              시청 완료 시 3,000P 지급!
-            </p>
-            <div style={{
-              fontSize: "14px",
-              fontWeight: "bold",
-              color: currentColors.text,
-              marginBottom: "16px",
-            }}>
-              {adWatchState.adTitle}
-            </div>
-            <div style={{
-              fontSize: "18px",
-              fontWeight: "bold",
-              color: currentColors.primary,
-              marginBottom: "16px",
-            }}>
-              {adWatchState.countdown}초
-            </div>
-            {adWatchState.canSkip && (
-              <button
-                onClick={skipAd}
-                style={{
-                  padding: "8px 16px",
-                  backgroundColor: currentColors.textSecondary,
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  fontSize: "12px",
-                  cursor: "pointer",
+            {adWatchState.isLoading ? (
+              <>
+                <div style={{ 
+                  fontSize: "48px", 
+                  marginBottom: "16px",
+                  animation: "pulse 1.5s infinite"
+                }}>
+                  📺
+                </div>
+                <h3 style={{
+                  fontSize: "16px",
                   fontWeight: "bold",
-                }}
-              >
-                광고 건너뛰기
-              </button>
+                  color: currentColors.text,
+                  margin: "0 0 8px 0",
+                }}>
+                  {adWatchState.loadingMessage}
+                </h3>
+                <p style={{
+                  fontSize: "12px",
+                  color: currentColors.textSecondary,
+                  margin: "0",
+                }}>
+                  잠시만 기다려주세요...
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 style={{
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                  color: currentColors.adText,
+                  margin: "0 0 8px 0",
+                }}>
+                  📺 보상형 광고 시청 중
+                </h3>
+                <p style={{
+                  fontSize: "12px",
+                  color: currentColors.adText,
+                  margin: "0 0 16px 0",
+                }}>
+                  시청 완료 시 3,000P 지급!
+                </p>
+                <div style={{
+                  fontSize: "14px",
+                  fontWeight: "bold",
+                  color: currentColors.text,
+                  marginBottom: "16px",
+                }}>
+                  {adWatchState.adTitle}
+                </div>
+                
+                <div style={{
+                  width: "100%",
+                  backgroundColor: currentColors.gray,
+                  borderRadius: "8px",
+                  height: "8px",
+                  marginBottom: "16px",
+                  overflow: "hidden",
+                }}>
+                  <div style={{
+                    width: `${adWatchState.adProgress}%`,
+                    backgroundColor: currentColors.primary,
+                    height: "100%",
+                    transition: "width 1s linear",
+                  }} />
+                </div>
+                
+                <div style={{
+                  fontSize: "24px",
+                  fontWeight: "bold",
+                  color: currentColors.primary,
+                  marginBottom: "16px",
+                }}>
+                  {adWatchState.countdown}초
+                </div>
+                
+                {adWatchState.canSkip && (
+                  <button
+                    onClick={skipAd}
+                    style={{
+                      padding: "8px 16px",
+                      backgroundColor: currentColors.textSecondary,
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    광고 건너뛰기
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -1258,20 +1355,20 @@ const MiniGame: React.FC<MiniGameProps> = ({
             </button>
             <button
               onClick={startAdWatch}
-              disabled={!checkDailyAdLimit()}
+              disabled={!checkDailyAdLimit() || adWatchState.isWatching || adWatchState.isLoading}
               style={{
                 padding: "8px 12px",
-                backgroundColor: checkDailyAdLimit() ? "#ef4444" : currentColors.textSecondary,
+                backgroundColor: (checkDailyAdLimit() && !adWatchState.isWatching && !adWatchState.isLoading) ? "#ef4444" : currentColors.textSecondary,
                 color: "white",
                 border: "none",
                 borderRadius: "6px",
                 fontSize: "11px",
-                cursor: checkDailyAdLimit() ? "pointer" : "not-allowed",
+                cursor: (checkDailyAdLimit() && !adWatchState.isWatching && !adWatchState.isLoading) ? "pointer" : "not-allowed",
                 fontWeight: "bold",
-                opacity: checkDailyAdLimit() ? 1 : 0.6,
+                opacity: (checkDailyAdLimit() && !adWatchState.isWatching && !adWatchState.isLoading) ? 1 : 0.6,
               }}
             >
-              📺 광고시청 3000P
+              📺 보상형광고 3000P
             </button>
           </div>
         </div>
@@ -1352,7 +1449,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                     marginTop: "4px",
                     fontWeight: "bold",
                   }}>
-                    📺 광고 시청으로 포인트 획득 가능
+                    📺 보상형 광고로 포인트 획득 가능
                   </div>
                 )}
               </button>
