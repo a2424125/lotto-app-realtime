@@ -107,6 +107,209 @@ const CustomPopup: React.FC<PopupProps> = ({ isOpen, onClose, message, type = "s
   );
 };
 
+// 광고 시청 모달 컴포넌트
+interface AdModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onComplete: () => void;
+  theme?: "light" | "dark";
+}
+
+const AdModal: React.FC<AdModalProps> = ({ isOpen, onClose, onComplete, theme = "light" }) => {
+  const [timeLeft, setTimeLeft] = useState(30);
+  const [isCompleted, setIsCompleted] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setTimeLeft(30);
+      setIsCompleted(false);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          setIsCompleted(true);
+          setTimeout(() => {
+            onComplete();
+          }, 1000);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isOpen, onComplete]);
+
+  if (!isOpen) return null;
+
+  const colors = {
+    light: {
+      overlay: "rgba(0, 0, 0, 0.8)",
+      background: "#ffffff",
+      text: "#1f2937",
+      border: "#e5e7eb",
+      primary: "#2563eb",
+    },
+    dark: {
+      overlay: "rgba(0, 0, 0, 0.9)",
+      background: "#1e293b",
+      text: "#f1f5f9",
+      border: "#334155",
+      primary: "#3b82f6",
+    },
+  };
+
+  const currentColors = colors[theme];
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: currentColors.overlay,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 10000,
+        animation: "fadeIn 0.3s ease-out",
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: currentColors.background,
+          borderRadius: "16px",
+          padding: "32px 24px",
+          maxWidth: "400px",
+          width: "90%",
+          textAlign: "center",
+          border: `2px solid ${currentColors.border}`,
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        }}
+      >
+        {!isCompleted ? (
+          <>
+            <div style={{ fontSize: "64px", marginBottom: "16px" }}>📺</div>
+            <h3
+              style={{
+                fontSize: "20px",
+                fontWeight: "bold",
+                color: currentColors.text,
+                margin: "0 0 12px 0",
+              }}
+            >
+              광고 시청 중...
+            </h3>
+            <p
+              style={{
+                fontSize: "14px",
+                color: "#6b7280",
+                margin: "0 0 24px 0",
+                lineHeight: "1.5",
+              }}
+            >
+              1등 AI 빅데이터 분석을 위해{"\n"}
+              광고를 시청해주세요!
+            </p>
+            
+            {/* 원형 프로그레스 바 */}
+            <div
+              style={{
+                position: "relative",
+                width: "120px",
+                height: "120px",
+                margin: "0 auto 24px",
+              }}
+            >
+              <svg
+                width="120"
+                height="120"
+                style={{
+                  transform: "rotate(-90deg)",
+                }}
+              >
+                {/* 배경 원 */}
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="50"
+                  fill="none"
+                  stroke="#e5e7eb"
+                  strokeWidth="8"
+                />
+                {/* 프로그레스 원 */}
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="50"
+                  fill="none"
+                  stroke={currentColors.primary}
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={`${(30 - timeLeft) * (314 / 30)} 314`}
+                  style={{
+                    transition: "stroke-dasharray 1s linear",
+                  }}
+                />
+              </svg>
+              <div
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  fontSize: "24px",
+                  fontWeight: "bold",
+                  color: currentColors.text,
+                }}
+              >
+                {timeLeft}
+              </div>
+            </div>
+
+            <p
+              style={{
+                fontSize: "12px",
+                color: "#9ca3af",
+                margin: "0",
+              }}
+            >
+              {timeLeft}초 후 AI 분석이 시작됩니다
+            </p>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: "64px", marginBottom: "16px" }}>✅</div>
+            <h3
+              style={{
+                fontSize: "20px",
+                fontWeight: "bold",
+                color: "#059669",
+                margin: "0 0 12px 0",
+              }}
+            >
+              광고 시청 완료!
+            </h3>
+            <p
+              style={{
+                fontSize: "14px",
+                color: "#6b7280",
+                margin: "0",
+              }}
+            >
+              AI 빅데이터 분석을 시작합니다...
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 interface RecommendProps {
   pastWinningNumbers: number[][];
   onAddToPurchaseHistory: (numbers: number[], strategy: string) => void;
@@ -137,6 +340,9 @@ const Recommend: React.FC<RecommendProps> = ({
   const [analysisStats, setAnalysisStats] = useState<any>(null);
   const [showAnalysisDetail, setShowAnalysisDetail] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
+
+  // 광고 관련 상태
+  const [showAdModal, setShowAdModal] = useState(false);
 
   // 팝업 상태 관리
   const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: "success" | "error" | "info" }>({ 
@@ -410,14 +616,20 @@ const Recommend: React.FC<RecommendProps> = ({
     );
   };
 
-  // 1등급 고도화 추천번호 생성
-  const generate1stGradeRecommendations = async () => {
+  // 광고 시청 후 1등급 추천 생성
+  const handleAdComplete = async () => {
+    setShowAdModal(false);
+    await generate1stGradeRecommendationsAfterAd();
+  };
+
+  // 광고 시청 후 실제 1등급 추천 생성
+  const generate1stGradeRecommendationsAfterAd = async () => {
     setLoading(true);
     setHasGenerated(true);
 
     try {
       console.log(
-        `🧠 ${actualLatestRound}~${actualOldestRound}회차 (${totalRounds}개) AI 빅데이터 분석 시작...`
+        `🧠 광고 시청 완료! ${actualLatestRound}~${actualOldestRound}회차 (${totalRounds}개) AI 빅데이터 분석 시작...`
       );
 
       // 로딩 애니메이션을 위한 약간의 지연
@@ -453,6 +665,24 @@ const Recommend: React.FC<RecommendProps> = ({
       setRecommendedStrategies(generateFallbackStrategies());
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 수정된 1등급 추천 생성 - 광고 시청 먼저
+  const generate1stGradeRecommendations = async () => {
+    try {
+      // 광고 로드 확인
+      if (window.loadRewardedAd) {
+        await window.loadRewardedAd();
+      }
+
+      // 광고 모달 표시
+      setShowAdModal(true);
+    } catch (error) {
+      console.error("❌ 광고 로드 실패:", error);
+      showPopup("광고 로드에 실패했습니다.\n바로 AI 분석을 시작합니다.", "info");
+      // 광고 실패 시 바로 추천 생성
+      generate1stGradeRecommendationsAfterAd();
     }
   };
 
@@ -666,7 +896,7 @@ const Recommend: React.FC<RecommendProps> = ({
     setRecommendedStrategies([]);
 
     if (grade === "1") {
-      generate1stGradeRecommendations();
+      generate1stGradeRecommendations(); // 이제 광고를 먼저 보여줌
     } else {
       generateBasicRecommendations(grade);
     }
@@ -730,6 +960,14 @@ const Recommend: React.FC<RecommendProps> = ({
         onClose={closePopup}
         message={popup.message}
         type={popup.type}
+        theme={theme}
+      />
+
+      {/* 광고 모달 */}
+      <AdModal
+        isOpen={showAdModal}
+        onClose={() => setShowAdModal(false)}
+        onComplete={handleAdComplete}
         theme={theme}
       />
 
@@ -1044,18 +1282,18 @@ const Recommend: React.FC<RecommendProps> = ({
                       fontSize: "11px",
                       padding: "4px 8px",
                       borderRadius: "6px",
-                      background: "linear-gradient(45deg, #fbbf24, #f59e0b)",
+                      background: "linear-gradient(45deg, #dc2626, #ea580c)",
                       color: "white",
                       fontWeight: "bold",
-                      boxShadow: "0 2px 4px rgba(245, 158, 11, 0.3)",
+                      boxShadow: "0 2px 4px rgba(220, 38, 38, 0.3)",
                       display: "flex",
                       alignItems: "center",
                       gap: "4px",
                       lineHeight: "1",
                     }}
                   >
-                    <IconWrapper size="sm">🧠</IconWrapper>
-                    AI 분석
+                    <IconWrapper size="sm">📺</IconWrapper>
+                    광고 후 AI 분석
                   </span>
                 )}
               </div>
@@ -1151,7 +1389,7 @@ const Recommend: React.FC<RecommendProps> = ({
                 <IconWrapper>{gradeInfo[activeGrade].emoji}</IconWrapper>
                 <span>
                   {activeGrade === "1"
-                    ? "AI 빅데이터 분석 시작!"
+                    ? "📺 광고 시청 후 AI 분석!"
                     : `${gradeInfo[activeGrade].name} 추천 받기`}
                 </span>
               </>
@@ -1586,7 +1824,9 @@ const Recommend: React.FC<RecommendProps> = ({
                   lineHeight: "1.4",
                 }}
               >
-                위의 버튼을 클릭하여 AI 분석을 시작하세요!
+                {activeGrade === "1"
+                  ? "위의 버튼을 클릭하여 광고 시청 후 AI 분석을 시작하세요!"
+                  : "위의 버튼을 클릭하여 AI 분석을 시작하세요!"}
               </p>
             </div>
           )}
