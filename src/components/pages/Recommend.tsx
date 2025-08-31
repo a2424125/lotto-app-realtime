@@ -670,21 +670,25 @@ const Recommend: React.FC<RecommendProps> = ({
 
   // 수정된 1등급 추천 생성 - 광고 시청 먼저
   const generate1stGradeRecommendations = async () => {
+    console.log("🎯 1등 추천 버튼 클릭됨 - 광고 모달 표시");
+    
     try {
-      // 광고 로드 확인 (TypeScript 타입 오류 해결)
+      // 광고 로드 시도 (선택사항)
       const windowWithAds = window as any;
       if (windowWithAds.loadRewardedAd) {
+        console.log("📺 광고 로드 함수 발견, 로드 시도...");
         await windowWithAds.loadRewardedAd();
+        console.log("✅ 광고 로드 성공");
+      } else {
+        console.log("⚠️ 광고 로드 함수 없음, 기본 광고 모달 표시");
       }
-
-      // 광고 모달 표시
-      setShowAdModal(true);
     } catch (error) {
       console.error("❌ 광고 로드 실패:", error);
-      showPopup("광고 로드에 실패했습니다.\n바로 AI 분석을 시작합니다.", "info");
-      // 광고 실패 시 바로 추천 생성
-      generate1stGradeRecommendationsAfterAd();
     }
+
+    // 광고 로드 성공/실패와 관계없이 무조건 광고 모달 표시
+    console.log("📺 광고 모달 표시 시작");
+    setShowAdModal(true);
   };
 
   // 개선된 기본 추천 생성 (2-5등급용) - 실제 데이터 분석
