@@ -671,9 +671,10 @@ const Recommend: React.FC<RecommendProps> = ({
   // 수정된 1등급 추천 생성 - 광고 시청 먼저
   const generate1stGradeRecommendations = async () => {
     try {
-      // 광고 로드 확인
-      if (window.loadRewardedAd) {
-        await window.loadRewardedAd();
+      // 광고 로드 확인 (TypeScript 타입 오류 해결)
+      const windowWithAds = window as any;
+      if (windowWithAds.loadRewardedAd) {
+        await windowWithAds.loadRewardedAd();
       }
 
       // 광고 모달 표시
