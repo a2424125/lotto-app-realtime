@@ -481,10 +481,12 @@ const Recommend: React.FC<RecommendProps> = ({
   // 2-5등급 추천 생성
   const generateBasicRecommendations = async (grade: string) => {
     setLoading(true);
-    setHasGenerated(true);
 
     try {
       console.log(`🎯 ${gradeInfo[grade].name} 데이터 분석 시작...`);
+      
+      // hasGenerated는 성공 후에만 설정
+      setHasGenerated(true);
 
       // 로딩 애니메이션을 위한 약간의 지연
       await new Promise((resolve) => setTimeout(resolve, 800));
