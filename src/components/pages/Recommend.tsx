@@ -1145,7 +1145,7 @@ const Recommend: React.FC<RecommendProps> = ({
                 <IconWrapper>{gradeInfo[activeGrade].emoji}</IconWrapper>
                 <span>
                   {activeGrade === "1"
-                    ? "AI 빅데이터 분석 시작! (광고)"
+                    ? "AI 빅데이터 분석 시작!"
                     : `${gradeInfo[activeGrade].name} 추천 받기`}
                 </span>
               </>
