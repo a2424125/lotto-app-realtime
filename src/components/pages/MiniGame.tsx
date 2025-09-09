@@ -709,7 +709,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }
   };
 
-  // AdMob 보상형 광고 시청 (수정됨)
+  // AdMob 보상형 광고 시청 (수정됨 - 3000P 고정)
   const startAdWatch = async () => {
     if (!checkDailyAdLimit()) {
       showPopup("😅 오늘 광고 시청 횟수를 모두 사용했어요! 내일 다시 이용해주세요.", "warning");
@@ -732,8 +732,8 @@ const MiniGame: React.FC<MiniGameProps> = ({
       const result = await adMobManager.showRewardedAd();
       
       if (result.earned) {
-        // 보상 지급
-        const adPoints = result.amount || 3000;
+        // 보상 지급 - 3000P 고정
+        const adPoints = 3000; // result.amount 무시하고 3000P 고정
         completeAdWatch(adPoints);
       } else {
         // 광고를 끝까지 보지 않음
@@ -2312,4 +2312,3 @@ const MiniGame: React.FC<MiniGameProps> = ({
 };
 
 export default MiniGame;
-
