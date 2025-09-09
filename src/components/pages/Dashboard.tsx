@@ -113,11 +113,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   const [latestResult, setLatestResult] = useState<LottoDrawResult | null>(null);
   const [isLoadingLatest, setIsLoadingLatest] = useState(false);
-  const [loadAttempts, setLoadAttempts] = useState(0);
-  const [lastLoadTime, setLastLoadTime] = useState<number>(0);
   const [isWaitingForResult, setIsWaitingForResult] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [updateMessage, setUpdateMessage] = useState("");
 
   const colors = {
     light: {
@@ -174,11 +170,9 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   const currentColors = colors[theme];
 
-  // 🔧 안전한 데이터 로드 (무한루프 방지)
+  // 🔧 안전한 데이터 로드 - API 호출 제거
   useEffect(() => {
-    const now = Date.now();
-    // 최소 10초 간격으로만 로드
-    if (pastWinningNumbers.length > 0 && (now - lastLoadTime) > 10000) {
+    if (pastWinningNumbers.length > 0) {
       loadLatestResultSafe();
     }
   }, [pastWinningNumbers]);
@@ -188,13 +182,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     const checkWaitingPeriod = () => {
       const isWaiting = isInWaitingPeriod();
       setIsWaitingForResult(isWaiting);
-      
-      // 대기 시간이면 5분마다 재시도
-      if (isWaiting) {
-        setTimeout(() => {
-          loadLatestResultSafe();
-        }, 5 * 60 * 1000); // 5분
-      }
     };
     
     checkWaitingPeriod();
@@ -203,69 +190,33 @@ const Dashboard: React.FC<DashboardProps> = ({
     return () => clearInterval(interval);
   }, []);
 
-  const loadLatestResultSafe = async () => {
-    // 이미 로딩 중이거나 최근에 로드했으면 스킵
-    if (isLoadingLatest || loadAttempts >= 3) {
-      return;
-    }
-
-    const now = Date.now();
-    if (now - lastLoadTime < 10000) { // 10초 이내면 스킵
-      return;
-    }
-
+  // API 호출 없이 직접 데이터 사용
+  const loadLatestResultSafe = () => {
     try {
       setIsLoadingLatest(true);
-      setLoadAttempts(prev => prev + 1);
-      setLastLoadTime(now);
 
-      // API 호출하여 최신 결과 확인
-      const response = await fetch('/api/latest-result');
-      const data = await response.json();
-      
-      if (data.success && data.isWaitingPeriod) {
+      // 추첨 대기 시간 체크
+      if (isInWaitingPeriod()) {
         setIsWaitingForResult(true);
-        setUpdateMessage("추첨 결과 집계중입니다");
-        return;
-      }
-      
-      if (data.isUpdating) {
-        setIsUpdating(true);
-        setUpdateMessage(data.message || "결과 업데이트 중입니다");
-        return;
-      }
-      
-      if (data.success && data.data) {
-        setLatestResult(data.data);
-        setIsWaitingForResult(false);
-        setIsUpdating(false);
-        setUpdateMessage("");
         return;
       }
 
-      // 데이터가 없는 경우
-      if (!data.success) {
-        setIsUpdating(true);
-        setUpdateMessage(data.error || "데이터를 불러올 수 없습니다");
-        
-        // pastWinningNumbers 사용 (가장 안전)
-        if (pastWinningNumbers.length > 0 && pastWinningNumbers[0].length >= 7) {
-          const safeResult: LottoDrawResult = {
-            round: actualLatestRound,
-            date: new Date().toISOString().split('T')[0],
-            numbers: pastWinningNumbers[0].slice(0, 6),
-            bonusNumber: pastWinningNumbers[0][6],
-            crawledAt: new Date().toISOString(),
-            source: "cached_data",
-          };
-          setLatestResult(safeResult);
-        }
+      // pastWinningNumbers에서 직접 데이터 가져오기
+      if (pastWinningNumbers.length > 0 && pastWinningNumbers[0].length >= 7) {
+        const safeResult: LottoDrawResult = {
+          round: actualLatestRound,
+          date: new Date().toISOString().split('T')[0],
+          numbers: pastWinningNumbers[0].slice(0, 6),
+          bonusNumber: pastWinningNumbers[0][6],
+          crawledAt: new Date().toISOString(),
+          source: "cached_data",
+        };
+        setLatestResult(safeResult);
+        setIsWaitingForResult(false);
       }
 
     } catch (error) {
-      console.error("❌ 안전한 로드 실패:", error);
-      setIsUpdating(true);
-      setUpdateMessage("데이터를 불러올 수 없습니다");
+      console.error("❌ 데이터 로드 실패:", error);
     } finally {
       setIsLoadingLatest(false);
     }
@@ -281,11 +232,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         await onRefreshData();
       }
       
-      // 로드 제한 리셋
-      setLoadAttempts(0);
-      setLastLoadTime(0);
-      
-      await loadLatestResultSafe();
+      loadLatestResultSafe();
       
       alert("✅ 새로고침 완료!");
     } catch (error) {
@@ -550,43 +497,6 @@ const Dashboard: React.FC<DashboardProps> = ({
           >
             보통 추첨 후 10-15분 내에 결과가 발표됩니다
           </p>
-        </div>
-      )}
-
-      {/* 업데이트 상태 표시 */}
-      {isUpdating && !isWaitingForResult && (
-        <div
-          style={{
-            backgroundColor: currentColors.error,
-            padding: "16px",
-            borderRadius: "8px",
-            border: `1px solid ${currentColors.errorBorder}`,
-            marginBottom: "12px",
-            textAlign: "center",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "16px",
-              fontWeight: "bold",
-              color: currentColors.errorText,
-              marginBottom: "8px",
-            }}
-          >
-            ⚠️ {updateMessage}
-          </div>
-          {isWithinTwoHoursAfterDraw() && (
-            <p
-              style={{
-                fontSize: "12px",
-                color: currentColors.errorText,
-                margin: "0",
-                opacity: 0.8,
-              }}
-            >
-              5분마다 자동으로 재시도합니다
-            </p>
-          )}
         </div>
       )}
 
