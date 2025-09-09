@@ -257,8 +257,9 @@ const LottoApp = () => {
       if (allData && allData.length > 0) {
         console.log(`✅ 하이브리드 데이터 로드 성공: ${allData.length}개 회차`);
         
-        // 번호 배열로 변환
-        const numbersArray = allData.map((draw) => [
+        // 🔥 중요: 데이터를 회차 내림차순으로 정렬 후 번호 배열로 변환
+        const sortedData = allData.sort((a, b) => b.round - a.round);
+        const numbersArray = sortedData.map((draw) => [
           ...draw.numbers,
           draw.bonusNumber
         ]);
@@ -342,6 +343,7 @@ const LottoApp = () => {
     console.log(`🛡️ 로컬 응급 데이터 생성: 1~${currentRound}회차 전체`);
     
     const knownResults: { [key: number]: number[] } = {
+      1188: [10, 23, 29, 33, 37, 40, 16],  // 실제 1188회 당첨번호 추가
       1181: [2, 4, 8, 21, 28, 41, 2],
       1180: [6, 12, 18, 37, 40, 41, 3],
       1179: [3, 16, 18, 24, 40, 44, 21],
