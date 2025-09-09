@@ -316,7 +316,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     setPopup({ isOpen: true, message, type, isConfirm: false });
   };
 
-  // 확인/취소 팝업 표시 함수
+  // 확인취소 팝업 표시 함수
   const showConfirmPopup = (message: string, confirmCallback: () => void, cancelCallback?: () => void) => {
     setPopup({
       isOpen: true,
@@ -2312,3 +2312,4 @@ const MiniGame: React.FC<MiniGameProps> = ({
 };
 
 export default MiniGame;
+
