@@ -136,6 +136,7 @@ const Recommend: React.FC<RecommendProps> = ({
   const [analysisStats, setAnalysisStats] = useState<any>(null);
   const [showAnalysisDetail, setShowAnalysisDetail] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
+  const [adAttempts, setAdAttempts] = useState(0); // 광고 시도 횟수 추적
 
   // 팝업 상태 관리
   const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: "success" | "error" | "info" }>({ 
@@ -393,7 +394,7 @@ const Recommend: React.FC<RecommendProps> = ({
     );
   };
 
-  // 1등급 추천 생성 (AdMob 전면광고 추가)
+  // 1등급 추천 생성 (AdMob 전면광고 추가 - 수정됨)
   const generate1stGradeRecommendations = async () => {
     setLoading(true);
     setHasGenerated(true);
@@ -401,13 +402,36 @@ const Recommend: React.FC<RecommendProps> = ({
     try {
       console.log("🎯 1등 추천 시작 - 전면광고 표시");
       
+      // 광고 시도 횟수 증가
+      setAdAttempts(prev => prev + 1);
+      
       // AdMob 전면광고 표시
+      let adResult: string;
       try {
-        await adMobManager.showInterstitialAd();
-        console.log("✅ 전면광고 시청 완료");
+        adResult = await adMobManager.showInterstitialAd();
+        console.log("✅ 전면광고 결과:", adResult);
       } catch (adError) {
-        console.log("⚠️ 전면광고 표시 실패 또는 스킵:", adError);
-        // 광고 실패해도 번호는 생성
+        console.log("⚠️ 전면광고 표시 실패:", adError);
+        
+        // 광고 실패 시 번호 생성 중단
+        setLoading(false);
+        setHasGenerated(false);
+        showPopup("광고를 시청해야 1등 추천번호를 받을 수 있습니다.\n다시 시도해주세요.", "error");
+        return;
+      }
+
+      // 광고가 정상적으로 닫혔는지 확인
+      if (adResult !== 'closed' && adResult !== 'web_simulation') {
+        console.log("⚠️ 광고 비정상 종료");
+        setLoading(false);
+        setHasGenerated(false);
+        showPopup("광고 시청이 중단되었습니다.\n번호 추천을 받으려면 광고를 끝까지 시청해주세요.", "info");
+        return;
+      }
+
+      // 광고 시청 완료 확인 (웹 시뮬레이션이 아닌 경우)
+      if (adResult === 'closed' && adMobManager.isAndroid) {
+        console.log("✅ 광고 시청 완료 확인");
       }
 
       console.log(
@@ -444,7 +468,11 @@ const Recommend: React.FC<RecommendProps> = ({
       });
     } catch (error) {
       console.error("❌ AI 추천 생성 실패:", error);
-      setRecommendedStrategies(generateFallbackStrategies());
+      
+      // 예외 발생 시에도 상태 초기화
+      setLoading(false);
+      setHasGenerated(false);
+      showPopup("번호 생성 중 오류가 발생했습니다.\n다시 시도해주세요.", "error");
     } finally {
       setLoading(false);
     }
@@ -1095,9 +1123,11 @@ const Recommend: React.FC<RecommendProps> = ({
         <div style={{ textAlign: "center" as const }}>
           <button
             onClick={() => generateRecommendations(activeGrade)}
-            disabled={loading}
+            disabled={loading || (hasGenerated && recommendedStrategies.length > 0 && activeGrade === "1")}
             style={{
               background: loading
+                ? currentColors.textSecondary
+                : (hasGenerated && recommendedStrategies.length > 0 && activeGrade === "1")
                 ? currentColors.textSecondary
                 : activeGrade === "1"
                 ? `linear-gradient(45deg, ${currentColors.gradientStart}, ${currentColors.gradientEnd})`
@@ -1107,12 +1137,12 @@ const Recommend: React.FC<RecommendProps> = ({
               borderRadius: "8px",
               border: "none",
               fontWeight: "bold",
-              cursor: loading ? "not-allowed" : "pointer",
+              cursor: loading || (hasGenerated && recommendedStrategies.length > 0 && activeGrade === "1") ? "not-allowed" : "pointer",
               fontSize: "16px",
-              boxShadow: loading
+              boxShadow: loading || (hasGenerated && recommendedStrategies.length > 0 && activeGrade === "1")
                 ? "none"
                 : `0 4px 12px ${gradeInfo[activeGrade].color}40`,
-              transform: loading ? "none" : "translateY(-1px)",
+              transform: loading || (hasGenerated && recommendedStrategies.length > 0 && activeGrade === "1") ? "none" : "translateY(-1px)",
               transition: "all 0.2s",
               display: "flex",
               alignItems: "center",
@@ -1120,6 +1150,7 @@ const Recommend: React.FC<RecommendProps> = ({
               gap: "8px",
               margin: "0 auto",
               lineHeight: "1",
+              opacity: (hasGenerated && recommendedStrategies.length > 0 && activeGrade === "1") ? 0.6 : 1,
             }}
           >
             {loading ? (
@@ -1144,7 +1175,9 @@ const Recommend: React.FC<RecommendProps> = ({
               <>
                 <IconWrapper>{gradeInfo[activeGrade].emoji}</IconWrapper>
                 <span>
-                  {activeGrade === "1"
+                  {(hasGenerated && recommendedStrategies.length > 0 && activeGrade === "1")
+                    ? "이미 추천 완료"
+                    : activeGrade === "1"
                     ? "AI 빅데이터 분석 시작!"
                     : `${gradeInfo[activeGrade].name} 추천 받기`}
                 </span>
@@ -1158,7 +1191,17 @@ const Recommend: React.FC<RecommendProps> = ({
               marginTop: "8px",
               fontStyle: "italic",
             }}>
-              ※ 1등 추천은 전면광고 시청 후 제공됩니다
+              ※ 1등 추천은 전면광고 시청 후 제공됩니다<br/>
+              {hasGenerated && recommendedStrategies.length === 0 && (
+                <span style={{ color: currentColors.accent }}>
+                  광고를 끝까지 시청해주세요!
+                </span>
+              )}
+              {hasGenerated && recommendedStrategies.length > 0 && (
+                <span style={{ color: currentColors.primary }}>
+                  다른 등급을 선택하거나 앱을 새로고침하세요
+                </span>
+              )}
             </p>
           )}
         </div>
