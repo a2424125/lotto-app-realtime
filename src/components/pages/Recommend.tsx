@@ -4,6 +4,7 @@ import {
   lottoRecommendService,
   RecommendStrategy,
 } from "../../services/lottoRecommendService";
+import adMobManager from '../../utils/admobUtils';
 
 // 커스텀 팝업 컴포넌트
 interface PopupProps {
@@ -150,6 +151,14 @@ const Recommend: React.FC<RecommendProps> = ({
   const closePopup = () => {
     setPopup({ ...popup, isOpen: false });
   };
+
+  // AdMob 디버그 정보 확인 (개발용)
+  useEffect(() => {
+    console.log('🎯 번호추천 AdMob 상태:', {
+      isAndroid: adMobManager.isAndroid,
+      interstitialReady: adMobManager.isInterstitialReady()
+    });
+  }, []);
 
   // 동적 회차 계산
   const totalRounds = pastWinningNumbers.length;
@@ -384,12 +393,23 @@ const Recommend: React.FC<RecommendProps> = ({
     );
   };
 
-  // 1등급 추천 생성 (광고 제거)
+  // 1등급 추천 생성 (AdMob 전면광고 추가)
   const generate1stGradeRecommendations = async () => {
     setLoading(true);
     setHasGenerated(true);
 
     try {
+      console.log("🎯 1등 추천 시작 - 전면광고 표시");
+      
+      // AdMob 전면광고 표시
+      try {
+        await adMobManager.showInterstitialAd();
+        console.log("✅ 전면광고 시청 완료");
+      } catch (adError) {
+        console.log("⚠️ 전면광고 표시 실패 또는 스킵:", adError);
+        // 광고 실패해도 번호는 생성
+      }
+
       console.log(
         `🧠 ${actualLatestRound}~${actualOldestRound}회차 (${totalRounds}개) AI 빅데이터 분석 시작...`
       );
@@ -1028,8 +1048,8 @@ const Recommend: React.FC<RecommendProps> = ({
                       lineHeight: "1",
                     }}
                   >
-                    <IconWrapper size="sm">🧠</IconWrapper>
-                    AI 분석
+                    <IconWrapper size="sm">📺</IconWrapper>
+                    광고 시청
                   </span>
                 )}
               </div>
@@ -1125,12 +1145,22 @@ const Recommend: React.FC<RecommendProps> = ({
                 <IconWrapper>{gradeInfo[activeGrade].emoji}</IconWrapper>
                 <span>
                   {activeGrade === "1"
-                    ? "AI 빅데이터 분석 시작!"
+                    ? "AI 빅데이터 분석 시작! (광고)"
                     : `${gradeInfo[activeGrade].name} 추천 받기`}
                 </span>
               </>
             )}
           </button>
+          {activeGrade === "1" && !loading && (
+            <p style={{
+              fontSize: "11px",
+              color: currentColors.textSecondary,
+              marginTop: "8px",
+              fontStyle: "italic",
+            }}>
+              ※ 1등 추천은 전면광고 시청 후 제공됩니다
+            </p>
+          )}
         </div>
       </div>
 
