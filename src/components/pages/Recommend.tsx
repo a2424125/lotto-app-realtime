@@ -4,7 +4,6 @@ import {
   lottoRecommendService,
   RecommendStrategy,
 } from "../../services/lottoRecommendService";
-import adMobManager from '../../utils/admobUtils';
 
 // 커스텀 팝업 컴포넌트
 interface PopupProps {
@@ -136,7 +135,6 @@ const Recommend: React.FC<RecommendProps> = ({
   const [analysisStats, setAnalysisStats] = useState<any>(null);
   const [showAnalysisDetail, setShowAnalysisDetail] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
-  const [adAttempts, setAdAttempts] = useState(0); // 광고 시도 횟수 추적
 
   // 팝업 상태 관리
   const [popup, setPopup] = useState<{ isOpen: boolean; message: string; type: "success" | "error" | "info" }>({ 
@@ -152,14 +150,6 @@ const Recommend: React.FC<RecommendProps> = ({
   const closePopup = () => {
     setPopup({ ...popup, isOpen: false });
   };
-
-  // AdMob 디버그 정보 확인 (개발용)
-  useEffect(() => {
-    console.log('🎯 번호추천 AdMob 상태:', {
-      isAndroid: adMobManager.isAndroid,
-      interstitialReady: adMobManager.isInterstitialReady()
-    });
-  }, []);
 
   // 동적 회차 계산
   const totalRounds = pastWinningNumbers.length;
@@ -382,7 +372,7 @@ const Recommend: React.FC<RecommendProps> = ({
   // 분석 통계 로드
   useEffect(() => {
     loadAnalysisStats();
-    console.log("🎯 번호추천 페이지 로드 완료 - 수동 추천 대기 중");
+    console.log("🎯 번호추천 페이지 로드 완료");
   }, [totalRounds, roundRange]);
 
   const loadAnalysisStats = async () => {
@@ -394,46 +384,13 @@ const Recommend: React.FC<RecommendProps> = ({
     );
   };
 
-  // 1등급 추천 생성 (AdMob 전면광고 추가 - 수정됨)
+  // 1등급 추천 생성 (광고 제거)
   const generate1stGradeRecommendations = async () => {
     setLoading(true);
     setHasGenerated(true);
 
     try {
-      console.log("🎯 1등 추천 시작 - 전면광고 표시");
-      
-      // 광고 시도 횟수 증가
-      setAdAttempts(prev => prev + 1);
-      
-      // AdMob 전면광고 표시
-      let adResult: string;
-      try {
-        adResult = await adMobManager.showInterstitialAd();
-        console.log("✅ 전면광고 결과:", adResult);
-      } catch (adError) {
-        console.log("⚠️ 전면광고 표시 실패:", adError);
-        
-        // 광고 실패 시 번호 생성 중단
-        setLoading(false);
-        setHasGenerated(false);
-        showPopup("광고를 시청해야 1등 추천번호를 받을 수 있습니다.\n다시 시도해주세요.", "error");
-        return;
-      }
-
-      // 광고가 정상적으로 닫혔는지 확인
-      if (adResult !== 'closed' && adResult !== 'web_simulation') {
-        console.log("⚠️ 광고 비정상 종료");
-        setLoading(false);
-        setHasGenerated(false);
-        showPopup("광고 시청이 중단되었습니다.\n번호 추천을 받으려면 광고를 끝까지 시청해주세요.", "info");
-        return;
-      }
-
-      // 광고 시청 완료 확인 (웹 시뮬레이션이 아닌 경우)
-      if (adResult === 'closed' && adMobManager.isAndroid) {
-        console.log("✅ 광고 시청 완료 확인");
-      }
-
+      console.log("🎯 1등 추천 시작");
       console.log(
         `🧠 ${actualLatestRound}~${actualOldestRound}회차 (${totalRounds}개) AI 빅데이터 분석 시작...`
       );
@@ -647,40 +604,6 @@ const Recommend: React.FC<RecommendProps> = ({
       numbers.add(Math.floor(Math.random() * 45) + 1);
     }
     
-    return Array.from(numbers).sort((a, b) => a - b);
-  };
-
-  // 폴백 전략 생성 (1등급용)
-  const generateFallbackStrategies = (
-    grade: string = "1"
-  ): RecommendStrategy[] => {
-    const strategies: RecommendStrategy[] = [];
-
-    for (let i = 0; i < 5; i++) {
-      const numbers = generateRandomNumbers();
-      strategies.push({
-        name: `${gradeInfo[grade].name} 전략 ${i + 1}`,
-        numbers: numbers,
-        grade: gradeInfo[grade].name,
-        description: `${gradeInfo[grade].strategy} 방식으로 생성된 번호`,
-        confidence: 70 + Math.floor(Math.random() * 20),
-        analysisData: {
-          dataRange: `${actualLatestRound}~${actualOldestRound}회차 (${totalRounds}개)`,
-          method: "기본 분석",
-          patterns: ["빈도 분석", "랜덤 조합"],
-        },
-      });
-    }
-
-    return strategies;
-  };
-
-  // 랜덤 번호 생성
-  const generateRandomNumbers = (): number[] => {
-    const numbers = new Set<number>();
-    while (numbers.size < 6) {
-      numbers.add(Math.floor(Math.random() * 45) + 1);
-    }
     return Array.from(numbers).sort((a, b) => a - b);
   };
 
@@ -1061,27 +984,6 @@ const Recommend: React.FC<RecommendProps> = ({
                     {info.desc}
                   </span>
                 </div>
-
-                {grade === "1" && (
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      padding: "4px 8px",
-                      borderRadius: "6px",
-                      background: "linear-gradient(45deg, #fbbf24, #f59e0b)",
-                      color: "white",
-                      fontWeight: "bold",
-                      boxShadow: "0 2px 4px rgba(245, 158, 11, 0.3)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      lineHeight: "1",
-                    }}
-                  >
-                    <IconWrapper size="sm">📺</IconWrapper>
-                    광고 시청
-                  </span>
-                )}
               </div>
 
               <div
@@ -1186,24 +1088,14 @@ const Recommend: React.FC<RecommendProps> = ({
               </>
             )}
           </button>
-          {activeGrade === "1" && !loading && (
+          {activeGrade === "1" && !loading && hasGenerated && recommendedStrategies.length > 0 && (
             <p style={{
               fontSize: "11px",
               color: currentColors.textSecondary,
               marginTop: "8px",
               fontStyle: "italic",
             }}>
-              ※ 1등 추천은 전면광고 시청 후 제공됩니다<br/>
-              {hasGenerated && recommendedStrategies.length === 0 && (
-                <span style={{ color: currentColors.accent }}>
-                  광고를 끝까지 시청해주세요!
-                </span>
-              )}
-              {hasGenerated && recommendedStrategies.length > 0 && (
-                <span style={{ color: currentColors.primary }}>
-                  다른 등급을 선택하거나 앱을 새로고침하세요
-                </span>
-              )}
+              다른 등급을 선택하거나 앱을 새로고침하세요
             </p>
           )}
         </div>
