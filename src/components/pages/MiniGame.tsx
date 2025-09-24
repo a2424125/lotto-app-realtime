@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import LottoNumberBall from "../shared/LottoNumberBall";
-import adMobManager from '../../utils/admobUtils';
 
 interface MiniGameProps {
   pastWinningNumbers: number[][];
@@ -23,12 +22,6 @@ interface GameStats {
   dailyBonusDate?: string;
   dailyChargeCount?: number;
   dailyChargeDate?: string;
-  dailyAdCount?: number;
-  dailyAdDate?: string;
-  dailyAdWatchCount?: number;
-  dailyAdWatchDate?: string;
-  totalAdsWatched?: number;
-  totalAdPoints?: number;
 }
 
 interface GuessGameState {
@@ -111,16 +104,6 @@ interface RouletteGameState {
   betOptions: number[];
 }
 
-interface AdWatchState {
-  isWatching: boolean;
-  countdown: number;
-  adTitle: string;
-  adProgress: number;
-  canSkip: boolean;
-  isLoading: boolean;
-  loadingMessage: string;
-}
-
 interface PopupState {
   isOpen: boolean;
   message: string;
@@ -147,10 +130,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     totalSpent: 0,
     totalWon: 0,
     dailyChargeCount: 0,
-    dailyAdCount: 0,
-    dailyAdWatchCount: 0,
-    totalAdsWatched: 0,
-    totalAdPoints: 0,
   };
 
   const [gameStats, setGameStats] = useState<GameStats>(defaultGameStats);
@@ -159,16 +138,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
     message: '',
     type: 'info',
     isConfirm: false
-  });
-
-  const [adWatchState, setAdWatchState] = useState<AdWatchState>({
-    isWatching: false,
-    countdown: 30,
-    adTitle: "",
-    adProgress: 0,
-    canSkip: false,
-    isLoading: false,
-    loadingMessage: "광고 로딩 중...",
   });
 
   const [guessGame, setGuessGame] = useState<GuessGameState>({
@@ -272,10 +241,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
       purple: "#f3e8ff",
       purpleBorder: "#c084fc",
       purpleText: "#7c3aed",
-      adBg: "#f0f9ff",
-      adBorder: "#0ea5e9",
-      adText: "#0c4a6e",
-      adButton: "#0ea5e9",
     },
     dark: {
       background: "#0f172a",
@@ -302,10 +267,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
       purple: "#581c87",
       purpleBorder: "#8b5cf6",
       purpleText: "#c4b5fd",
-      adBg: "#1e3a8a",
-      adBorder: "#3b82f6",
-      adText: "#93c5fd",
-      adButton: "#3b82f6",
     },
   };
 
@@ -316,30 +277,10 @@ const MiniGame: React.FC<MiniGameProps> = ({
     setPopup({ isOpen: true, message, type, isConfirm: false });
   };
 
-  // 확인취소 팝업 표시 함수
-  const showConfirmPopup = (message: string, confirmCallback: () => void, cancelCallback?: () => void) => {
-    setPopup({
-      isOpen: true,
-      message,
-      type: 'info',
-      isConfirm: true,
-      confirmCallback,
-      cancelCallback
-    });
-  };
-
   // 팝업 닫기 함수
   const closePopup = () => {
     setPopup({ isOpen: false, message: '', type: 'info', isConfirm: false });
   };
-
-  // AdMob 디버그 정보 확인 (개발용)
-  useEffect(() => {
-    console.log('🎮 미니게임 AdMob 상태:', {
-      isAndroid: adMobManager.isAndroid,
-      rewardedReady: adMobManager.isRewardedReady()
-    });
-  }, []);
 
   const games = [
     {
@@ -386,7 +327,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     const cost = simulation.ticketPrice;
     
     if (currentPoints < cost) {
-      showAdOfferDialog(cost, "가상 로또 시뮬레이션");
+      showPopup(`포인트가 부족합니다. 일일보너스나 포인트 충전을 이용해주세요!`, "warning");
       return;
     }
 
@@ -497,7 +438,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     const cost = drawGame.cost;
     
     if (currentPoints < cost) {
-      showAdOfferDialog(cost, "추억의 뽑기판");
+      showPopup(`포인트가 부족합니다. 일일보너스나 포인트 충전을 이용해주세요!`, "warning");
       return;
     }
 
@@ -571,24 +512,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
   };
 
   // 룰렛 게임 함수들
-  const getSegmentAtAngle = (angle: number): any => {
-    const normalizedAngle = ((angle % 360) + 360) % 360;
-    let sectionAngle = (270 + normalizedAngle) % 360;
-    
-    for (const segment of rouletteGame.segments) {
-      if (sectionAngle >= segment.startAngle && sectionAngle < segment.endAngle) {
-        return segment;
-      }
-      if (segment.startAngle > segment.endAngle) {
-        if (sectionAngle >= segment.startAngle || sectionAngle < segment.endAngle) {
-          return segment;
-        }
-      }
-    }
-    
-    return rouletteGame.segments[0];
-  };
-
   const startRouletteGame = () => {
     const currentPoints = gameStats?.points || 0;
     const betAmount = rouletteGame.selectedBetAmount;
@@ -599,7 +522,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }
 
     if (currentPoints < betAmount) {
-      showAdOfferDialog(betAmount, "스피드 룰렛");
+      showPopup(`포인트가 부족합니다. 일일보너스나 포인트 충전을 이용해주세요!`, "warning");
       return;
     }
 
@@ -690,134 +613,13 @@ const MiniGame: React.FC<MiniGameProps> = ({
     }, 8000);
   };
 
-  // 광고 및 포인트 관련 함수들 (AdMob 연동 수정)
-  const checkDailyAdLimit = (): boolean => {
-    const today = new Date().toDateString();
-    const maxDailyAds = 10;
-    return gameStats.dailyAdWatchDate !== today || (gameStats.dailyAdWatchCount || 0) < maxDailyAds;
-  };
-
-  const checkDailyLimit = (type: 'charge' | 'ad'): boolean => {
+  // 포인트 관련 함수들
+  const checkDailyLimit = (type: 'charge'): boolean => {
     const today = new Date().toDateString();
     
     if (type === 'charge') {
       const maxCharge = 3;
       return gameStats.dailyChargeDate !== today || (gameStats.dailyChargeCount || 0) < maxCharge;
-    } else {
-      const maxAd = 10;
-      return gameStats.dailyAdDate !== today || (gameStats.dailyAdCount || 0) < maxAd;
-    }
-  };
-
-  // AdMob 보상형 광고 시청 (수정됨 - 3000P 고정)
-  const startAdWatch = async () => {
-    if (!checkDailyAdLimit()) {
-      showPopup("😅 오늘 광고 시청 횟수를 모두 사용했어요! 내일 다시 이용해주세요.", "warning");
-      return;
-    }
-
-    try {
-      // 광고 로딩 상태 표시
-      setAdWatchState({
-        isWatching: false,
-        countdown: 30,
-        adTitle: "",
-        adProgress: 0,
-        canSkip: false,
-        isLoading: true,
-        loadingMessage: "보상형 광고 로딩 중...",
-      });
-
-      // AdMob Manager를 통한 보상형 광고 표시
-      const result = await adMobManager.showRewardedAd();
-      
-      if (result.earned) {
-        // 보상 지급 - 3000P 고정
-        const adPoints = 3000; // result.amount 무시하고 3000P 고정
-        completeAdWatch(adPoints);
-      } else {
-        // 광고를 끝까지 보지 않음
-        setAdWatchState({
-          isWatching: false,
-          countdown: 30,
-          adTitle: "",
-          adProgress: 0,
-          canSkip: false,
-          isLoading: false,
-          loadingMessage: "",
-        });
-        showPopup("광고를 끝까지 시청해야 포인트를 받을 수 있습니다.", "warning");
-      }
-    } catch (error) {
-      console.error('광고 로드/표시 실패:', error);
-      
-      setAdWatchState({
-        isWatching: false,
-        countdown: 30,
-        adTitle: "",
-        adProgress: 0,
-        canSkip: false,
-        isLoading: false,
-        loadingMessage: "",
-      });
-
-      showPopup("광고를 로드할 수 없습니다. 잠시 후 다시 시도해주세요.", "error");
-    }
-  };
-
-  // 광고 시청 완료
-  const completeAdWatch = (adPoints: number = 3000) => {
-    const today = new Date().toDateString();
-
-    setGameStats(prev => ({
-      ...prev,
-      points: (prev?.points || 0) + adPoints,
-      dailyAdWatchCount: prev.dailyAdWatchDate === today ? (prev.dailyAdWatchCount || 0) + 1 : 1,
-      dailyAdWatchDate: today,
-      totalAdsWatched: (prev.totalAdsWatched || 0) + 1,
-      totalAdPoints: (prev.totalAdPoints || 0) + adPoints,
-    }));
-
-    setAdWatchState({
-      isWatching: false,
-      countdown: 30,
-      adTitle: "",
-      adProgress: 0,
-      canSkip: false,
-      isLoading: false,
-      loadingMessage: "",
-    });
-
-    const remaining = 10 - ((gameStats.dailyAdWatchDate === today ? gameStats.dailyAdWatchCount || 0 : 0) + 1);
-    showPopup(`🎉 광고 시청 완료! ${safeFormatNumber(adPoints)}P 획득! 오늘 ${remaining}번 더 시청 가능합니다.`, "success");
-  };
-
-  // 광고 건너뛰기
-  const skipAd = () => {
-    setAdWatchState({
-      isWatching: false,
-      countdown: 30,
-      adTitle: "",
-      adProgress: 0,
-      canSkip: false,
-      isLoading: false,
-      loadingMessage: "",
-    });
-  };
-
-  const showAdOfferDialog = (requiredPoints: number, gameName: string) => {
-    const currentPoints = gameStats?.points || 0;
-    const shortage = requiredPoints - currentPoints;
-    
-    if (checkDailyAdLimit()) {
-      showConfirmPopup(
-        `포인트가 ${safeFormatNumber(shortage)}P 부족합니다. 보상형 광고를 시청하여 3,000P를 받으시겠습니까?`,
-        () => {
-          startAdWatch();
-        }
-      );
-    } else {
-      showPopup("😅 오늘 광고 시청 횟수를 모두 사용했어요!", "warning");
     }
     return false;
   };
@@ -862,7 +664,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
     const cost = guessGame.cost;
     
     if (currentPoints < cost) {
-      showAdOfferDialog(cost, "번호맞추기");
+      showPopup(`포인트가 부족합니다. 일일보너스나 포인트 충전을 이용해주세요!`, "warning");
       return;
     }
 
@@ -1075,112 +877,22 @@ const MiniGame: React.FC<MiniGameProps> = ({
               gap: "8px",
               justifyContent: "center",
             }}>
-              {popup.isConfirm ? (
-                <>
-                  <button
-                    onClick={() => {
-                      if (popup.confirmCallback) popup.confirmCallback();
-                      closePopup();
-                    }}
-                    style={{
-                      padding: "10px 24px",
-                      backgroundColor: currentColors.primary,
-                      color: "white",
-                      border: "none",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                      cursor: "pointer",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    확인
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (popup.cancelCallback) popup.cancelCallback();
-                      closePopup();
-                    }}
-                    style={{
-                      padding: "10px 24px",
-                      backgroundColor: currentColors.textSecondary,
-                      color: "white",
-                      border: "none",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                      cursor: "pointer",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    취소
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={closePopup}
-                  style={{
-                    padding: "10px 32px",
-                    backgroundColor: currentColors.primary,
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    fontWeight: "bold",
-                  }}
-                >
-                  확인
-                </button>
-              )}
+              <button
+                onClick={closePopup}
+                style={{
+                  padding: "10px 32px",
+                  backgroundColor: currentColors.primary,
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
+              >
+                확인
+              </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* 보상형 광고 로딩 모달 (AdMob 표시 중) */}
-      {adWatchState.isLoading && (
-        <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(0, 0, 0, 0.9)",
-          zIndex: 1000,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}>
-          <div style={{
-            backgroundColor: currentColors.surface,
-            borderRadius: "12px",
-            padding: "24px",
-            width: "90%",
-            maxWidth: "400px",
-            border: `2px solid ${currentColors.adBorder}`,
-            textAlign: "center",
-          }}>
-            <div style={{ 
-              fontSize: "48px", 
-              marginBottom: "16px",
-              animation: "pulse 1.5s infinite"
-            }}>
-              📺
-            </div>
-            <h3 style={{
-              fontSize: "16px",
-              fontWeight: "bold",
-              color: currentColors.text,
-              margin: "0 0 8px 0",
-            }}>
-              {adWatchState.loadingMessage}
-            </h3>
-            <p style={{
-              fontSize: "12px",
-              color: currentColors.textSecondary,
-              margin: "0",
-            }}>
-              잠시만 기다려주세요...
-            </p>
           </div>
         </div>
       )}
@@ -1255,23 +967,6 @@ const MiniGame: React.FC<MiniGameProps> = ({
               }}
             >
               💰 포인트 충전 1000P
-            </button>
-            <button
-              onClick={startAdWatch}
-              disabled={!checkDailyAdLimit() || adWatchState.isLoading}
-              style={{
-                padding: "8px 12px",
-                backgroundColor: (checkDailyAdLimit() && !adWatchState.isLoading) ? "#ef4444" : currentColors.textSecondary,
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                fontSize: "11px",
-                cursor: (checkDailyAdLimit() && !adWatchState.isLoading) ? "pointer" : "not-allowed",
-                fontWeight: "bold",
-                opacity: (checkDailyAdLimit() && !adWatchState.isLoading) ? 1 : 0.6,
-              }}
-            >
-              📺 보상형광고 3000P
             </button>
           </div>
         </div>
@@ -1352,7 +1047,7 @@ const MiniGame: React.FC<MiniGameProps> = ({
                     marginTop: "4px",
                     fontWeight: "bold",
                   }}>
-                    📺 보상형 광고로 포인트 획득 가능
+                    포인트 부족 - 충전 필요
                   </div>
                 )}
               </button>
