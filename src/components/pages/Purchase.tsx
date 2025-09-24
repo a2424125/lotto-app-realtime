@@ -34,6 +34,7 @@ const Purchase: React.FC<PurchaseProps> = ({
   const [showAddForm, setShowAddForm] = useState(false);
   const [sortBy, setSortBy] = useState<"date" | "status">("date");
   const [filterStatus, setFilterStatus] = useState<"all" | "saved" | "favorite" | "checked">("all");
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   const colors = {
     light: {
@@ -62,30 +63,102 @@ const Purchase: React.FC<PurchaseProps> = ({
 
   const currentColors = colors[theme];
 
-  // localStorage에서 데이터 불러오기
+  // localStorage에서 데이터 불러오기 (초기 로드)
   useEffect(() => {
-    const savedData = localStorage.getItem('lotto_purchase_history');
-    if (savedData) {
+    const loadData = () => {
       try {
-        const parsedData = JSON.parse(savedData);
-        setLocalPurchaseHistory(parsedData);
-        console.log('데이터 로드 완료:', parsedData.length, '개 항목');
+        const savedData = localStorage.getItem('lotto_purchase_history');
+        if (savedData) {
+          const parsedData = JSON.parse(savedData);
+          setLocalPurchaseHistory(parsedData);
+          console.log('✅ 로컬스토리지에서 데이터 로드 완료:', parsedData.length, '개 항목');
+        } else {
+          // 로컬스토리지에 데이터가 없으면 빈 배열 저장
+          localStorage.setItem('lotto_purchase_history', JSON.stringify([]));
+          console.log('📝 로컬스토리지 초기화 완료');
+        }
       } catch (error) {
-        console.error('데이터 로드 실패:', error);
+        console.error('❌ 데이터 로드 실패:', error);
         setLocalPurchaseHistory([]);
+        localStorage.setItem('lotto_purchase_history', JSON.stringify([]));
       }
-    }
+      setIsDataLoaded(true);
+    };
+
+    loadData();
   }, []);
+
+  // props의 purchaseHistory 변경 감지 및 병합
+  useEffect(() => {
+    if (!isDataLoaded) return;
+
+    // props로 받은 새 번호들을 로컬 데이터와 병합
+    const newItems = purchaseHistory.filter(
+      propItem => !localPurchaseHistory.some(localItem => 
+        JSON.stringify(localItem.numbers) === JSON.stringify(propItem.numbers) &&
+        localItem.date === propItem.date
+      )
+    );
+
+    if (newItems.length > 0) {
+      const updatedHistory = [...localPurchaseHistory, ...newItems];
+      setLocalPurchaseHistory(updatedHistory);
+      console.log('🔄 새 항목 추가:', newItems.length, '개');
+    }
+  }, [purchaseHistory, isDataLoaded]);
 
   // 데이터 변경 시 localStorage에 저장
   useEffect(() => {
-    if (localPurchaseHistory.length > 0) {
-      localStorage.setItem('lotto_purchase_history', JSON.stringify(localPurchaseHistory));
-      console.log('데이터 저장 완료:', localPurchaseHistory.length, '개 항목');
+    if (isDataLoaded) {
+      try {
+        localStorage.setItem('lotto_purchase_history', JSON.stringify(localPurchaseHistory));
+        console.log('💾 로컬스토리지에 저장 완료:', localPurchaseHistory.length, '개 항목');
+      } catch (error) {
+        console.error('❌ 로컬스토리지 저장 실패:', error);
+      }
     }
+  }, [localPurchaseHistory, isDataLoaded]);
+
+  // 페이지 언로드 시 데이터 저장 (추가 안전장치)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      try {
+        localStorage.setItem('lotto_purchase_history', JSON.stringify(localPurchaseHistory));
+        console.log('🔄 페이지 언로드 - 데이터 저장');
+      } catch (error) {
+        console.error('❌ 언로드 시 저장 실패:', error);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // 모바일 환경을 위한 추가 이벤트 리스너
+    window.addEventListener('pagehide', handleBeforeUnload);
+    
+    return () => {
+      handleBeforeUnload(); // 컴포넌트 언마운트 시에도 저장
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
+    };
   }, [localPurchaseHistory]);
 
-  const combinedHistory = [...purchaseHistory, ...localPurchaseHistory];
+  // props와 로컬 데이터를 중복 없이 병합
+  const combinedHistory = React.useMemo(() => {
+    const combined = [...localPurchaseHistory];
+    
+    // props의 항목 중 로컬에 없는 것만 추가
+    purchaseHistory.forEach(propItem => {
+      const exists = combined.some(item => 
+        JSON.stringify(item.numbers) === JSON.stringify(propItem.numbers) &&
+        item.date === propItem.date
+      );
+      if (!exists) {
+        combined.push(propItem);
+      }
+    });
+    
+    return combined;
+  }, [purchaseHistory, localPurchaseHistory]);
 
   const filteredHistory = combinedHistory
     .filter((item) => filterStatus === "all" || item.status === filterStatus)
@@ -112,16 +185,40 @@ const Purchase: React.FC<PurchaseProps> = ({
         status: "saved",
       };
       
-      setLocalPurchaseHistory([...localPurchaseHistory, newItem]);
+      const updatedHistory = [...localPurchaseHistory, newItem];
+      setLocalPurchaseHistory(updatedHistory);
+      
+      // 즉시 localStorage에 저장
+      try {
+        localStorage.setItem('lotto_purchase_history', JSON.stringify(updatedHistory));
+        console.log('✅ 새 번호 저장 완료:', newItem.numbers.join(', '));
+      } catch (error) {
+        console.error('❌ 저장 실패:', error);
+      }
+      
       setInputNumbers("");
       setShowAddForm(false);
+      
+      // 부모 컴포넌트에도 알림 (선택적)
+      if (onAdd) {
+        onAdd(nums, "수동입력");
+      }
     } else {
       alert("1~45 사이의 서로 다른 숫자 6개를 입력해주세요.");
     }
   };
 
   const handleDeleteLocal = (id: number) => {
-    setLocalPurchaseHistory(localPurchaseHistory.filter(item => item.id !== id));
+    const updatedHistory = localPurchaseHistory.filter(item => item.id !== id);
+    setLocalPurchaseHistory(updatedHistory);
+    
+    // 즉시 localStorage에 저장
+    try {
+      localStorage.setItem('lotto_purchase_history', JSON.stringify(updatedHistory));
+      console.log('🗑️ 항목 삭제 완료');
+    } catch (error) {
+      console.error('❌ 삭제 후 저장 실패:', error);
+    }
   };
 
   const handleDelete = (id: number) => {
@@ -143,6 +240,14 @@ const Purchase: React.FC<PurchaseProps> = ({
       return item;
     });
     setLocalPurchaseHistory(updatedHistory);
+    
+    // 즉시 localStorage에 저장
+    try {
+      localStorage.setItem('lotto_purchase_history', JSON.stringify(updatedHistory));
+      console.log('🔄 상태 변경 저장 완료');
+    } catch (error) {
+      console.error('❌ 상태 변경 저장 실패:', error);
+    }
   };
 
   const checkWinning = (numbers: number[], winningNumbers: number[]) => {
@@ -179,6 +284,22 @@ const Purchase: React.FC<PurchaseProps> = ({
       default:
         return currentColors.primary;
     }
+  };
+
+  // 디버그용 테스트 버튼 (개발 중에만 표시)
+  const handleTestSave = () => {
+    const testItem: PurchaseItem = {
+      id: Date.now(),
+      numbers: [1, 2, 3, 4, 5, 6],
+      strategy: "테스트",
+      date: new Date().toISOString(),
+      checked: false,
+      status: "saved",
+    };
+    const updatedHistory = [...localPurchaseHistory, testItem];
+    setLocalPurchaseHistory(updatedHistory);
+    localStorage.setItem('lotto_purchase_history', JSON.stringify(updatedHistory));
+    console.log('🧪 테스트 저장 완료');
   };
 
   return (
@@ -547,6 +668,38 @@ const Purchase: React.FC<PurchaseProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* 개발용 디버그 정보 (배포 시 제거) */}
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{ 
+          marginTop: '20px', 
+          padding: '10px', 
+          backgroundColor: currentColors.surface,
+          borderRadius: '8px',
+          fontSize: '12px',
+          color: currentColors.textSecondary,
+          border: `1px solid ${currentColors.border}`
+        }}>
+          <div>로컬 저장 항목: {localPurchaseHistory.length}개</div>
+          <div>Props 항목: {purchaseHistory.length}개</div>
+          <div>전체 항목: {combinedHistory.length}개</div>
+          <button 
+            onClick={handleTestSave}
+            style={{
+              marginTop: '5px',
+              padding: '4px 8px',
+              fontSize: '11px',
+              backgroundColor: currentColors.primary,
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            테스트 저장
+          </button>
         </div>
       )}
     </div>
