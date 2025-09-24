@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import UpdateChecker from "./components/UpdateChecker";  // 추가!
 import Dashboard from "./components/pages/Dashboard";
 import Recommend from "./components/pages/Recommend";
 import Stats from "./components/pages/Stats";
@@ -8,7 +9,7 @@ import Settings from "./components/pages/Settings";
 import { lottoDataManager } from "./services/lottoDataManager";
 import { fetchAllLottoData } from "./services/hybridDataService";
 import { calculateCurrentRound } from "./services/unifiedLottoService";
-import { lottoRecommendService } from "./services/lottoRecommendService"; // 추가!
+import { lottoRecommendService } from "./services/lottoRecommendService";
 import { LottoDrawResult } from "./types/lotto";
 
 interface PurchaseItem {
@@ -871,6 +872,9 @@ const LottoApp = () => {
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
+      {/* UpdateChecker 컴포넌트 추가 - 업데이트 알림 다이얼로그 */}
+      <UpdateChecker />
+      
       {/* 전체 화면 컨테이너 */}
       <div
         style={{
