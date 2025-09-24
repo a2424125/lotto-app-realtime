@@ -1,12 +1,13 @@
 {
-  "version": "1.2.0",
-  "minVersion": "1.2.0",
+  "version": "4.3",
+  "minVersion": "4.3",
+  "versionCode": 30,
   "updateUrl": "https://play.google.com/store/apps/details?id=com.lottopang645.app",
   "updateMessage": "신규 업데이트가 있습니다.\n더 나은 서비스를 위해 앱을 업데이트해주세요.",
   "forceUpdate": true,
-  "updateDate": "2024-01-10",
+  "updateDate": "2025-01-10",
   "features": [
-    "광고 제거로 더 쾌적한 사용 환경",
-    "성능 개선 및 버그 수정"
+    "성능 개선 및 버그 수정",
+    "사용자 경험 향상"
   ]
 }
