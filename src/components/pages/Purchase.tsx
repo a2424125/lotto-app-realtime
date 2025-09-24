@@ -25,10 +25,13 @@ interface CheckResult {
   grade: string;
   matches: number;
   bonusMatch: boolean;
-  status: "winning" | "losing" | "pending"; // 추첨전 상태 추가
-  drawDate?: string; // 추첨일 정보 추가
-  message?: string; // 추가 메시지
+  status: "winning" | "losing" | "pending";
+  drawDate?: string;
+  message?: string;
 }
+
+// 🔄 localStorage 키 상수
+const STORAGE_KEY = "lotto_purchase_history";
 
 const Purchase: React.FC<PurchaseProps> = ({
   purchaseHistory,
@@ -40,14 +43,54 @@ const Purchase: React.FC<PurchaseProps> = ({
 }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
-
   const [isAutoSelect, setIsAutoSelect] = useState(false);
-  const [filter, setFilter] = useState<
-    "all" | "saved" | "favorite" | "checked"
-  >("all");
-  const [localHistory, setLocalHistory] = useState(purchaseHistory);
+  const [filter, setFilter] = useState<"all" | "saved" | "favorite" | "checked">("all");
+  
+  // 🔄 localStorage에서 초기 데이터 로드
+  const [localHistory, setLocalHistory] = useState<PurchaseItem[]>(() => {
+    try {
+      const savedData = localStorage.getItem(STORAGE_KEY);
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        console.log("📦 localStorage에서 데이터 로드:", parsedData.length, "개 항목");
+        return parsedData;
+      }
+    } catch (error) {
+      console.error("❌ localStorage 로드 실패:", error);
+    }
+    return purchaseHistory;
+  });
 
-  // ✅ 완전한 다크 모드 색상 테마 - 모든 속성 포함 (통일된 버전)
+  // 🔄 localStorage에 자동 저장
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(localHistory));
+      console.log("💾 localStorage에 저장 완료:", localHistory.length, "개 항목");
+    } catch (error) {
+      console.error("❌ localStorage 저장 실패:", error);
+    }
+  }, [localHistory]);
+
+  // 🔄 purchaseHistory prop이 변경되면 병합 (중복 제거)
+  useEffect(() => {
+    if (purchaseHistory && purchaseHistory.length > 0) {
+      setLocalHistory(prev => {
+        // 기존 데이터의 ID 집합
+        const existingIds = new Set(prev.map(item => item.id));
+        
+        // 새로운 데이터 중 중복되지 않는 것만 필터링
+        const newItems = purchaseHistory.filter(item => !existingIds.has(item.id));
+        
+        if (newItems.length > 0) {
+          console.log("🔄 새로운 항목 추가:", newItems.length, "개");
+          return [...prev, ...newItems];
+        }
+        return prev;
+      });
+    }
+  }, [purchaseHistory]);
+
+  // 색상 테마
   const colors = {
     light: {
       background: "#f9fafb",
@@ -74,7 +117,6 @@ const Purchase: React.FC<PurchaseProps> = ({
       red: "#fee2e2",
       redBorder: "#fecaca",
       redText: "#dc2626",
-      // 추첨전 상태 색상 추가
       pending: "#f0f9ff",
       pendingBorder: "#bfdbfe",
       pendingText: "#1e40af",
@@ -104,7 +146,6 @@ const Purchase: React.FC<PurchaseProps> = ({
       red: "#7f1d1d",
       redBorder: "#dc2626",
       redText: "#fca5a5",
-      // 추첨전 상태 색상 추가 (다크모드)
       pending: "#1e3a8a",
       pendingBorder: "#3b82f6",
       pendingText: "#93c5fd",
@@ -113,59 +154,43 @@ const Purchase: React.FC<PurchaseProps> = ({
 
   const currentColors = colors[theme];
 
-  // purchaseHistory가 변경되면 localHistory 업데이트
-  useEffect(() => {
-    setLocalHistory(purchaseHistory);
-  }, [purchaseHistory]);
-
-  // 🔧 완전히 수정된 다음 추첨일 계산 함수 - 정확한 시간 계산
+  // 다음 추첨일 계산 함수
   const getNextDrawDate = (registrationDate: string): Date => {
     const regDate = parseRegistrationDate(registrationDate);
     
-    // 로또 추첨: 매주 토요일 오후 8시 35분
-    const DRAW_DAY = 6; // 토요일 (0: 일요일, 6: 토요일)
-    const DRAW_HOUR = 20; // 오후 8시
-    const DRAW_MINUTE = 35; // 35분
+    const DRAW_DAY = 6; // 토요일
+    const DRAW_HOUR = 20;
+    const DRAW_MINUTE = 35;
 
     const currentDay = regDate.getDay();
     const currentHour = regDate.getHours();
     const currentMinute = regDate.getMinutes();
 
-    // 이번 주 토요일 추첨 시간 계산
     const thisWeekSaturday = new Date(regDate);
     const daysToSaturday = (DRAW_DAY - currentDay + 7) % 7;
     thisWeekSaturday.setDate(regDate.getDate() + daysToSaturday);
     thisWeekSaturday.setHours(DRAW_HOUR, DRAW_MINUTE, 0, 0);
 
-    // 만약 등록일이 토요일이라면
     if (currentDay === DRAW_DAY) {
-      thisWeekSaturday.setDate(regDate.getDate()); // 등록일로 설정
+      thisWeekSaturday.setDate(regDate.getDate());
       thisWeekSaturday.setHours(DRAW_HOUR, DRAW_MINUTE, 0, 0);
     }
 
-    // 다음 주 토요일 추첨 시간 계산
     const nextWeekSaturday = new Date(thisWeekSaturday);
     nextWeekSaturday.setDate(thisWeekSaturday.getDate() + 7);
 
     let nextDrawDate: Date;
 
-    // 추첨 시간 결정 로직
     if (currentDay === DRAW_DAY) {
-      // 등록일이 토요일인 경우
       if (currentHour < DRAW_HOUR || (currentHour === DRAW_HOUR && currentMinute < DRAW_MINUTE)) {
-        // 추첨 시간 전 - 당일 추첨
         nextDrawDate = thisWeekSaturday;
       } else {
-        // 추첨 시간 후 - 다음 주 토요일 추첨
         nextDrawDate = nextWeekSaturday;
       }
     } else {
-      // 등록일이 토요일이 아닌 경우
       if (daysToSaturday === 0) {
-        // 이미 이번 주 토요일이 지났으면 다음 주
         nextDrawDate = nextWeekSaturday;
       } else {
-        // 이번 주 토요일이 아직 오지 않았으면 이번 주
         nextDrawDate = thisWeekSaturday;
       }
     }
@@ -173,72 +198,109 @@ const Purchase: React.FC<PurchaseProps> = ({
     return nextDrawDate;
   };
 
-  // 📅 수정된 추첨일 확인 함수 - 정확한 시간 체크
   const isDrawCompleted = (drawDate: Date): boolean => {
     const now = new Date();
     return now > drawDate;
   };
 
-  // 📅 날짜 형식 변환 함수 개선
   const parseRegistrationDate = (dateStr: string): Date => {
-    // "2025.7.2" 또는 "2025-07-02" 형식 처리
     if (dateStr.includes(".")) {
       const [year, month, day] = dateStr.split(".").map(Number);
-      return new Date(year, month - 1, day); // month는 0-based
+      return new Date(year, month - 1, day);
     } else if (dateStr.includes("-")) {
       return new Date(dateStr);
     } else if (dateStr.includes("/")) {
       const parts = dateStr.split("/");
       if (parts.length === 3) {
-        // MM/DD/YYYY 또는 YYYY/MM/DD 형식 처리
         if (parts[0].length === 4) {
-          // YYYY/MM/DD
           return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
         } else {
-          // MM/DD/YYYY
           return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
         }
       }
       return new Date(dateStr);
     } else {
-      // 기본적으로 한국 날짜 형식으로 파싱 시도
       return new Date(dateStr);
     }
   };
 
-  // 상태 변경 함수
-  const changeItemStatus = (
-    id: number,
-    newStatus: "saved" | "favorite" | "checked"
-  ) => {
-    const updatedHistory = localHistory.map((item) =>
+  // 🔄 상태 변경 함수 - localStorage 자동 저장
+  const changeItemStatus = (id: number, newStatus: "saved" | "favorite" | "checked") => {
+    setLocalHistory(prev => prev.map(item =>
       item.id === id ? { ...item, status: newStatus } : item
-    );
-    setLocalHistory(updatedHistory);
+    ));
+  };
+
+  // 🔄 항목 삭제 함수 - localStorage 자동 저장
+  const handleDelete = (id: number) => {
+    setLocalHistory(prev => prev.filter(item => item.id !== id));
+    onDelete(id); // 부모 컴포넌트에도 알림
+  };
+
+  // 🔄 번호 추가 함수 - localStorage 자동 저장
+  const handleAdd = (numbers: number[], strategy: string) => {
+    const newItem: PurchaseItem = {
+      id: Date.now(), // 유니크 ID 생성
+      numbers,
+      strategy,
+      date: new Date().toLocaleDateString("ko-KR").replace(/\. /g, ".").replace(/\.$/, ""),
+      checked: false,
+      status: "saved",
+    };
+    
+    setLocalHistory(prev => [...prev, newItem]);
+    onAdd(numbers, strategy); // 부모 컴포넌트에도 알림
+  };
+
+  // 🆕 데이터 내보내기 함수
+  const exportData = () => {
+    const dataStr = JSON.stringify(localHistory, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportDate = new Date().toISOString().split('T')[0];
+    const fileName = `lotto_numbers_${exportDate}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', fileName);
+    linkElement.click();
+    
+    alert(`✅ ${localHistory.length}개 번호가 파일로 저장되었습니다!`);
+  };
+
+  // 🆕 데이터 가져오기 함수
+  const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const imported = JSON.parse(e.target?.result as string);
+        if (Array.isArray(imported)) {
+          setLocalHistory(prev => {
+            const existingIds = new Set(prev.map(item => item.id));
+            const newItems = imported.filter(item => !existingIds.has(item.id));
+            alert(`✅ ${newItems.length}개의 새로운 번호를 가져왔습니다!`);
+            return [...prev, ...newItems];
+          });
+        }
+      } catch (error) {
+        alert('❌ 파일을 읽을 수 없습니다. 올바른 JSON 파일인지 확인해주세요.');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = ''; // 같은 파일도 다시 선택 가능하도록
   };
 
   // AI 추천번호들
   const aiRecommendedNumbers = [
-    {
-      name: "1등 - AI 완벽분석",
-      numbers: [2, 8, 14, 21, 29, 35],
-      grade: "1등",
-    },
-    {
-      name: "1등 - 황금비율 조합",
-      numbers: [5, 11, 17, 23, 31, 42],
-      grade: "1등",
-    },
-    {
-      name: "2등 - 보너스 고려",
-      numbers: [7, 13, 19, 25, 33, 39],
-      grade: "2등",
-    },
+    { name: "1등 - AI 완벽분석", numbers: [2, 8, 14, 21, 29, 35], grade: "1등" },
+    { name: "1등 - 황금비율 조합", numbers: [5, 11, 17, 23, 31, 42], grade: "1등" },
+    { name: "2등 - 보너스 고려", numbers: [7, 13, 19, 25, 33, 39], grade: "2등" },
     { name: "3등 - 균형 분석", numbers: [3, 9, 16, 27, 34, 41], grade: "3등" },
     { name: "4등 - 패턴 분석", numbers: [1, 12, 18, 26, 32, 44], grade: "4등" },
   ];
 
-  // 번호 선택/해제
   const toggleNumber = (num: number) => {
     if (isAutoSelect) return;
 
@@ -252,7 +314,6 @@ const Purchase: React.FC<PurchaseProps> = ({
     });
   };
 
-  // 자동선택 토글
   const toggleAutoSelect = () => {
     setIsAutoSelect(!isAutoSelect);
     if (!isAutoSelect) {
@@ -266,13 +327,11 @@ const Purchase: React.FC<PurchaseProps> = ({
     }
   };
 
-  // AI 추천번호 적용
   const applyRecommendedNumbers = (numbers: number[]) => {
     setSelectedNumbers([...numbers]);
     setIsAutoSelect(false);
   };
 
-  // 번호 저장
   const saveNumbers = () => {
     if (selectedNumbers.length === 6) {
       let strategyName = "";
@@ -280,38 +339,30 @@ const Purchase: React.FC<PurchaseProps> = ({
         strategyName = "자동 생성";
       } else if (
         aiRecommendedNumbers.some(
-          (rec) =>
-            JSON.stringify(rec.numbers) === JSON.stringify(selectedNumbers)
+          (rec) => JSON.stringify(rec.numbers) === JSON.stringify(selectedNumbers)
         )
       ) {
         const matchedRec = aiRecommendedNumbers.find(
-          (rec) =>
-            JSON.stringify(rec.numbers) === JSON.stringify(selectedNumbers)
+          (rec) => JSON.stringify(rec.numbers) === JSON.stringify(selectedNumbers)
         );
         strategyName = matchedRec?.name || "AI 추천";
       } else {
         strategyName = "수동 선택";
       }
 
-      onAdd(selectedNumbers, strategyName);
+      handleAdd(selectedNumbers, strategyName);
       setSelectedNumbers([]);
       setIsAutoSelect(false);
       setShowAddForm(false);
     }
   };
 
-  // 🎯 완전히 수정된 당첨 확인 로직 - 정확한 추첨일 계산
-  const checkWinning = (
-    userNumbers: number[],
-    registrationDate: string
-  ): CheckResult => {
+  const checkWinning = (userNumbers: number[], registrationDate: string): CheckResult => {
     try {
-      // 등록일 파싱
       const regDate = parseRegistrationDate(registrationDate);
       const drawDate = getNextDrawDate(registrationDate);
       const isCompleted = isDrawCompleted(drawDate);
 
-      // 추첨일 정보
       const drawDateStr = drawDate.toLocaleDateString("ko-KR", {
         year: "numeric",
         month: "long",
@@ -319,7 +370,6 @@ const Purchase: React.FC<PurchaseProps> = ({
         weekday: "long",
       });
 
-      // 📅 추첨일이 지나지 않았으면 "추첨전" 상태 반환
       if (!isCompleted) {
         const now = new Date();
         const timeDiff = drawDate.getTime() - now.getTime();
@@ -332,7 +382,6 @@ const Purchase: React.FC<PurchaseProps> = ({
           const diffHours = Math.floor(timeDiff / (1000 * 60 * 60));
           const diffMinutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
 
-          // 정확한 일수 계산 (같은 날이면 0일)
           const exactDaysUntilDraw = timeDiff <= 0 ? 0 : 
             drawDate.toDateString() === now.toDateString() ? 0 : diffDays;
 
@@ -359,14 +408,11 @@ const Purchase: React.FC<PurchaseProps> = ({
         };
       }
 
-      // 🎯 추첨일이 지났으면 실제 당첨 확인
       const latestWinning = pastWinningNumbers[0];
       const mainNumbers = latestWinning.slice(0, 6);
       const bonusNumber = latestWinning[6];
 
-      const matches = userNumbers.filter((num) =>
-        mainNumbers.includes(num)
-      ).length;
+      const matches = userNumbers.filter((num) => mainNumbers.includes(num)).length;
       const bonusMatch = userNumbers.includes(bonusNumber);
 
       let grade = "";
@@ -397,18 +443,14 @@ const Purchase: React.FC<PurchaseProps> = ({
     }
   };
 
-  // 번호 복사
   const copyNumbers = (numbers: number[]) => {
     const text = numbers.join(", ");
     navigator.clipboard.writeText(text);
     alert("번호가 복사되었습니다!");
   };
 
-  // 당첨확인 결과 메시지 생성
   const getCheckedFilterMessage = () => {
-    const checkedItems = localHistory.filter(
-      (item) => item.status === "checked"
-    );
+    const checkedItems = localHistory.filter((item) => item.status === "checked");
 
     if (checkedItems.length === 0) {
       return {
@@ -418,9 +460,7 @@ const Purchase: React.FC<PurchaseProps> = ({
       };
     }
 
-    const results = checkedItems.map((item) =>
-      checkWinning(item.numbers, item.date)
-    );
+    const results = checkedItems.map((item) => checkWinning(item.numbers, item.date));
     const winners = results.filter((result) => result.status === "winning");
     const pending = results.filter((result) => result.status === "pending");
 
@@ -455,13 +495,11 @@ const Purchase: React.FC<PurchaseProps> = ({
     }
   };
 
-  // 필터링
   const filteredHistory = localHistory.filter((item) => {
     if (filter === "all") return true;
     return item.status === filter;
   });
 
-  // 통계
   const stats = {
     total: localHistory.length,
     saved: localHistory.filter((item) => item.status === "saved").length,
@@ -505,42 +543,90 @@ const Purchase: React.FC<PurchaseProps> = ({
           나만의 로또 번호를 기록하고 당첨을 확인하세요
         </p>
 
-        {/* 통계 (클릭 가능한 필터 버튼으로 변경) */}
+        {/* 🆕 데이터 관리 버튼 추가 */}
+        <div style={{ 
+          display: "flex", 
+          gap: "8px", 
+          marginBottom: "16px",
+          backgroundColor: currentColors.info,
+          padding: "8px",
+          borderRadius: "6px",
+          border: `1px solid ${currentColors.infoBorder}`,
+        }}>
+          <div style={{ flex: 1 }}>
+            <p style={{ 
+              fontSize: "11px", 
+              color: currentColors.infoText,
+              margin: "0 0 4px 0",
+              fontWeight: "600"
+            }}>
+              💾 자동저장 ON
+            </p>
+            <p style={{ 
+              fontSize: "10px", 
+              color: currentColors.infoText,
+              margin: "0",
+              opacity: 0.8
+            }}>
+              앱 종료 후에도 번호가 유지됩니다
+            </p>
+          </div>
+          <button
+            onClick={exportData}
+            style={{
+              padding: "6px 12px",
+              backgroundColor: currentColors.primary,
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              fontSize: "11px",
+              cursor: "pointer",
+              fontWeight: "600",
+            }}
+          >
+            📥 내보내기
+          </button>
+          <label
+            style={{
+              padding: "6px 12px",
+              backgroundColor: "#8b5cf6",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              fontSize: "11px",
+              cursor: "pointer",
+              fontWeight: "600",
+            }}
+          >
+            📤 가져오기
+            <input
+              type="file"
+              accept=".json"
+              onChange={importData}
+              style={{ display: "none" }}
+            />
+          </label>
+        </div>
+
+        {/* 통계 필터 버튼 */}
         <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
           <button
             onClick={() => setFilter("all")}
             style={{
               flex: 1,
               padding: "12px 8px",
-              backgroundColor:
-                filter === "all" ? currentColors.gray : currentColors.surface,
+              backgroundColor: filter === "all" ? currentColors.gray : currentColors.surface,
               borderRadius: "8px",
               textAlign: "center",
-              border:
-                filter === "all"
-                  ? `2px solid ${currentColors.textSecondary}`
-                  : `1px solid ${currentColors.border}`,
+              border: filter === "all" ? `2px solid ${currentColors.textSecondary}` : `1px solid ${currentColors.border}`,
               cursor: "pointer",
               transition: "all 0.2s",
             }}
           >
-            <p
-              style={{
-                fontSize: "18px",
-                fontWeight: "bold",
-                color: currentColors.text,
-                margin: "0",
-              }}
-            >
+            <p style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.text, margin: "0" }}>
               {stats.total}
             </p>
-            <p
-              style={{
-                fontSize: "12px",
-                color: currentColors.textSecondary,
-                margin: "0",
-              }}
-            >
+            <p style={{ fontSize: "12px", color: currentColors.textSecondary, margin: "0" }}>
               전체
             </p>
           </button>
@@ -549,41 +635,20 @@ const Purchase: React.FC<PurchaseProps> = ({
             style={{
               flex: 1,
               padding: "12px 8px",
-              backgroundColor:
-                filter === "saved"
-                  ? theme === "dark"
-                    ? "#1e3a8a"
-                    : "#bfdbfe"
-                  : theme === "dark"
-                  ? "#1e293b"
-                  : "#dbeafe",
+              backgroundColor: filter === "saved" 
+                ? theme === "dark" ? "#1e3a8a" : "#bfdbfe"
+                : theme === "dark" ? "#1e293b" : "#dbeafe",
               borderRadius: "8px",
               textAlign: "center",
-              border:
-                filter === "saved"
-                  ? `2px solid ${currentColors.primary}`
-                  : `1px solid ${currentColors.border}`,
+              border: filter === "saved" ? `2px solid ${currentColors.primary}` : `1px solid ${currentColors.border}`,
               cursor: "pointer",
               transition: "all 0.2s",
             }}
           >
-            <p
-              style={{
-                fontSize: "18px",
-                fontWeight: "bold",
-                color: currentColors.primary,
-                margin: "0",
-              }}
-            >
+            <p style={{ fontSize: "18px", fontWeight: "bold", color: currentColors.primary, margin: "0" }}>
               {stats.saved}
             </p>
-            <p
-              style={{
-                fontSize: "12px",
-                color: currentColors.primary,
-                margin: "0",
-              }}
-            >
+            <p style={{ fontSize: "12px", color: currentColors.primary, margin: "0" }}>
               저장
             </p>
           </button>
@@ -592,32 +657,17 @@ const Purchase: React.FC<PurchaseProps> = ({
             style={{
               flex: 1,
               padding: "12px 8px",
-              backgroundColor:
-                filter === "favorite"
-                  ? theme === "dark"
-                    ? "#451a03"
-                    : "#fbbf24"
-                  : theme === "dark"
-                  ? "#451a03"
-                  : "#fcd34d",
+              backgroundColor: filter === "favorite"
+                ? theme === "dark" ? "#451a03" : "#fbbf24"
+                : theme === "dark" ? "#451a03" : "#fcd34d",
               borderRadius: "8px",
               textAlign: "center",
-              border:
-                filter === "favorite"
-                  ? "2px solid #f59e0b"
-                  : `1px solid ${currentColors.border}`,
+              border: filter === "favorite" ? "2px solid #f59e0b" : `1px solid ${currentColors.border}`,
               cursor: "pointer",
               transition: "all 0.2s",
             }}
           >
-            <p
-              style={{
-                fontSize: "18px",
-                fontWeight: "bold",
-                color: "#92400e",
-                margin: "0",
-              }}
-            >
+            <p style={{ fontSize: "18px", fontWeight: "bold", color: "#92400e", margin: "0" }}>
               {stats.favorite}
             </p>
             <p style={{ fontSize: "12px", color: "#92400e", margin: "0" }}>
@@ -629,32 +679,17 @@ const Purchase: React.FC<PurchaseProps> = ({
             style={{
               flex: 1,
               padding: "12px 8px",
-              backgroundColor:
-                filter === "checked"
-                  ? theme === "dark"
-                    ? "#134e4a"
-                    : "#86efac"
-                  : theme === "dark"
-                  ? "#134e4a"
-                  : "#bbf7d0",
+              backgroundColor: filter === "checked"
+                ? theme === "dark" ? "#134e4a" : "#86efac"
+                : theme === "dark" ? "#134e4a" : "#bbf7d0",
               borderRadius: "8px",
               textAlign: "center",
-              border:
-                filter === "checked"
-                  ? "2px solid #10b981"
-                  : `1px solid ${currentColors.border}`,
+              border: filter === "checked" ? "2px solid #10b981" : `1px solid ${currentColors.border}`,
               cursor: "pointer",
               transition: "all 0.2s",
             }}
           >
-            <p
-              style={{
-                fontSize: "18px",
-                fontWeight: "bold",
-                color: "#15803d",
-                margin: "0",
-              }}
-            >
+            <p style={{ fontSize: "18px", fontWeight: "bold", color: "#15803d", margin: "0" }}>
               {stats.checked}
             </p>
             <p style={{ fontSize: "12px", color: "#15803d", margin: "0" }}>
@@ -709,22 +744,10 @@ const Purchase: React.FC<PurchaseProps> = ({
               border: `2px solid ${currentColors.redBorder}`,
             }}
           >
-            <h3
-              style={{
-                fontSize: "18px",
-                fontWeight: "bold",
-                margin: "0 0 4px 0",
-              }}
-            >
+            <h3 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 4px 0" }}>
               🏮 Lotto 6/45
             </h3>
-            <p
-              style={{
-                fontSize: "12px",
-                margin: "0",
-                opacity: 0.9,
-              }}
-            >
+            <p style={{ fontSize: "12px", margin: "0", opacity: 0.9 }}>
               구매용지 | 1~45번 중 서로 다른 6개 번호 선택
             </p>
           </div>
@@ -739,7 +762,6 @@ const Purchase: React.FC<PurchaseProps> = ({
               marginBottom: "12px",
             }}
           >
-            {/* 게임 헤더 */}
             <div
               style={{
                 display: "flex",
@@ -757,7 +779,6 @@ const Purchase: React.FC<PurchaseProps> = ({
               A 게임 | 1,000원
             </div>
 
-            {/* 실제 로또 용지 번호 배치 */}
             <div
               style={{
                 backgroundColor: currentColors.surface,
@@ -768,13 +789,13 @@ const Purchase: React.FC<PurchaseProps> = ({
             >
               {/* 7행 번호 배치 */}
               {[
-                Array.from({ length: 7 }, (_, i) => i + 1), // 1-7
-                Array.from({ length: 7 }, (_, i) => i + 8), // 8-14
-                Array.from({ length: 7 }, (_, i) => i + 15), // 15-21
-                Array.from({ length: 7 }, (_, i) => i + 22), // 22-28
-                Array.from({ length: 7 }, (_, i) => i + 29), // 29-35
-                Array.from({ length: 7 }, (_, i) => i + 36), // 36-42
-                [43, 44, 45], // 43-45
+                Array.from({ length: 7 }, (_, i) => i + 1),
+                Array.from({ length: 7 }, (_, i) => i + 8),
+                Array.from({ length: 7 }, (_, i) => i + 15),
+                Array.from({ length: 7 }, (_, i) => i + 22),
+                Array.from({ length: 7 }, (_, i) => i + 29),
+                Array.from({ length: 7 }, (_, i) => i + 36),
+                [43, 44, 45],
               ].map((row, rowIndex) => (
                 <div
                   key={rowIndex}
@@ -794,19 +815,11 @@ const Purchase: React.FC<PurchaseProps> = ({
                         width: "32px",
                         height: "28px",
                         borderRadius: "4px",
-                        border: selectedNumbers.includes(num)
-                          ? "2px solid #dc2626"
-                          : `1px solid ${currentColors.border}`,
-                        backgroundColor: selectedNumbers.includes(num)
-                          ? "#dc2626"
-                          : currentColors.surface,
-                        color: selectedNumbers.includes(num)
-                          ? "white"
-                          : currentColors.text,
+                        border: selectedNumbers.includes(num) ? "2px solid #dc2626" : `1px solid ${currentColors.border}`,
+                        backgroundColor: selectedNumbers.includes(num) ? "#dc2626" : currentColors.surface,
+                        color: selectedNumbers.includes(num) ? "white" : currentColors.text,
                         fontSize: "11px",
-                        fontWeight: selectedNumbers.includes(num)
-                          ? "bold"
-                          : "normal",
+                        fontWeight: selectedNumbers.includes(num) ? "bold" : "normal",
                         cursor: isAutoSelect ? "not-allowed" : "pointer",
                         opacity: isAutoSelect ? 0.6 : 1,
                       }}
@@ -814,18 +827,13 @@ const Purchase: React.FC<PurchaseProps> = ({
                       {num}
                     </button>
                   ))}
-                  {/* 43-45 행의 빈 공간 채우기 */}
                   {rowIndex === 6 &&
                     Array.from({ length: 4 }).map((_, i) => (
-                      <div
-                        key={`empty-${i}`}
-                        style={{ width: "32px", height: "28px" }}
-                      />
+                      <div key={`empty-${i}`} style={{ width: "32px", height: "28px" }} />
                     ))}
                 </div>
               ))}
 
-              {/* 자동선택 체크박스 */}
               <div
                 style={{
                   marginTop: "12px",
@@ -854,40 +862,24 @@ const Purchase: React.FC<PurchaseProps> = ({
                     type="checkbox"
                     checked={isAutoSelect}
                     onChange={toggleAutoSelect}
-                    style={{
-                      width: "16px",
-                      height: "16px",
-                      accentColor: "#dc2626",
-                    }}
+                    style={{ width: "16px", height: "16px", accentColor: "#dc2626" }}
                   />
                   🎲 자동선택
                 </label>
-                <span
-                  style={{
-                    fontSize: "10px",
-                    color: currentColors.redText,
-                    marginLeft: "8px",
-                    opacity: 0.8,
-                  }}
-                >
+                <span style={{ fontSize: "10px", color: currentColors.redText, marginLeft: "8px", opacity: 0.8 }}>
                   (컴퓨터가 자동으로 번호 선택)
                 </span>
               </div>
             </div>
 
-            {/* 선택된 번호 표시 */}
             {selectedNumbers.length > 0 && (
               <div
                 style={{
                   marginTop: "12px",
                   padding: "12px",
-                  backgroundColor: isAutoSelect
-                    ? currentColors.success
-                    : currentColors.info,
+                  backgroundColor: isAutoSelect ? currentColors.success : currentColors.info,
                   borderRadius: "6px",
-                  border: isAutoSelect
-                    ? `1px solid ${currentColors.successBorder}`
-                    : `1px solid ${currentColors.infoBorder}`,
+                  border: isAutoSelect ? `1px solid ${currentColors.successBorder}` : `1px solid ${currentColors.infoBorder}`,
                 }}
               >
                 <div style={{ textAlign: "center", marginBottom: "8px" }}>
@@ -895,58 +887,43 @@ const Purchase: React.FC<PurchaseProps> = ({
                     style={{
                       fontSize: "12px",
                       fontWeight: "600",
-                      color: isAutoSelect
-                        ? currentColors.successText
-                        : currentColors.infoText,
+                      color: isAutoSelect ? currentColors.successText : currentColors.infoText,
                       margin: "0",
                     }}
                   >
-                    {isAutoSelect ? "🎲 자동 선택된 번호" : "✅ 선택한 번호"} (
-                    {selectedNumbers.length}/6)
+                    {isAutoSelect ? "🎲 자동 선택된 번호" : "✅ 선택한 번호"} ({selectedNumbers.length}/6)
                   </p>
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "6px",
-                    justifyContent: "center",
-                    flexWrap: "wrap",
-                  }}
-                >
+                <div style={{ display: "flex", gap: "6px", justifyContent: "center", flexWrap: "wrap" }}>
                   {selectedNumbers.map((num, i) => (
                     <LottoNumberBall key={i} number={num} size="sm" />
                   ))}
-                  {/* 빈 칸들 */}
-                  {Array.from({ length: 6 - selectedNumbers.length }).map(
-                    (_, i) => (
-                      <div
-                        key={`empty-${i}`}
-                        style={{
-                          width: "28px",
-                          height: "28px",
-                          borderRadius: "50%",
-                          backgroundColor: currentColors.gray,
-                          border: `2px dashed ${currentColors.grayBorder}`,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "12px",
-                          color: currentColors.textSecondary,
-                        }}
-                      >
-                        ?
-                      </div>
-                    )
-                  )}
+                  {Array.from({ length: 6 - selectedNumbers.length }).map((_, i) => (
+                    <div
+                      key={`empty-${i}`}
+                      style={{
+                        width: "28px",
+                        height: "28px",
+                        borderRadius: "50%",
+                        backgroundColor: currentColors.gray,
+                        border: `2px dashed ${currentColors.grayBorder}`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "12px",
+                        color: currentColors.textSecondary,
+                      }}
+                    >
+                      ?
+                    </div>
+                  ))}
                 </div>
                 {selectedNumbers.length === 6 && (
                   <div style={{ textAlign: "center", marginTop: "8px" }}>
                     <span
                       style={{
                         fontSize: "11px",
-                        color: isAutoSelect
-                          ? currentColors.successText
-                          : currentColors.infoText,
+                        color: isAutoSelect ? currentColors.successText : currentColors.infoText,
                         fontWeight: "600",
                       }}
                     >
@@ -991,9 +968,7 @@ const Purchase: React.FC<PurchaseProps> = ({
               번호추천 메뉴에서 생성된 AI 분석 번호
             </p>
 
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "6px" }}
-            >
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               {aiRecommendedNumbers.map((rec, index) => (
                 <button
                   key={index}
@@ -1008,39 +983,15 @@ const Purchase: React.FC<PurchaseProps> = ({
                     textAlign: "left",
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "4px",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: "11px",
-                        fontWeight: "600",
-                        color: currentColors.text,
-                      }}
-                    >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: "600", color: currentColors.text }}>
                       {rec.name}
                     </span>
-                    <span
-                      style={{
-                        fontSize: "9px",
-                        color: currentColors.textSecondary,
-                      }}
-                    >
+                    <span style={{ fontSize: "9px", color: currentColors.textSecondary }}>
                       적용하기 →
                     </span>
                   </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "2px",
-                      justifyContent: "center",
-                    }}
-                  >
+                  <div style={{ display: "flex", gap: "2px", justifyContent: "center" }}>
                     {rec.numbers.map((num, i) => (
                       <div
                         key={i}
@@ -1093,30 +1044,20 @@ const Purchase: React.FC<PurchaseProps> = ({
               disabled={selectedNumbers.length !== 6}
               style={{
                 flex: 2,
-                backgroundColor:
-                  selectedNumbers.length === 6
-                    ? "#dc2626"
-                    : currentColors.textSecondary,
+                backgroundColor: selectedNumbers.length === 6 ? "#dc2626" : currentColors.textSecondary,
                 color: "white",
                 padding: "12px",
                 borderRadius: "8px",
                 border: "none",
                 fontSize: "14px",
                 fontWeight: "600",
-                cursor:
-                  selectedNumbers.length === 6 ? "pointer" : "not-allowed",
-                boxShadow:
-                  selectedNumbers.length === 6
-                    ? "0 4px 12px rgba(220, 38, 38, 0.4)"
-                    : "none",
-                transform:
-                  selectedNumbers.length === 6 ? "translateY(-2px)" : "none",
+                cursor: selectedNumbers.length === 6 ? "pointer" : "not-allowed",
+                boxShadow: selectedNumbers.length === 6 ? "0 4px 12px rgba(220, 38, 38, 0.4)" : "none",
+                transform: selectedNumbers.length === 6 ? "translateY(-2px)" : "none",
                 transition: "all 0.2s",
               }}
             >
-              {selectedNumbers.length === 6
-                ? "🎫 번호 저장하기"
-                : `${6 - selectedNumbers.length}개 더 선택`}
+              {selectedNumbers.length === 6 ? "🎫 번호 저장하기" : `${6 - selectedNumbers.length}개 더 선택`}
             </button>
           </div>
         </div>
@@ -1138,26 +1079,11 @@ const Purchase: React.FC<PurchaseProps> = ({
               const message = getCheckedFilterMessage();
               return (
                 <>
-                  <div style={{ fontSize: "48px", marginBottom: "12px" }}>
-                    {message.icon}
-                  </div>
-                  <p
-                    style={{
-                      fontSize: "16px",
-                      fontWeight: "bold",
-                      color: currentColors.text,
-                      margin: "0 0 6px 0",
-                    }}
-                  >
+                  <div style={{ fontSize: "48px", marginBottom: "12px" }}>{message.icon}</div>
+                  <p style={{ fontSize: "16px", fontWeight: "bold", color: currentColors.text, margin: "0 0 6px 0" }}>
                     {message.title}
                   </p>
-                  <p
-                    style={{
-                      color: currentColors.textSecondary,
-                      margin: "0",
-                      fontSize: "14px",
-                    }}
-                  >
+                  <p style={{ color: currentColors.textSecondary, margin: "0", fontSize: "14px" }}>
                     {message.description}
                   </p>
                 </>
@@ -1166,69 +1092,30 @@ const Purchase: React.FC<PurchaseProps> = ({
           ) : filter === "favorite" ? (
             <>
               <div style={{ fontSize: "48px", marginBottom: "12px" }}>⭐</div>
-              <p
-                style={{
-                  fontSize: "16px",
-                  fontWeight: "bold",
-                  color: currentColors.text,
-                  margin: "0 0 6px 0",
-                }}
-              >
+              <p style={{ fontSize: "16px", fontWeight: "bold", color: currentColors.text, margin: "0 0 6px 0" }}>
                 즐겨찾기한 번호가 없어요
               </p>
-              <p
-                style={{
-                  color: currentColors.textSecondary,
-                  margin: "0",
-                  fontSize: "14px",
-                }}
-              >
+              <p style={{ color: currentColors.textSecondary, margin: "0", fontSize: "14px" }}>
                 번호를 등록하고 ⭐ 버튼을 눌러 즐겨찾기하세요!
               </p>
             </>
           ) : filter === "saved" ? (
             <>
               <div style={{ fontSize: "48px", marginBottom: "12px" }}>💾</div>
-              <p
-                style={{
-                  fontSize: "16px",
-                  fontWeight: "bold",
-                  color: currentColors.text,
-                  margin: "0 0 6px 0",
-                }}
-              >
+              <p style={{ fontSize: "16px", fontWeight: "bold", color: currentColors.text, margin: "0 0 6px 0" }}>
                 저장된 번호가 없어요
               </p>
-              <p
-                style={{
-                  color: currentColors.textSecondary,
-                  margin: "0",
-                  fontSize: "14px",
-                }}
-              >
+              <p style={{ color: currentColors.textSecondary, margin: "0", fontSize: "14px" }}>
                 새 번호를 등록해보세요!
               </p>
             </>
           ) : (
             <>
               <div style={{ fontSize: "48px", marginBottom: "12px" }}>📋</div>
-              <p
-                style={{
-                  fontSize: "16px",
-                  fontWeight: "bold",
-                  color: currentColors.text,
-                  margin: "0 0 6px 0",
-                }}
-              >
+              <p style={{ fontSize: "16px", fontWeight: "bold", color: currentColors.text, margin: "0 0 6px 0" }}>
                 등록된 번호가 없어요
               </p>
-              <p
-                style={{
-                  color: currentColors.textSecondary,
-                  margin: "0",
-                  fontSize: "14px",
-                }}
-              >
+              <p style={{ color: currentColors.textSecondary, margin: "0", fontSize: "14px" }}>
                 번호를 등록해서 당첨을 확인해보세요!
               </p>
             </>
@@ -1237,9 +1124,7 @@ const Purchase: React.FC<PurchaseProps> = ({
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {filteredHistory.map((item) => {
-            const result = item.checked
-              ? checkWinning(item.numbers, item.date)
-              : null;
+            const result = item.checked ? checkWinning(item.numbers, item.date) : null;
             const isWinner = result && result.status === "winning";
             const isPending = result && result.status === "pending";
 
@@ -1262,83 +1147,32 @@ const Purchase: React.FC<PurchaseProps> = ({
                     : "none",
                 }}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    marginBottom: "8px",
-                  }}
-                >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
                   <div style={{ flex: 1 }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        marginBottom: "2px",
-                      }}
-                    >
-                      <h3
-                        style={{
-                          fontWeight: "bold",
-                          color: currentColors.text,
-                          margin: "0",
-                          fontSize: "14px",
-                        }}
-                      >
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
+                      <h3 style={{ fontWeight: "bold", color: currentColors.text, margin: "0", fontSize: "14px" }}>
                         {item.strategy}
                       </h3>
-                      {/* 상태 표시 아이콘 */}
-                      {item.status === "favorite" && (
-                        <span style={{ fontSize: "14px" }}>⭐</span>
-                      )}
-                      {item.status === "checked" && (
-                        <span style={{ fontSize: "14px" }}>
-                          {isPending ? "⏰" : "✅"}
-                        </span>
-                      )}
+                      {item.status === "favorite" && <span style={{ fontSize: "14px" }}>⭐</span>}
+                      {item.status === "checked" && <span style={{ fontSize: "14px" }}>{isPending ? "⏰" : "✅"}</span>}
                     </div>
-                    <p
-                      style={{
-                        fontSize: "12px",
-                        color: currentColors.textSecondary,
-                        margin: "0",
-                      }}
-                    >
+                    <p style={{ fontSize: "12px", color: currentColors.textSecondary, margin: "0" }}>
                       {item.date} 등록
-                      {/* 📅 추첨일 정보 표시 */}
                       {result && result.drawDate && (
                         <span style={{ marginLeft: "8px", fontSize: "11px" }}>
-                          | 추첨:{" "}
-                          {result.drawDate.split(" ").slice(0, 3).join(" ")}
+                          | 추첨: {result.drawDate.split(" ").slice(0, 3).join(" ")}
                         </span>
                       )}
                     </p>
                   </div>
 
-                  {/* 상태 변경 및 액션 버튼들 */}
-                  <div
-                    style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}
-                  >
-                    {/* 즐겨찾기 토글 */}
+                  <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                     <button
-                      onClick={() =>
-                        changeItemStatus(
-                          item.id,
-                          item.status === "favorite" ? "saved" : "favorite"
-                        )
-                      }
+                      onClick={() => changeItemStatus(item.id, item.status === "favorite" ? "saved" : "favorite")}
                       style={{
                         padding: "4px 8px",
-                        backgroundColor:
-                          item.status === "favorite"
-                            ? "#d97706"
-                            : currentColors.gray,
-                        color:
-                          item.status === "favorite"
-                            ? "white"
-                            : currentColors.textSecondary,
+                        backgroundColor: item.status === "favorite" ? "#d97706" : currentColors.gray,
+                        color: item.status === "favorite" ? "white" : currentColors.textSecondary,
                         borderRadius: "4px",
                         border: "none",
                         fontSize: "12px",
@@ -1347,8 +1181,6 @@ const Purchase: React.FC<PurchaseProps> = ({
                     >
                       {item.status === "favorite" ? "⭐" : "☆"}
                     </button>
-
-                    {/* 복사 버튼 */}
                     <button
                       onClick={() => copyNumbers(item.numbers)}
                       style={{
@@ -1363,8 +1195,6 @@ const Purchase: React.FC<PurchaseProps> = ({
                     >
                       복사
                     </button>
-
-                    {/* 당첨확인 버튼 - 추첨 대기중이면 계속 활성화 */}
                     <button
                       onClick={() => {
                         onCheck(item.id, item.numbers);
@@ -1373,33 +1203,18 @@ const Purchase: React.FC<PurchaseProps> = ({
                       disabled={item.checked && !isPending}
                       style={{
                         padding: "4px 8px",
-                        backgroundColor:
-                          item.checked && !isPending
-                            ? currentColors.textSecondary
-                            : currentColors.accent,
+                        backgroundColor: item.checked && !isPending ? currentColors.textSecondary : currentColors.accent,
                         color: "white",
                         borderRadius: "4px",
                         border: "none",
                         fontSize: "12px",
-                        cursor:
-                          item.checked && !isPending
-                            ? "not-allowed"
-                            : "pointer",
+                        cursor: item.checked && !isPending ? "not-allowed" : "pointer",
                       }}
                     >
                       {item.checked && !isPending ? "확인완료" : "당첨확인"}
                     </button>
-
-                    {/* 삭제 버튼 */}
                     <button
-                      onClick={() => {
-                        onDelete(item.id);
-                        setLocalHistory((prev) =>
-                          prev.filter(
-                            (historyItem) => historyItem.id !== item.id
-                          )
-                        );
-                      }}
+                      onClick={() => handleDelete(item.id)}
                       style={{
                         padding: "4px 8px",
                         backgroundColor: "#dc2626",
@@ -1415,7 +1230,6 @@ const Purchase: React.FC<PurchaseProps> = ({
                   </div>
                 </div>
 
-                {/* 번호 표시 */}
                 <div
                   style={{
                     display: "flex",
@@ -1441,7 +1255,6 @@ const Purchase: React.FC<PurchaseProps> = ({
                   ))}
                 </div>
 
-                {/* 🎯 개선된 당첨 결과 표시 */}
                 {result && (
                   <div
                     style={{
@@ -1471,35 +1284,19 @@ const Purchase: React.FC<PurchaseProps> = ({
                           : currentColors.errorText,
                       }}
                     >
-                      {isPending
-                        ? "⏰ 추첨 대기중"
-                        : result.grade === "낙첨"
-                        ? "😔 낙첨"
-                        : `🎉 ${result.grade} 당첨!`}
+                      {isPending ? "⏰ 추첨 대기중" : result.grade === "낙첨" ? "😔 낙첨" : `🎉 ${result.grade} 당첨!`}
                     </span>
                     <p
                       style={{
                         fontSize: "12px",
-                        color: isPending
-                          ? currentColors.pendingText
-                          : isWinner
-                          ? currentColors.successText
-                          : currentColors.errorText,
+                        color: isPending ? currentColors.pendingText : isWinner ? currentColors.successText : currentColors.errorText,
                         margin: "2px 0 0 0",
                       }}
                     >
                       {result.message}
                     </p>
-                    {/* 📅 추첨일 정보 */}
                     {isPending && (
-                      <p
-                        style={{
-                          fontSize: "11px",
-                          color: currentColors.pendingText,
-                          margin: "4px 0 0 0",
-                          opacity: 0.8,
-                        }}
-                      >
+                      <p style={{ fontSize: "11px", color: currentColors.pendingText, margin: "4px 0 0 0", opacity: 0.8 }}>
                         {result.drawDate}
                       </p>
                     )}
