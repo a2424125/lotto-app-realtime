@@ -16,8 +16,8 @@ const UpdateChecker = () => {
   const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
   
   // 현재 앱 버전 (이 값을 수정해야 합니다!)
-  const CURRENT_VERSION = "4.2";  // 기존 앱 버전
-  const CURRENT_VERSION_CODE = 29;  // 기존 앱 버전코드
+  const CURRENT_VERSION = "4.3";  // 기존 앱 버전
+  const CURRENT_VERSION_CODE = 30;  // 기존 앱 버전코드
 
   useEffect(() => {
     checkForUpdate();
